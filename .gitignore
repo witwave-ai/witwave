@@ -8,6 +8,7 @@ dist/
 # Go module dir dumps a binary named after the package (ww, operator, etc.)
 # in the cwd. Ad-hoc test scratch files from audit agents (test_*_logic,
 # test_*_scratch) also show up here. Keep them out of git.
+/operator/plan
 /test_*_logic
 /test_*_scratch
 /scratch_*
