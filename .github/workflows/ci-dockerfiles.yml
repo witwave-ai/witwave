@@ -123,6 +123,8 @@ jobs:
             -f images/backend-base/Dockerfile \
             -t witwave-ci/backend-base:ci \
             --build-arg VERSION=ci \
+            --build-arg COMMIT="${GITHUB_SHA}" \
+            --build-arg BUILD_DATE=ci \
             .
 
       - name: Build backend image from local backend-base (no push)

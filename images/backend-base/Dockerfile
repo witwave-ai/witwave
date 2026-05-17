@@ -95,6 +95,10 @@ RUN go install "golang.org/x/tools/cmd/goimports@${GOIMPORTS_VERSION}" \
 
 FROM go-toolchain AS ww-build
 
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
+
 # Two-step COPY so `go mod download` stays in its own cache layer -
 # layers above invalidate only when go.mod/go.sum change, not on every
 # clients/ww/ source edit.
@@ -105,7 +109,12 @@ RUN cd /tmp/ww-src \
 COPY clients/ww/ /tmp/ww-src/
 RUN cd /tmp/ww-src \
     && GOCACHE=/tmp/gocache CGO_ENABLED=0 \
-       go build -trimpath -ldflags="-s -w" -o /usr/local/bin/ww . \
+       go build -trimpath \
+         -ldflags="-s -w \
+           -X github.com/witwave-ai/witwave/clients/ww/cmd.Version=${VERSION} \
+           -X github.com/witwave-ai/witwave/clients/ww/cmd.Commit=${COMMIT} \
+           -X github.com/witwave-ai/witwave/clients/ww/cmd.BuildDate=${BUILD_DATE}" \
+         -o /usr/local/bin/ww . \
     && /usr/local/bin/ww version
 
 # -----------------------------------------------------------------------------

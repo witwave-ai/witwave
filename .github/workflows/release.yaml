@@ -83,6 +83,10 @@ jobs:
         id: tag_version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Compute build date
+        id: build_date
+        run: echo "value=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata (labels only at build time)
         id: meta
         uses: docker/metadata-action@v5
@@ -104,6 +108,8 @@ jobs:
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/images/backend-base:buildcache-${{ env.PLATFORM_PAIR }},mode=max
           build-args: |
             VERSION=${{ steps.tag_version.outputs.version }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ steps.build_date.outputs.value }}
 
       - name: Export digest
         run: |

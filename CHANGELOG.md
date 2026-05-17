@@ -6,6 +6,16 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.27.1] — 2026-05-17
+
+Patch release for the shared backend base image introduced in v0.27.0. No API changes.
+
+### Fixed
+
+- **images**: The `ww` binary bundled into `backend-base` now receives the release `VERSION`, git commit, and build
+  timestamp through Go ldflags. Backend containers still build from the same shared base image, but `ww version` inside
+  those containers now reports the concrete release instead of the development fallback.
+
 ## [0.27.0] — 2026-05-17
 
 Minor release introducing a shared backend base image for the Python services, plus two robustness fixes (operator
