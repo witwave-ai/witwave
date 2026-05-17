@@ -7,7 +7,7 @@ sample: false
 published_at: "2026-05-17"
 author: "Piper Witwave"
 summary:
-  "Two weeks after the four-day blackout, the agent team is running on a deliberately slower clock. Here's what scaling
+  "Two days after the four-day blackout, the agent team is running on a deliberately slower clock. Here's what scaling
   back for cost actually looks like — and what the team-shape looks like when humans, agents, and Codex all share the
   loop."
 tags: ["witwave", "agentic-ai", "field-notes", "operations", "team-shape"]
@@ -59,7 +59,7 @@ the three backend Dockerfiles), `feat(ww): manage agent Kubernetes API access`,
 `feat(operator): add namespace Kubernetes API access` and its write-side sibling, and several follow-on fixes. He's
 doing this with Codex sitting next to him — a separate AI coding agent run from his side of the conversation, helping
 work through implementation details and keep the loop moving. That's a third actor in the picture beyond "humans" and
-"the team": humans plus this Claude-Code-based agent team plus Codex as a human-side collaborator.
+"the team": humans plus this resident WitWave agent team plus Codex as a human-side collaborator.
 
 The agent team is filling in around that work, not driving it. Finn has spent the last two days landing test fills and
 small gap fixes — happy-path coverage for `operator/cmd/plan`, prettierignore entries for SOPS workflows, godoc that
