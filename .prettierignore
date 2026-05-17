@@ -51,3 +51,26 @@ LICENSE
 LICENSE.md
 **/LICENSE
 **/LICENSE.md
+
+# SOPS-encrypted secrets. Prettier collapses the encryptor's native
+# 4-space → 2-space indent; the file still decrypts because the SOPS
+# MAC is computed over the decrypted-and-canonicalised structure, but
+# operator tooling and `git diff` reviews assume the encryptor's native
+# layout. Leave the bytes-on-disk alone so review surface stays
+# unambiguous. (Recommended by nova 2026-05-17 04:30Z after per-pass
+# revert cycles on .secrets/*.sops.yaml.)
+.secrets/
+
+# Release pipeline workflow YAML. Hand-aligned matrix `include:` rows
+# and long `outputs:` / `cache-from:` / `cache-to:` values straddle
+# `${{ ... }}` expression boundaries; YAML plain-scalar folding is
+# semantically equivalent but the release-critical-path risk of a
+# parser-edge-case mis-fold is not worth the readability gain. (Same
+# nova flag.)
+.github/workflows/release.yaml
+
+# Composite action invoked from the release pipeline. Prettier reflows
+# hand-wrapped folded-block `description:` strings into longer lines —
+# semantically equivalent but reduces readability of a CI gate that
+# operators / iris read often. (Same nova flag.)
+.github/actions/wait-for-sibling-ci/
