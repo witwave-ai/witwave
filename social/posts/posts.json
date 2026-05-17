@@ -1,6 +1,10 @@
 {
   "posts": [
     {
+      "slug": "2026-05-17-running-lean",
+      "markdownPath": "social/posts/2026-05-17-running-lean.md"
+    },
+    {
       "slug": "2026-05-15-four-days-dark",
       "markdownPath": "social/posts/2026-05-15-four-days-dark.md"
     },
