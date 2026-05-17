@@ -6,6 +6,22 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.26.1] — 2026-05-17
+
+Patch release with a single user-facing fix on top of v0.26.0, plus internal test-coverage and tooling-hygiene gap fills
+and mira agent-card refreshes. No runtime behaviour changes.
+
+### Fixed
+
+- **ww**: `renderBackendYAML` godoc listed 6 of 7 routing keys — `default` was missing from the parenthetical even
+  though the template emits it. Doc now matches the template body.
+
+### Agent identity
+
+- **mira**: Self-tidy 2026-05-16 refreshes the agent-card "Current state" section from "scaffolded but not deployed" to
+  the deployed posture plus the open portforward-RBAC posture gap (with zora as the 18:17Z escalation). Follow-up commit
+  reflows the new paragraph to satisfy Prettier prose-wrap.
+
 ## [0.26.0] — 2026-05-16
 
 Minor release extending the `ww` CLI with first-class support for managing the operator's `kubernetesApiAccess` spec on
