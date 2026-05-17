@@ -141,7 +141,9 @@ func renderAgent(agent *witwavev1alpha1.WitwaveAgent, w io.Writer) error {
 		return nil
 	}
 
-	fmt.Fprintf(w, "# === plan for WitwaveAgent %s/%s ===\n", agent.Namespace, agent.Name)
+	if _, err := fmt.Fprintf(w, "# === plan for WitwaveAgent %s/%s ===\n", agent.Namespace, agent.Name); err != nil {
+		return err
+	}
 
 	if dep := controller.BuildDeploymentForPlan(agent); dep != nil {
 		if err := emit("Deployment", dep.Name, dep); err != nil {
