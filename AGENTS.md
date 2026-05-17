@@ -143,11 +143,12 @@ Each backend:
 Each named agent has its own dedicated backend instances. For example, iris has `iris-claude`, `iris-codex`, and
 `iris-gemini`.
 
-The `toolbox` image (`images/toolbox/`, published as `ghcr.io/witwave-ai/images/toolbox:<version>`) is the intended
-shared base for the Claude/Codex/Gemini backend images. Its job is image composition: common CLIs and analyzers such as
-`kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and test tooling should be version-pinned in
-one place instead of rebuilt independently in every backend. It does not grant permissions. In-cluster Kubernetes
-authority is controlled by `WitwaveAgent.spec.kubernetesApiAccess` or an explicit ServiceAccount/RBAC binding.
+The `backend-base` image (`images/backend-base/`, published as `ghcr.io/witwave-ai/images/backend-base:<version>`) is
+the shared base for the Claude/Codex/Gemini backend images. Its job is image composition: common CLIs, runtimes, and
+analyzers such as Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and test tooling
+are version-pinned in one place instead of rebuilt independently in every backend. It does not grant permissions.
+In-cluster Kubernetes authority is controlled by `WitwaveAgent.spec.kubernetesApiAccess` or an explicit
+ServiceAccount/RBAC binding.
 
 ### MCP components
 
@@ -373,20 +374,20 @@ docs/                        # Canonical reference docs
 # harness (router/scheduler)
 docker build -f harness/Dockerfile -t harness:latest .
 
+# Backend base image (shared runtime/tooling image)
+docker build -f images/backend-base/Dockerfile -t backend-base:latest .
+
 # Claude backend
-docker build -f backends/claude/Dockerfile -t claude:latest .
+docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/claude/Dockerfile -t claude:latest .
 
 # Codex backend
-docker build -f backends/codex/Dockerfile -t codex:latest .
+docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/codex/Dockerfile -t codex:latest .
 
 # Gemini backend
-docker build -f backends/gemini/Dockerfile -t gemini:latest .
+docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/gemini/Dockerfile -t gemini:latest .
 
 # Echo backend (hello-world default; no API keys required)
 docker build -f backends/echo/Dockerfile -t echo:latest .
-
-# Toolbox image (shared backend base/tooling image)
-docker build -f images/toolbox/Dockerfile -t toolbox:latest .
 
 # Kubernetes MCP tool
 docker build -f tools/kubernetes/Dockerfile -t mcp-kubernetes:latest .

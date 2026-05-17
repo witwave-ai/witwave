@@ -157,7 +157,7 @@ on every release tag.
 | `codex`          | `ghcr.io/witwave-ai/images/codex:latest`          |
 | `gemini`         | `ghcr.io/witwave-ai/images/gemini:latest`         |
 | `echo`           | `ghcr.io/witwave-ai/images/echo:latest`           |
-| `toolbox`        | `ghcr.io/witwave-ai/images/toolbox:latest`        |
+| `backend-base`   | `ghcr.io/witwave-ai/images/backend-base:latest`   |
 | `dashboard`      | `ghcr.io/witwave-ai/images/dashboard:latest`      |
 | `operator`       | `ghcr.io/witwave-ai/images/operator:latest`       |
 | `git-sync`       | `ghcr.io/witwave-ai/images/git-sync:latest`       |
@@ -165,8 +165,8 @@ on every release tag.
 | `mcp-helm`       | `ghcr.io/witwave-ai/images/mcp-helm:latest`       |
 | `mcp-prometheus` | `ghcr.io/witwave-ai/images/mcp-prometheus:latest` |
 
-`toolbox` is the shared backend base-image target for common CLI/analyzer tooling (`kubectl`, `ww`, `gh`, Helm,
-formatters, linters, and scanners). It is image composition only: Kubernetes permissions still come from
+`backend-base` is the shared backend base image for common runtimes and CLI/analyzer tooling (Go, Node, `kubectl`, `ww`,
+`gh`, Helm, formatters, linters, and scanners). It is image composition only: Kubernetes permissions still come from
 `WitwaveAgent.spec.kubernetesApiAccess` or an explicit ServiceAccount/RBAC binding.
 
 The `ww` CLI ships through three install paths — pick whichever fits your environment:
@@ -239,18 +239,18 @@ docker pull ghcr.io/witwave-ai/images/claude:latest
 docker pull ghcr.io/witwave-ai/images/codex:latest
 docker pull ghcr.io/witwave-ai/images/gemini:latest
 docker pull ghcr.io/witwave-ai/images/echo:latest
-docker pull ghcr.io/witwave-ai/images/toolbox:latest
+docker pull ghcr.io/witwave-ai/images/backend-base:latest
 ```
 
 Or build locally:
 
 ```bash
+docker build -f images/backend-base/Dockerfile -t backend-base:latest .
 docker build -f harness/Dockerfile -t harness:latest .
-docker build -f backends/claude/Dockerfile -t claude:latest .
-docker build -f backends/codex/Dockerfile -t codex:latest .
-docker build -f backends/gemini/Dockerfile -t gemini:latest .
+docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/claude/Dockerfile -t claude:latest .
+docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/codex/Dockerfile -t codex:latest .
+docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/gemini/Dockerfile -t gemini:latest .
 docker build -f backends/echo/Dockerfile -t echo:latest .
-docker build -f images/toolbox/Dockerfile -t toolbox:latest .
 ```
 
 ### 2. Configure Credentials

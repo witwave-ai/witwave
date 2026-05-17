@@ -1,11 +1,10 @@
-# witwave toolbox — the shared backend base + analyzer toolchain.
+# witwave backend-base - the shared backend base + analyzer toolchain.
 #
-# Intent: claude/codex/gemini backend Dockerfiles should eventually use
-# `FROM ghcr.io/witwave-ai/images/toolbox:<version>` as their common base,
-# then layer only backend-specific runtime dependencies on top. Phase 1
-# publishes this image and keeps backend Dockerfiles self-contained; Phase 2
-# switches the backends to inherit from it and makes the release workflow build
-# toolbox before backend images.
+# Intent: claude/codex/gemini backend Dockerfiles use
+# `FROM ghcr.io/witwave-ai/images/backend-base:<version>` as their common base,
+# then layer only backend-specific runtime dependencies on top. The release
+# workflow builds and publishes backend-base first, then builds those backend images
+# against the same stripped release version.
 #
 # Important boundary: this image provides binaries and runtime convenience only.
 # It does not grant cluster authority. In-pod Kubernetes credentials/RBAC are
@@ -14,25 +13,25 @@
 # Why split it out:
 # - The seven Go tools (goimports, staticcheck, errcheck, ineffassign,
 #   controller-gen, govulncheck, gosec) currently compile from source
-#   in every backend × every platform = 42 redundant compiles per
+#   in every backend x every platform = 42 redundant compiles per
 #   release. Here they compile once, ship as binaries.
 # - The `ww` CLI is also currently built from source in every backend
 #   image; here it builds once in a dedicated stage and ships as a
 #   binary alongside the Go tools.
-# - The Go compiler (~500 MB) currently survives in every final
-#   backend image just to do those `go install`s. Here it lives in
-#   builder stages that get discarded; the final toolbox image carries
-#   only the resulting binaries.
+# - The Go compiler lives once in this shared base instead of being
+#   installed independently in each backend image. Agents still need real
+#   `go`, `gofmt`, `go test`, and `go build` access when working on this
+#   repo, so the final backend-base image carries both the toolchain and the
+#   resulting analyzer binaries.
 # - Tool versions are pinned in exactly one place. Bumping a version
-#   touches this file and the toolbox version tag; no chance of three
+#   touches this file and the backend-base version tag; no chance of three
 #   backends drifting apart.
 #
-# All ARG VERSIONs below match what claude/codex/gemini currently install so
-# the Phase 2 base-image swap can be reviewed as image composition, not tool
-# version drift.
+# All ARG VERSIONs below match what claude/codex/gemini previously installed
+# directly so the base-image swap is image composition, not tool version drift.
 
 # -----------------------------------------------------------------------------
-# Stage 1 — Shared Go-toolchain base. Two downstream stages (go-build
+# Stage 1 - Shared Go-toolchain base. Two downstream stages (go-build
 # and ww-build) extend this; defining it once cuts the Go install +
 # extract from twice to once per platform under buildx layer cache.
 # -----------------------------------------------------------------------------
@@ -43,7 +42,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -66,7 +65,7 @@ ENV PATH="/usr/local/go/bin:$PATH" \
     GOTOOLCHAIN=local
 
 # -----------------------------------------------------------------------------
-# Stage 2 — Go hygiene/analyzer tools. Compiler discarded; the seven
+# Stage 2 - Go hygiene/analyzer tools. Compiler discarded; the seven
 # binaries flow to the final stage via COPY.
 # -----------------------------------------------------------------------------
 
@@ -89,14 +88,14 @@ RUN go install "golang.org/x/tools/cmd/goimports@${GOIMPORTS_VERSION}" \
     && go install "github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}"
 
 # -----------------------------------------------------------------------------
-# Stage 3 — Build the `ww` CLI from in-repo source. Previously rebuilt
-# in every backend × every platform; centralised here. Build context
+# Stage 3 - Build the `ww` CLI from in-repo source. Previously rebuilt
+# in every backend x every platform; centralized here. Build context
 # is the repo root (set by the workflow), so `clients/ww/` is reachable.
 # -----------------------------------------------------------------------------
 
 FROM go-toolchain AS ww-build
 
-# Two-step COPY so `go mod download` stays in its own cache layer —
+# Two-step COPY so `go mod download` stays in its own cache layer -
 # layers above invalidate only when go.mod/go.sum change, not on every
 # clients/ww/ source edit.
 COPY clients/ww/go.mod clients/ww/go.sum /tmp/ww-src/
@@ -110,7 +109,7 @@ RUN cd /tmp/ww-src \
     && /usr/local/bin/ww version
 
 # -----------------------------------------------------------------------------
-# Stage 4 — Python tools-venv with hygiene + test deps.
+# Stage 4 - Python tools-venv with hygiene + test deps.
 # Carried over to the final stage at /opt/tools-venv. Debian venvs keep
 # lightweight entrypoint links to the system Python runtime, so consumers must
 # provide /usr/bin/python3.
@@ -122,31 +121,32 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     python3 \
     python3-pip \
     python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Tools venv lives at /opt/tools-venv so backends can `COPY --from=toolbox
-# /opt/tools-venv /opt/tools-venv` and `ENV PATH=/opt/tools-venv/bin:$PATH`.
-# Pinned versions match what claude/codex/gemini currently install.
+# Tools venv lives at /opt/tools-venv and is exposed on PATH for direct
+# base-image usage and non-runtime checks. Backends still install pytest-class
+# tooling into their agent venv so test commands see backend dependencies.
+# Pinned versions match what claude/codex/gemini install in their agent venv.
 RUN python3 -m venv /opt/tools-venv \
     && /opt/tools-venv/bin/pip install --no-cache-dir \
         'ruff==0.6.9' \
         'yamllint==1.35.1' \
         'pytest==8.3.3' \
         'pytest-asyncio==0.24.0' \
-        'httpx==0.27.2' \
+        'httpx==0.28.1' \
         'kubernetes==31.0.0' \
         'pip-audit==2.10.0' \
         'bandit==1.9.4'
 
 # -----------------------------------------------------------------------------
-# Stage 5 — final image: shellcheck + helm + downloaded binaries + venv
-# + Go-tool binaries + ww. This is what gets published as
-# ghcr.io/witwave-ai/images/toolbox.
+# Stage 5 - final image: shared backend OS/runtime surface + Go/Node/Python
+# tooling + downloaded binaries + ww. This is what gets published as
+# ghcr.io/witwave-ai/images/backend-base.
 # -----------------------------------------------------------------------------
 
 FROM debian:bookworm-20260316-slim AS final
@@ -155,20 +155,42 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# shellcheck is the only apt-installed hygiene tool from the analyzer set;
-# python3 is required as the interpreter for the venv at /opt/tools-venv
-# copied in from the python-build stage — yamllint/pytest/pip-audit/bandit
-# are pure-Python and their shebang `/opt/tools-venv/bin/python3` resolves
-# (via the venv's internal symlink) to `/usr/bin/python3`, which must exist
-# in this stage. ca-certificates + curl present to support runtime fetches
-# if any consumer needs them (mostly defensive; the binaries don't reach
-# out at runtime).
-RUN apt-get update && apt-get install -y \
+# This mirrors the common baseline the backend images used to install
+# individually. The backend-specific Dockerfiles should only add their SDK or
+# browser runtime pieces on top of this.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    git \
+    gnupg \
+    jq \
+    procps \
     python3 \
+    python3-pip \
+    python3-venv \
     shellcheck \
+    zsh \
     && rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI (gh) - release/status skills use this to inspect CI and tags.
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y --no-install-recommends gh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js 20 - dashboard verification and the Claude Code CLI both need npm.
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Keep the Go compiler in the shared base so agents can run gofmt/go test/go
+# build, not just precompiled analyzer binaries.
+COPY --from=go-toolchain /usr/local/go /usr/local/go
+RUN ln -sf /usr/local/go/bin/go /usr/local/bin/go \
+    && ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 
 # Go hygiene/analyzer binaries from Stage 2.
 COPY --from=go-build /usr/local/gopath/bin/ /usr/local/bin/
@@ -176,21 +198,21 @@ COPY --from=go-build /usr/local/gopath/bin/ /usr/local/bin/
 # `ww` CLI binary from Stage 3.
 COPY --from=ww-build /usr/local/bin/ww /usr/local/bin/ww
 
-# shfmt — shell-script formatter.
+# shfmt - shell-script formatter.
 ARG SHFMT_VERSION=3.10.0
 RUN ARCH=$(dpkg --print-architecture) \
     && curl -fsSL "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_${ARCH}" \
          -o /usr/local/bin/shfmt \
     && chmod +x /usr/local/bin/shfmt
 
-# actionlint — GitHub Actions workflow linter.
+# actionlint - GitHub Actions workflow linter.
 ARG ACTIONLINT_VERSION=1.7.7
 RUN ARCH=$(dpkg --print-architecture) \
     && curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_${ARCH}.tar.gz" \
          | tar -xz -C /usr/local/bin actionlint \
     && chmod +x /usr/local/bin/actionlint
 
-# hadolint — Dockerfile linter. Naming uses kernel-arch (x86_64 / arm64)
+# hadolint - Dockerfile linter. Naming uses kernel-arch (x86_64 / arm64)
 # rather than dpkg-arch (amd64 / arm64).
 ARG HADOLINT_VERSION=2.12.0
 RUN ARCH=$(dpkg --print-architecture) \
@@ -203,7 +225,7 @@ RUN ARCH=$(dpkg --print-architecture) \
          -o /usr/local/bin/hadolint \
     && chmod +x /usr/local/bin/hadolint
 
-# gitleaks — secret-in-source detection. Naming uses x64/arm64.
+# gitleaks - secret-in-source detection. Naming uses x64/arm64.
 ARG GITLEAKS_VERSION=8.30.1
 RUN ARCH=$(dpkg --print-architecture) \
     && case "$ARCH" in \
@@ -215,7 +237,7 @@ RUN ARCH=$(dpkg --print-architecture) \
          | tar -xz -C /usr/local/bin gitleaks \
     && chmod +x /usr/local/bin/gitleaks
 
-# trivy — filesystem CVE scan + image scan. Naming uses 64bit / ARM64.
+# trivy - filesystem CVE scan + image scan. Naming uses 64bit / ARM64.
 ARG TRIVY_VERSION=0.70.0
 RUN ARCH=$(dpkg --print-architecture) \
     && case "$ARCH" in \
@@ -227,13 +249,13 @@ RUN ARCH=$(dpkg --print-architecture) \
          | tar -xz -C /usr/local/bin trivy \
     && chmod +x /usr/local/bin/trivy
 
-# helm — chart linting + diff inspection. Official installer auto-detects arch.
+# helm - chart linting + diff inspection. Official installer auto-detects arch.
 ARG HELM_VERSION=v3.16.3
 RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
       | DESIRED_VERSION="${HELM_VERSION}" USE_SUDO=false HELM_INSTALL_DIR=/usr/local/bin bash
 
-# kubectl — read-only cluster diagnostics for platform-health / restart
-# triage when a toolbox consumer is deliberately given Kubernetes credentials
+# kubectl - read-only cluster diagnostics for platform-health / restart
+# triage when a backend-base consumer is deliberately given Kubernetes credentials
 # via service account token or kubeconfig. Installing the binary here
 # does not grant cluster access by itself.
 ARG KUBECTL_VERSION=v1.31.0
@@ -254,16 +276,29 @@ RUN ARCH=$(dpkg --print-architecture) \
 # Python tools-venv from Stage 2.
 COPY --from=python-build /opt/tools-venv /opt/tools-venv
 
+RUN useradd -m -s /usr/bin/zsh -u 1000 agent
+
+ENV PATH="/usr/local/go/bin:/opt/tools-venv/bin:/usr/local/bin:$PATH" \
+    GOFLAGS="-mod=mod" \
+    GOTOOLCHAIN=local
+
 # Smoke-test every binary as the last build step. Catches any "binary
 # present but unrunnable" failure (wrong arch, missing dep) before this
 # image gets published. Each invocation just prints version; any
 # non-zero exit fails the build.
 RUN set -euo pipefail \
+    && git --version >/dev/null \
+    && gh --version >/dev/null \
+    && jq --version >/dev/null \
+    && node --version >/dev/null \
+    && npm --version >/dev/null \
+    && go version >/dev/null \
+    && command -v gofmt >/dev/null \
     && shellcheck --version >/dev/null \
-    && goimports -h 2>&1 | head -1 >/dev/null \
+    && command -v goimports >/dev/null \
     && staticcheck --version >/dev/null \
-    && errcheck -version >/dev/null \
-    && ineffassign 2>&1 | head -1 >/dev/null || true \
+    && command -v errcheck >/dev/null \
+    && command -v ineffassign >/dev/null \
     && controller-gen --version >/dev/null \
     && govulncheck --version >/dev/null \
     && gosec --version >/dev/null 2>&1 \
@@ -280,13 +315,8 @@ RUN set -euo pipefail \
     && /opt/tools-venv/bin/pytest --version >/dev/null \
     && /opt/tools-venv/bin/pip-audit --version >/dev/null \
     && /opt/tools-venv/bin/bandit --version >/dev/null \
-    && echo "toolbox smoke OK"
-
-# Expose tools-venv on PATH for any consumer that uses this image directly
-# (rare; backends will COPY --from=toolbox into their own image and set
-# PATH themselves).
-ENV PATH="/opt/tools-venv/bin:/usr/local/bin:$PATH"
+    && echo "backend-base smoke OK"
 
 # Default command: print a one-line manifest of what's inside, useful for
-# `docker run --rm ghcr.io/.../toolbox` ad-hoc inspection.
-CMD ["bash", "-c", "echo 'witwave toolbox — installed tools:' && ls -1 /usr/local/bin/ /opt/tools-venv/bin/"]
+# `docker run --rm ghcr.io/.../backend-base` ad-hoc inspection.
+CMD ["bash", "-c", "echo 'witwave backend-base - installed tools:' && ls -1 /usr/local/bin/ /opt/tools-venv/bin/"]

@@ -17,7 +17,7 @@ on:
       - "clients/ww/go.mod"
       - "clients/ww/go.sum"
       - "helpers/git-sync/**"
-      - "images/toolbox/**"
+      - "images/backend-base/**"
       - "operator/go.mod"
       - "operator/go.sum"
       - "tools/**/requirements.txt"
@@ -31,7 +31,7 @@ on:
       - "clients/ww/go.mod"
       - "clients/ww/go.sum"
       - "helpers/git-sync/**"
-      - "images/toolbox/**"
+      - "images/backend-base/**"
       - "operator/go.mod"
       - "operator/go.sum"
       - "tools/**/requirements.txt"
@@ -71,8 +71,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: toolbox
-            file: images/toolbox/Dockerfile
+          - image: backend-base
+            file: images/backend-base/Dockerfile
             context: .
           - image: harness
             file: harness/Dockerfile
@@ -115,7 +115,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Build local backend-base image
+        if: ${{ contains(fromJSON('["claude","codex","gemini"]'), matrix.image) }}
+        run: |
+          set -euo pipefail
+          docker build \
+            -f images/backend-base/Dockerfile \
+            -t witwave-ci/backend-base:ci \
+            --build-arg VERSION=ci \
+            .
+
+      - name: Build backend image from local backend-base (no push)
+        if: ${{ contains(fromJSON('["claude","codex","gemini"]'), matrix.image) }}
+        run: |
+          set -euo pipefail
+          docker build \
+            -f "${{ matrix.file }}" \
+            -t "witwave-ci/${{ matrix.image }}:ci" \
+            --build-arg VERSION=ci \
+            --build-arg BACKEND_BASE_IMAGE=witwave-ci/backend-base:ci \
+            "${{ matrix.context }}"
+
       - name: Build ${{ matrix.image }} image (no push)
+        if: ${{ !contains(fromJSON('["claude","codex","gemini"]'), matrix.image) }}
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}

@@ -41,15 +41,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/wait-for-sibling-ci
 
-  # Toolbox image — intended shared base for claude/codex/gemini plus
-  # analyzer/tooling surface. During Phase 1 it is published in parallel
-  # and backend Dockerfiles still install their own toolchains. Phase 2
-  # will switch those backend Dockerfiles to `FROM toolbox:<version>` and
-  # make backend image builds depend on `merge-toolbox` so each release's
-  # backends inherit the same-version toolbox base.
-  build-toolbox:
+  # Backend base image — shared base for claude/codex/gemini plus analyzer/tooling
+  # surface. Backend image builds depend on `merge-backend-base` and receive
+  # BACKEND_BASE_IMAGE pointing at the same stripped release version, so a release
+  # tag like v0.26.2 builds backends from backend-base:0.26.2 rather than latest.
+  build-backend-base:
     needs: gate
-    name: Build toolbox (${{ matrix.platform }})
+    name: Build backend-base (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
@@ -89,21 +87,21 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/images/toolbox
+          images: ghcr.io/${{ github.repository_owner }}/images/backend-base
 
-      - name: Build and push toolbox by digest
+      - name: Build and push backend-base by digest
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: images/toolbox/Dockerfile
+          file: images/backend-base/Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/images/toolbox,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/images/backend-base,push-by-digest=true,name-canonical=true,push=true
           provenance: true
           sbom: true
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/images/toolbox:buildcache-${{ env.PLATFORM_PAIR }}
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/images/toolbox:buildcache-${{ env.PLATFORM_PAIR }},mode=max
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/images/backend-base:buildcache-${{ env.PLATFORM_PAIR }}
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/images/backend-base:buildcache-${{ env.PLATFORM_PAIR }},mode=max
           build-args: |
             VERSION=${{ steps.tag_version.outputs.version }}
 
@@ -116,14 +114,14 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-toolbox-${{ env.PLATFORM_PAIR }}
+          name: digests-backend-base-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
 
-  merge-toolbox:
-    needs: build-toolbox
-    name: Merge toolbox manifest
+  merge-backend-base:
+    needs: build-backend-base
+    name: Merge backend-base manifest
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -131,11 +129,11 @@ jobs:
       id-token: write
 
     steps:
-      - name: Download toolbox digests
+      - name: Download backend-base digests
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-toolbox-*
+          pattern: digests-backend-base-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -152,7 +150,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/images/toolbox
+          images: ghcr.io/${{ github.repository_owner }}/images/backend-base
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -161,7 +159,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         env:
-          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/images/toolbox
+          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/images/backend-base
         run: |
           set -euo pipefail
 
@@ -180,14 +178,14 @@ jobs:
       - name: Inspect manifest
         run: |
           docker buildx imagetools inspect \
-            ghcr.io/${{ github.repository_owner }}/images/toolbox:${{ steps.meta.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/images/backend-base:${{ steps.meta.outputs.version }}
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign toolbox manifest list
+      - name: Sign backend-base manifest list
         env:
-          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/images/toolbox
+          IMAGE_REF: ghcr.io/${{ github.repository_owner }}/images/backend-base
           IMAGE_VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
@@ -198,7 +196,7 @@ jobs:
           cosign sign --yes "${IMAGE_REF}@${DIGEST}"
 
   build:
-    needs: gate
+    needs: [gate, merge-backend-base]
     name: Build ${{ matrix.image }} (${{ matrix.platform }})
     strategy:
       fail-fast: false
@@ -294,6 +292,7 @@ jobs:
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/images/${{ matrix.image }}:buildcache-${{ env.PLATFORM_PAIR }},mode=max
           build-args: |
             VERSION=${{ steps.tag_version.outputs.version }}
+            BACKEND_BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/images/backend-base:${{ steps.tag_version.outputs.version }}
 
       - name: Export digest
         run: |
