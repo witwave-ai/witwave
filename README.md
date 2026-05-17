@@ -157,12 +157,17 @@ on every release tag.
 | `codex`          | `ghcr.io/witwave-ai/images/codex:latest`          |
 | `gemini`         | `ghcr.io/witwave-ai/images/gemini:latest`         |
 | `echo`           | `ghcr.io/witwave-ai/images/echo:latest`           |
+| `toolbox`        | `ghcr.io/witwave-ai/images/toolbox:latest`        |
 | `dashboard`      | `ghcr.io/witwave-ai/images/dashboard:latest`      |
 | `operator`       | `ghcr.io/witwave-ai/images/operator:latest`       |
 | `git-sync`       | `ghcr.io/witwave-ai/images/git-sync:latest`       |
 | `mcp-kubernetes` | `ghcr.io/witwave-ai/images/mcp-kubernetes:latest` |
 | `mcp-helm`       | `ghcr.io/witwave-ai/images/mcp-helm:latest`       |
 | `mcp-prometheus` | `ghcr.io/witwave-ai/images/mcp-prometheus:latest` |
+
+`toolbox` is the shared backend base-image target for common CLI/analyzer tooling (`kubectl`, `ww`, `gh`, Helm,
+formatters, linters, and scanners). It is image composition only: Kubernetes permissions still come from
+`WitwaveAgent.spec.kubernetesApiAccess` or an explicit ServiceAccount/RBAC binding.
 
 The `ww` CLI ships through three install paths — pick whichever fits your environment:
 
@@ -234,6 +239,7 @@ docker pull ghcr.io/witwave-ai/images/claude:latest
 docker pull ghcr.io/witwave-ai/images/codex:latest
 docker pull ghcr.io/witwave-ai/images/gemini:latest
 docker pull ghcr.io/witwave-ai/images/echo:latest
+docker pull ghcr.io/witwave-ai/images/toolbox:latest
 ```
 
 Or build locally:
@@ -244,6 +250,7 @@ docker build -f backends/claude/Dockerfile -t claude:latest .
 docker build -f backends/codex/Dockerfile -t codex:latest .
 docker build -f backends/gemini/Dockerfile -t gemini:latest .
 docker build -f backends/echo/Dockerfile -t echo:latest .
+docker build -f images/toolbox/Dockerfile -t toolbox:latest .
 ```
 
 ### 2. Configure Credentials

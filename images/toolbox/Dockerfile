@@ -1,10 +1,15 @@
-# witwave toolbox — the shared code-hygiene + analyzer toolchain.
+# witwave toolbox — the shared backend base + analyzer toolchain.
 #
-# This image is consumed by claude/codex/gemini backend Dockerfiles via
-# `FROM ghcr.io/witwave-ai/images/toolbox:<version> AS toolbox` and a
-# set of `COPY --from=toolbox ...` lines. Phase 1 of the toolbox
-# refactor only publishes this image — backends still install their
-# own toolchains. Phase 2 swaps the backends over to consume it.
+# Intent: claude/codex/gemini backend Dockerfiles should eventually use
+# `FROM ghcr.io/witwave-ai/images/toolbox:<version>` as their common base,
+# then layer only backend-specific runtime dependencies on top. Phase 1
+# publishes this image and keeps backend Dockerfiles self-contained; Phase 2
+# switches the backends to inherit from it and makes the release workflow build
+# toolbox before backend images.
+#
+# Important boundary: this image provides binaries and runtime convenience only.
+# It does not grant cluster authority. In-pod Kubernetes credentials/RBAC are
+# controlled separately by WitwaveAgent.spec.kubernetesApiAccess.
 #
 # Why split it out:
 # - The seven Go tools (goimports, staticcheck, errcheck, ineffassign,
@@ -22,8 +27,9 @@
 #   touches this file and the toolbox version tag; no chance of three
 #   backends drifting apart.
 #
-# All ARG VERSIONs below match what claude/codex/gemini currently
-# install so Phase 2 is a clean drop-in swap with no behavioural drift.
+# All ARG VERSIONs below match what claude/codex/gemini currently install so
+# the Phase 2 base-image swap can be reviewed as image composition, not tool
+# version drift.
 
 # -----------------------------------------------------------------------------
 # Stage 1 — Shared Go-toolchain base. Two downstream stages (go-build

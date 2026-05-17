@@ -41,12 +41,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/wait-for-sibling-ci
 
-  # Toolbox image — shared code-hygiene + analyzer toolchain. Built and
-  # published in parallel with the rest of the release matrix during
-  # Phase 1; backends do NOT yet depend on it (Phase 2 will switch
-  # backends to `FROM toolbox` + add `needs: merge-toolbox` to the
-  # existing `build` job). See `images/toolbox/Dockerfile` for the
-  # rationale on why this is split out.
+  # Toolbox image — intended shared base for claude/codex/gemini plus
+  # analyzer/tooling surface. During Phase 1 it is published in parallel
+  # and backend Dockerfiles still install their own toolchains. Phase 2
+  # will switch those backend Dockerfiles to `FROM toolbox:<version>` and
+  # make backend image builds depend on `merge-toolbox` so each release's
+  # backends inherit the same-version toolbox base.
   build-toolbox:
     needs: gate
     name: Build toolbox (${{ matrix.platform }})

@@ -143,6 +143,12 @@ Each backend:
 Each named agent has its own dedicated backend instances. For example, iris has `iris-claude`, `iris-codex`, and
 `iris-gemini`.
 
+The `toolbox` image (`images/toolbox/`, published as `ghcr.io/witwave-ai/images/toolbox:<version>`) is the intended
+shared base for the Claude/Codex/Gemini backend images. Its job is image composition: common CLIs and analyzers such as
+`kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and test tooling should be version-pinned in
+one place instead of rebuilt independently in every backend. It does not grant permissions. In-cluster Kubernetes
+authority is controlled by `WitwaveAgent.spec.kubernetesApiAccess` or an explicit ServiceAccount/RBAC binding.
+
 ### MCP components
 
 Tool capabilities are delivered as MCP servers. Every subdirectory under `tools/` is an MCP component and is treated
@@ -378,6 +384,9 @@ docker build -f backends/gemini/Dockerfile -t gemini:latest .
 
 # Echo backend (hello-world default; no API keys required)
 docker build -f backends/echo/Dockerfile -t echo:latest .
+
+# Toolbox image (shared backend base/tooling image)
+docker build -f images/toolbox/Dockerfile -t toolbox:latest .
 
 # Kubernetes MCP tool
 docker build -f tools/kubernetes/Dockerfile -t mcp-kubernetes:latest .

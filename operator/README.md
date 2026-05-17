@@ -221,6 +221,10 @@ When this field is omitted or disabled, the operator renders the namespace `defa
 `automountServiceAccountToken: false`, so the pod keeps the no-token posture while still converging cleanly under
 server-side apply.
 
+This field is intentionally separate from backend image composition. The `toolbox` image can put `kubectl`, `ww`, `gh`,
+Helm, and analyzers on the backend filesystem, but those binaries have no Kubernetes authority unless this field (or an
+explicit `serviceAccountName`) mounts credentials with matching RBAC.
+
 ### Health probes
 
 Backend pods follow the three-probe split documented in `AGENTS.md` (#1719):

@@ -553,6 +553,10 @@ delete/eviction. This managed path still excludes secrets, RBAC mutation, raw Po
 resources. Existing agents can be changed with `ww agent kubernetes-api-access enable <name> --mode readOnly` (alias:
 `ww agent k8s-access enable ...`) or returned to the no-token default with `ww agent k8s-access disable <name>`.
 
+This is an access/RBAC knob, not an image-composition knob. Backend images may include the shared toolbox binaries
+(`kubectl`, `ww`, `gh`, Helm, analyzers), but the pod cannot use the Kubernetes API until credentials are mounted and
+RBAC allows the requested verbs.
+
 `ww agent send` uses the Kubernetes apiserver's built-in Service proxy so any `ClusterIP` Service is reachable without
 local port-forwarding or an external LoadBalancer. This makes round-trip A2A calls from a laptop against a cluster-only
 agent Just Work. Caveats: the apiserver proxy has payload size caps and isn't suited for streaming — use
