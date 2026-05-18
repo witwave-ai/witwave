@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -204,5 +205,241 @@ func TestRemoveKubernetesApiAccessInPlace(t *testing.T) {
 	}
 	if _, found, err := unstructured.NestedMap(cr.Object, "spec", "kubernetesApiAccess"); err != nil || found {
 		t.Fatalf("kubernetesApiAccess found=%v err=%v; want removed", found, err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// KubernetesApiAccessEnable / KubernetesApiAccessDisable — full-flow tests
+// using the package's shared fake-client fixtures (cr_helpers_test.go).
+// Mirrors the (ctx, target, cfg, opts) shape of TestDelete_HappyPath_NoFlags
+// and TestBackendAdd_*. Wait:false short-circuits the rollout-wait code path
+// so the dynamic+core fakes alone are sufficient.
+// ---------------------------------------------------------------------------
+
+func TestKubernetesApiAccessEnable_AddsReadOnly(t *testing.T) {
+	cr := seedAgent("hello", "default", nil)
+	dyn := makeFakeDynamic(cr)
+	t.Cleanup(withFakeClients(t, dyn, makeFakeK8s()))
+
+	out := captureOut()
+	err := KubernetesApiAccessEnable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "hello",
+		Namespace: "default",
+		Mode:      "readOnly",
+		AssumeYes: true,
+		Out:       out,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	updated := readAgent(t, dyn, "default", "hello")
+	enabled, found, err := unstructured.NestedBool(updated.Object, "spec", "kubernetesApiAccess", "enabled")
+	if err != nil || !found || !enabled {
+		t.Fatalf("enabled = %v found=%v err=%v; want true", enabled, found, err)
+	}
+	mode, _, _ := unstructured.NestedString(updated.Object, "spec", "kubernetesApiAccess", "mode")
+	if mode != KubernetesApiAccessModeReadOnly {
+		t.Errorf("mode = %q; want readOnly", mode)
+	}
+	mustContain(t, out.String(), "Updated WitwaveAgent default/hello.")
+	// Wait:false → rollout-wait short-circuits with the skip banner.
+	mustContain(t, out.String(), "Skipping rollout wait")
+}
+
+func TestKubernetesApiAccessEnable_UpdatesMode(t *testing.T) {
+	cr := seedAgent("hello", "default", func(spec map[string]interface{}) {
+		spec["kubernetesApiAccess"] = map[string]interface{}{
+			"enabled": true,
+			"mode":    KubernetesApiAccessModeReadOnly,
+		}
+	})
+	dyn := makeFakeDynamic(cr)
+	t.Cleanup(withFakeClients(t, dyn, makeFakeK8s()))
+
+	out := captureOut()
+	err := KubernetesApiAccessEnable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "hello",
+		Namespace: "default",
+		Mode:      "namespaceWrite",
+		AssumeYes: true,
+		Out:       out,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	updated := readAgent(t, dyn, "default", "hello")
+	mode, _, _ := unstructured.NestedString(updated.Object, "spec", "kubernetesApiAccess", "mode")
+	if mode != KubernetesApiAccessModeNamespaceWrite {
+		t.Errorf("mode = %q; want namespaceWrite", mode)
+	}
+	mustContain(t, out.String(), "Updated WitwaveAgent default/hello.")
+}
+
+func TestKubernetesApiAccessEnable_AlreadyConfigured_NoOp(t *testing.T) {
+	cr := seedAgent("hello", "default", func(spec map[string]interface{}) {
+		spec["kubernetesApiAccess"] = map[string]interface{}{
+			"enabled": true,
+			"mode":    KubernetesApiAccessModeReadOnly,
+		}
+	})
+	dyn := makeFakeDynamic(cr)
+	t.Cleanup(withFakeClients(t, dyn, makeFakeK8s()))
+
+	out := captureOut()
+	err := KubernetesApiAccessEnable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "hello",
+		Namespace: "default",
+		Mode:      "readOnly",
+		AssumeYes: true,
+		Out:       out,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	mustContain(t, out.String(), "already has Kubernetes API access configured as readOnly")
+	mustNotContain(t, out.String(), "Updated WitwaveAgent")
+}
+
+func TestKubernetesApiAccessEnable_AgentNotFound(t *testing.T) {
+	dyn := makeFakeDynamic() // no agents seeded
+	t.Cleanup(withFakeClients(t, dyn, makeFakeK8s()))
+
+	err := KubernetesApiAccessEnable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "ghost",
+		Namespace: "default",
+		Mode:      "readOnly",
+		AssumeYes: true,
+		Out:       captureOut(),
+	})
+	if err == nil {
+		t.Fatal("expected not-found error")
+	}
+}
+
+func TestKubernetesApiAccessEnable_RejectsUnknownMode(t *testing.T) {
+	cr := seedAgent("hello", "default", nil)
+	dyn := makeFakeDynamic(cr)
+	t.Cleanup(withFakeClients(t, dyn, makeFakeK8s()))
+
+	err := KubernetesApiAccessEnable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "hello",
+		Namespace: "default",
+		Mode:      "cluster-admin",
+		AssumeYes: true,
+		Out:       captureOut(),
+	})
+	if err == nil {
+		t.Fatal("expected unsupported-mode error")
+	}
+}
+
+func TestKubernetesApiAccessEnable_RequiresOut(t *testing.T) {
+	err := KubernetesApiAccessEnable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "hello",
+		Namespace: "default",
+		// Out intentionally nil.
+	})
+	if err == nil {
+		t.Fatal("expected error when Out is nil")
+	}
+}
+
+func TestKubernetesApiAccessEnable_RequiresName(t *testing.T) {
+	err := KubernetesApiAccessEnable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Namespace: "default",
+		Out:       captureOut(),
+	})
+	if err == nil {
+		t.Fatal("expected error when Name is empty")
+	}
+}
+
+func TestKubernetesApiAccessEnable_RequiresNamespace(t *testing.T) {
+	err := KubernetesApiAccessEnable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name: "hello",
+		Out:  captureOut(),
+	})
+	if err == nil {
+		t.Fatal("expected error when Namespace is empty")
+	}
+}
+
+func TestKubernetesApiAccessDisable_RemovesAccess(t *testing.T) {
+	cr := seedAgent("hello", "default", func(spec map[string]interface{}) {
+		spec["kubernetesApiAccess"] = map[string]interface{}{
+			"enabled": true,
+			"mode":    KubernetesApiAccessModeReadOnly,
+		}
+	})
+	dyn := makeFakeDynamic(cr)
+	t.Cleanup(withFakeClients(t, dyn, makeFakeK8s()))
+
+	out := captureOut()
+	err := KubernetesApiAccessDisable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "hello",
+		Namespace: "default",
+		AssumeYes: true,
+		Out:       out,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	updated := readAgent(t, dyn, "default", "hello")
+	if _, found, err := unstructured.NestedMap(updated.Object, "spec", "kubernetesApiAccess"); err != nil || found {
+		t.Fatalf("kubernetesApiAccess found=%v err=%v; want removed", found, err)
+	}
+	mustContain(t, out.String(), "Updated WitwaveAgent default/hello.")
+}
+
+func TestKubernetesApiAccessDisable_AlreadyDisabled_NoOp(t *testing.T) {
+	cr := seedAgent("hello", "default", nil) // no kubernetesApiAccess seeded
+	dyn := makeFakeDynamic(cr)
+	t.Cleanup(withFakeClients(t, dyn, makeFakeK8s()))
+
+	out := captureOut()
+	err := KubernetesApiAccessDisable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "hello",
+		Namespace: "default",
+		AssumeYes: true,
+		Out:       out,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	mustContain(t, out.String(), "already has Kubernetes API access disabled")
+	mustNotContain(t, out.String(), "Updated WitwaveAgent")
+}
+
+func TestKubernetesApiAccessDisable_RequiresOut(t *testing.T) {
+	err := KubernetesApiAccessDisable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name:      "hello",
+		Namespace: "default",
+		// Out intentionally nil.
+	})
+	if err == nil {
+		t.Fatal("expected error when Out is nil")
+	}
+}
+
+func TestKubernetesApiAccessDisable_RequiresName(t *testing.T) {
+	err := KubernetesApiAccessDisable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Namespace: "default",
+		Out:       captureOut(),
+	})
+	if err == nil {
+		t.Fatal("expected error when Name is empty")
+	}
+}
+
+func TestKubernetesApiAccessDisable_RequiresNamespace(t *testing.T) {
+	err := KubernetesApiAccessDisable(context.Background(), smokeTarget(), nil, KubernetesApiAccessOptions{
+		Name: "hello",
+		Out:  captureOut(),
+	})
+	if err == nil {
+		t.Fatal("expected error when Namespace is empty")
 	}
 }
