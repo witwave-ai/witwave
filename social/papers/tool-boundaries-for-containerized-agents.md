@@ -162,29 +162,28 @@ execution environment. The AWS gateway boundary is credentials, account scope, a
 
 ## What we have today
 
-WitWave already has a real, working tool model. It is not starting from theory. The current system has backend-native
-tools, MCP tools, shared images, git-backed configuration, workspace volumes, and Kubernetes-scoped authority. What it
-does not yet have is a first-class place to put project-specific execution environments.
+WitWave already has a working tool model: backend-native tools, MCP tools, shared images, git-backed configuration,
+workspace volumes, and Kubernetes-scoped authority. The missing piece is narrower: there is no first-class home for
+project-specific execution environments.
 
-### One deployable agent, multiple containers
+### Runtime shape
 
-A named WitWave agent is deployed as a pod-shaped unit. The named agent is the operational boundary; the containers
-inside it cooperate to make that agent work.
+A named WitWave agent is deployed as a pod-shaped unit. The named agent is the operational boundary; its containers
+cooperate around a shared runtime:
 
 - A **harness** container receives A2A traffic, schedules heartbeats, runs jobs/tasks/triggers/continuations, and routes
   work to a backend according to `.witwave/backend.yaml`.
 - One or more **backend** containers run model-specific A2A servers. The common production shape can include Claude,
   Codex, and Gemini sidecars for the same named agent.
-- Optional **git-sync** sidecars materialize repository content into the pod.
-- Optional **MCP tools** run as separate deployments/services, with chart and operator support for MCP tool rendering.
-- Workspace volumes can be mounted into participating containers through `WitwaveWorkspace` references.
+- Optional **git-sync** sidecars materialize repo content into the pod.
+- Optional **MCP tools** run as separate deployments/services, rendered by the chart or operator.
+- `WitwaveWorkspace` references mount shared volumes and projected config into participating containers.
 
-The repo remains the source of truth. Agent identity, routing, prompts, schedules, backend-specific instructions,
-settings, MCP configuration, skills, docs, and website content all live in git. At runtime, git-sync and workspace
-mounts make those files visible to containers at stable paths. This is an important design point: the agent is not
-configured by hand inside the pod. The pod is a runtime projection of repo-managed state.
+The repo remains the source of truth. Agent identity, routing, prompts, schedules, backend instructions, settings, MCP
+configuration, skills, docs, and website content live in git. At runtime, git-sync and workspace mounts project that
+repo-managed state into the pod at stable paths.
 
-### Three backend images plus one shared backend base
+### Backend images and tool surfaces
 
 WitWave currently maintains separate backend images for:
 
@@ -196,59 +195,26 @@ Those images share `images/backend-base/`, published as `ghcr.io/witwave-ai/imag
 image includes common CLIs, runtimes, and analyzers such as Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck,
 hadolint, gitleaks, trivy, and test tooling.
 
-This base image gives the backends parity for common platform work. It keeps tool versions pinned once instead of
-copying installation logic across three Dockerfiles. It is also intentionally only image composition. Installing
-`kubectl` does not grant cluster access. In-cluster Kubernetes authority is controlled separately through
-`WitwaveAgent.spec.kubernetesApiAccess` or explicit ServiceAccount/RBAC configuration.
+That base gives the backends parity for common platform work and pins shared tool versions once. It is only image
+composition, not authority: installing `kubectl` does not grant cluster access. In-cluster Kubernetes access is handled
+separately through `WitwaveAgent.spec.kubernetesApiAccess` or explicit ServiceAccount/RBAC configuration.
 
-### Claude tool execution
+Each backend has its own tool path:
 
-The Claude backend uses Claude Code-style tool configuration. Its default posture is conservative: read/search tools are
-allowed by default, while Bash, Write/Edit, and WebFetch require explicit enablement through `ALLOWED_TOOLS` or
-`.claude/settings.json` `permissions.allow`.
+- **Claude** uses Claude Code-style permissions. Read/search tools are allowed by default; Bash, Write/Edit, and
+  WebFetch require explicit enablement through `ALLOWED_TOOLS` or `.claude/settings.json` `permissions.allow`. Claude
+  also reads `.claude/mcp.json` through `MCP_CONFIG_PATH`, validates and hot-reloads MCP configuration, and applies the
+  shared stdio MCP command allowlist.
+- **Codex** reads `.codex/config.toml` for built-in tool flags and `.codex/mcp.json` for MCP servers. Its
+  `LocalShellTool` runs `subprocess.run(...)` inside the Codex backend container with baseline denial rules, audit
+  logging, timeouts, environment sanitization, trace instrumentation, and the shared MCP command/argument safety checks.
+- **Gemini** follows the same backend layout: mounted identity document, memory/log paths, MCP configuration shape,
+  metrics, and protected backend endpoints. Its local tool loop is less mature, but the goal is to keep the same
+  tool-surface direction across backends.
 
-Claude also reads `.claude/mcp.json` through `MCP_CONFIG_PATH`. The backend validates and hot-reloads MCP configuration.
-For stdio MCP entries, commands are passed through the shared MCP command allowlist before they can spawn inside the
-backend container.
-
-So Claude already has two relevant execution surfaces:
-
-- Provider-native tools such as Bash/read/edit when enabled.
-- MCP tools described in `.claude/mcp.json`.
-
-Both execute from the Claude backend's point of view. If Bash runs `go test`, it runs from inside the Claude backend
-container and can only use tools available there. MCP can call remote or sidecar services, but the current Claude
-backend does not yet have a dedicated project toolchain sidecar generated for it.
-
-### Codex tool execution
-
-The Codex backend reads `.codex/config.toml` for built-in tool flags and `.codex/mcp.json` for MCP servers.
-
-Its local shell tool is implemented by a `LocalShellTool` executor that runs `subprocess.run(...)` inside the Codex
-backend container. The shell path has baseline denial rules, audit logging, timeouts, environment sanitization, and
-trace instrumentation. The important part for this paper is simple: when Codex runs a shell command today, the process
-runs in the Codex backend container.
-
-Codex also loads MCP configuration, validates MCP config paths, and applies the same shared stdio MCP command allowlist
-and argument safety checks used by the other backends.
-
-So Codex also has two relevant execution surfaces:
-
-- A direct local shell inside the backend image.
-- MCP tools described in `.codex/mcp.json`.
-
-Again, the local execution path is inside the backend container. Codex can use MCP where configured, but its built-in
-local shell does not by itself cross into a separate language/toolchain container.
-
-### Gemini tool execution
-
-The Gemini backend follows the same high-level backend pattern: mounted identity document, memory/log layout, MCP
-configuration shape, metrics, and protected backend endpoints. Its MCP and hook surfaces are being kept aligned with the
-other backends where possible.
-
-Gemini matters for this design even where its local tool loop is less mature, because any toolchain architecture should
-not require each backend to reinvent project execution. If a toolchain sidecar exposes MCP tools, Gemini can eventually
-use the same described tool surface as Claude and Codex.
+Today, backend-native execution still runs inside the backend container. If Claude Bash or Codex `LocalShellTool` runs
+`go test`, it uses the tools installed in that backend image. MCP can call external services or future sidecars, but the
+platform does not yet generate a dedicated project toolchain sidecar for local execution.
 
 ### MCP components
 
@@ -258,48 +224,32 @@ WitWave currently ships MCP components under `tools/`:
 - `mcp-helm` for Helm release management.
 - `mcp-prometheus` for Prometheus queries.
 
-These run long-lived FastMCP HTTP servers on port `8000`, expose `/health`, enforce bearer-token auth through shared
-middleware unless explicitly disabled, and are consumed by backend `mcp.json` entries. Chart-rendered MCP tools are
-cluster services such as `http://<release>-mcp-kubernetes:8000`, not binaries inside a backend container.
+They run long-lived FastMCP HTTP servers on port `8000`, expose `/health`, enforce bearer-token auth unless explicitly
+disabled, and are consumed by backend `mcp.json` entries. Chart-rendered MCP tools are cluster services such as
+`http://<release>-mcp-kubernetes:8000`, not binaries inside a backend container.
 
-WitWave also protects stdio MCP entries. A malicious or misreviewed `mcp.json` should not be able to spawn arbitrary
-binaries inside a backend pod. The shared `mcp_command_allowlist` limits accepted commands and rejects unsafe
-interpreter argument shapes such as inline code, stdin scripts, unsafe `uv`/`uvx` patterns, or positional scripts
-outside explicitly allowed paths.
+Stdio MCP entries are guarded as well. The shared `mcp_command_allowlist` limits accepted commands and rejects unsafe
+interpreter forms such as inline code, stdin scripts, unsafe `uv`/`uvx` patterns, or positional scripts outside allowed
+paths. This gives WitWave useful MCP safety machinery, but the current MCP tools mostly expose cluster and observability
+gateways. They do not provide local project execution for commands such as `cargo test`, `npm test`, or
+`terraform validate`.
 
-This posture is useful for a future toolchain design: if toolchains expose MCP, the platform already has concepts for
-MCP config, reload, authentication, body caps, command allowlists, and metrics. But the current MCP tools mostly expose
-cluster and observability gateways. They do not yet provide a local project execution environment for commands such as
-`cargo test`, `npm test`, `terraform validate`, or a repo-specific release check.
+### Shared filesystem and authority boundaries
 
-### Shared filesystem and repo-as-source
+WitWave relies on repo-managed files and stable mounted paths:
 
-WitWave relies heavily on repo-managed files and stable mounted paths:
-
-- `.witwave/` contains runtime harness configuration such as `backend.yaml`, `HEARTBEAT.md`, jobs, tasks, triggers,
-  continuations, webhooks, and the public agent card.
-- `.claude/`, `.codex/`, and `.gemini/` contain backend-specific identity and tool configuration.
-- `.agents/` stores self and test team definitions, including per-agent behavior files and SOPS-encrypted secret
-  mirrors.
-- `WitwaveWorkspace` can provision shared volumes and stamp shared config files and existing Secrets onto participating
+- `.witwave/` contains harness runtime config: `backend.yaml`, `HEARTBEAT.md`, jobs, tasks, triggers, continuations,
+  webhooks, and the public agent card.
+- `.claude/`, `.codex/`, and `.gemini/` contain backend-specific identity and tool config.
+- `.agents/` stores self/test team definitions and SOPS-encrypted secret mirrors.
+- `WitwaveWorkspace` provisions shared volumes and stamps shared config files or existing Secrets onto participating
   agents.
-- Runtime memory, logs, task-store state, and conversation state are persisted through backend/harness storage paths
-  rather than being baked into images.
+- Runtime memory, logs, task-store state, and conversation state persist through backend/harness storage paths.
 
-This matters because a toolchain container does not need a separate idea of the project. It needs the same source tree
-and workspace files mounted at the same path as the backend. The repo remains the contract. The toolchain is just a
-better place to execute project-local tools against that contract.
-
-### Kubernetes API access is separate from tools
-
-WitWave now has `spec.kubernetesApiAccess` for agents. When enabled, the operator creates a per-agent ServiceAccount,
-namespace-scoped Role, and RoleBinding. The current presets distinguish read-only inspection from bounded
-namespace-write remediation.
-
-This is a useful precedent: image composition and authority are separate. The backend image can contain `kubectl`, but
-`kubectl` only works if the pod has a Kubernetes identity with matching RBAC. The same principle should apply to future
-toolchains. A toolchain image may contain a powerful binary, but credentials and external authority should be separate,
-explicit, and preferably mediated.
+Kubernetes authority is also explicit. When `spec.kubernetesApiAccess` is enabled, the operator creates a per-agent
+ServiceAccount, namespace-scoped Role, and RoleBinding. Current presets distinguish read-only inspection from bounded
+namespace-write remediation. This separates image composition from authority, a pattern future toolchains should
+preserve.
 
 ### What is missing
 
@@ -318,8 +268,8 @@ Today there is no:
 - Trace model that distinguishes local project execution from external authority calls.
 - Routing model that explains why `cargo test` ran in the Rust toolchain and `pytest` ran in the Python toolchain.
 
-That is the actual gap this paper is about. WitWave can already give agents tools. The next step is to give those tools
-a clearer architectural home.
+That is the gap: WitWave can already give agents tools, but it does not yet give project-specific execution a clear
+architectural home.
 
 ---
 
