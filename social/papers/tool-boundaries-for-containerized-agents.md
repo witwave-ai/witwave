@@ -192,8 +192,13 @@ For Claude, that means the Claude Agent SDK or Claude Code execution surface, se
 MCP configuration, auth, and the A2A server. For Codex, it means the OpenAI Agents SDK backend, shell tool integration,
 session handling, memory, metrics, and the A2A server. Gemini has its own provider-specific version of the same problem.
 
-Each backend already has provider-specific complexity. Adding every possible project toolchain to each backend
-multiplies that complexity across every backend type.
+WitWave maintains three separate backend images: Claude, Codex, and Gemini. If every tool lives inside those backends,
+then every new capability becomes a three-image maintenance problem. Supporting a new programming language, adding a new
+set of linters, introducing a new build system, or wiring in a new external integration would require updating and
+releasing all three backend images.
+
+That approach becomes unsustainable quickly. Each backend already has provider-specific complexity. Tooling should not
+multiply that complexity across every backend type.
 
 For example, if a project needs Rust support and the project can run on Claude, Codex, and Gemini, then the naive
 backend-image strategy creates three Rust-capable backend images:
@@ -236,6 +241,12 @@ That matrix grows quickly and creates several failure modes:
 - Harder reproducibility.
 - Confusing ownership: is the Claude backend team responsible for Rust versioning?
 - Harder project portability: each repo needs a custom backend image rather than a custom execution environment.
+
+Dedicated toolchain containers break that multiplier. The backend images can stay small, generic, and stable while the
+project-specific capabilities move into one purpose-built execution environment. Adding Rust support should mean
+creating or updating one Rust toolchain container, not rebuilding Claude, Codex, and Gemini. Adding a new linter suite
+should mean updating the relevant project toolchain, not touching every model backend. Adding a new external integration
+should be handled by a dedicated toolchain or gateway container with its own policy and release cadence.
 
 The backend should know how to use tools. It should not need to contain every tool.
 
