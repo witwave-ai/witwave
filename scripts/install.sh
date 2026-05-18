@@ -274,6 +274,10 @@ fetch_url_effective() {
 
 # ---- platform detection -----------------------------------------------------
 
+# detect_platform  — sets ww_os (linux|darwin) and ww_arch (amd64|arm64)
+# from `uname -s` / `uname -m`. Dies with exit code 2 on anything else,
+# matching the OS/arch matrix the goreleaser config publishes archives
+# for.
 detect_platform() {
   _os="$(uname -s)"
   _arch="$(uname -m)"
@@ -375,6 +379,13 @@ resolve_install_dir() {
 
 # ---- download + verify ------------------------------------------------------
 
+# download_and_verify  — fetches the release archive matching ww_os /
+# ww_arch / ww_version into ww_workdir and (unless --no-verify) checks
+# the sha256 entry from the release's checksums.txt. With
+# --verify-signature, additionally cosign-verifies the checksums file
+# against the canonical GitHub Actions OIDC issuer; skipped silently
+# when WW_BASE_URL points at an unsigned local snapshot. Falls through
+# to a tar -xzf and asserts the BIN_NAME file landed in ww_workdir.
 download_and_verify() {
   # goreleaser archive name template:
   #   ww_<version_no_v>_<os>_<arch>.tar.gz
@@ -499,6 +510,14 @@ check_existing_install() {
 
 # ---- install ----------------------------------------------------------------
 
+# do_install  — moves the verified binary from ww_workdir to
+# ${ww_bindir}/${BIN_NAME} atomically (cp + chmod 0755 + mv onto a
+# sibling tmp path), then writes a sibling install marker recording
+# installer/version/channel/install_url/installed_at for `ww update`
+# to consume. Honours --dry-run (logs the would-be actions and
+# returns), --use-sudo (prefixes every privileged step via
+# ww_use_sudo_cmd), and emits a shell-aware PATH advisory if ww_bindir
+# isn't already on PATH.
 do_install() {
   _dest="${ww_bindir}/${BIN_NAME}"
   _tmp_dest="${ww_bindir}/.${BIN_NAME}.new.$$"

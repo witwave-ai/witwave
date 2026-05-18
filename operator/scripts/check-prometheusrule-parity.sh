@@ -97,11 +97,22 @@ GO
 ) >"${TMPDIR}/operator.json"
 
 # 3. Extract sorted (alert, normalised expr) pairs from each.
+
+# extract_chart — read the helm-templated PrometheusRule from
+# ${TMPDIR}/chart.yaml and emit a single JSON array of
+# {alert, expr} objects sorted by alert name. yq does the YAML->JSON
+# projection (one object per rule); jq -s slurps the stream into a
+# single array. Output shape must match extract_operator so the
+# downstream diff is apples-to-apples.
 extract_chart() {
   yq -o=json '.spec.groups[].rules[] | {"alert": .alert, "expr": .expr}' "${TMPDIR}/chart.yaml" |
     jq -c -s 'sort_by(.alert)'
 }
 
+# extract_operator — read the operator-emitted PrometheusRule from
+# ${TMPDIR}/operator.json (already a JSON object) and emit the same
+# alert-sorted [{alert, expr}, ...] array shape extract_chart
+# produces. Single jq invocation because the input is already JSON.
 extract_operator() {
   jq -c '[.spec.groups[].rules[] | {alert: .alert, expr: .expr}] | sort_by(.alert)' "${TMPDIR}/operator.json"
 }
