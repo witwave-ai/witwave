@@ -17,7 +17,7 @@ A containerized agent has no such default. Every capability must be deliberately
 where compilers live, where CLIs live, where credentials live, where source code is mounted, how commands are audited,
 and how one model backend can work on projects that need very different development environments.
 
-WitWave currently runs three real model backends: Claude, Codex, and Gemini. Each backend is its own image and its own
+Witwave currently runs three real model backends: Claude, Codex, and Gemini. Each backend is its own image and its own
 A2A server. The platform also has a shared `backend-base` image that gives those backends a pinned baseline of common
 command-line tools: Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and related
 analysis and test tooling.
@@ -48,11 +48,11 @@ The design question is:
 > How should a containerized AI backend execute project-specific tools without baking every possible language and
 > workflow into every backend image?
 
-The problem is already concrete. WitWave itself is a mixed Go and Python codebase with Helm charts, Kubernetes operator
+The problem is already concrete. Witwave itself is a mixed Go and Python codebase with Helm charts, Kubernetes operator
 code, static-site content, Dockerfiles, SOPS-encrypted secrets, release automation, and agent configuration. The current
-backend images carry enough tooling to work on this repository. That is reasonable for WitWave today.
+backend images carry enough tooling to work on this repository. That is reasonable for Witwave today.
 
-WitWave is meant to run agents against more than this repository. Another workspace may need Rust. Another may need
+Witwave is meant to run agents against more than this repository. Another workspace may need Rust. Another may need
 Node. Another may need Java. Another may need AWS account tooling, Terraform, Foundry, Solana, mobile tooling, or a
 private compiler. Those tools need a deliberate home.
 
@@ -69,7 +69,7 @@ That framing gives the platform a more useful design vocabulary.
 
 ### Backend
 
-A backend is the model execution container. In WitWave today, the production backends are Claude, Codex, and Gemini.
+A backend is the model execution container. In Witwave today, the production backends are Claude, Codex, and Gemini.
 Each backend is a standalone A2A server. Each owns its model SDK integration, session handling, conversation logs,
 memory, metrics, protected inspection endpoints, and provider-specific runtime behavior.
 
@@ -161,13 +161,13 @@ execution environment. The AWS gateway boundary is credentials, account scope, a
 
 ## What we have today
 
-WitWave already has a working tool model: backend-native tools, MCP tools, shared images, git-backed configuration,
+Witwave already has a working tool model: backend-native tools, MCP tools, shared images, git-backed configuration,
 workspace volumes, and Kubernetes-scoped authority. The remaining gap is narrower: there is no first-class home for
 project-specific execution environments.
 
 ### Runtime shape
 
-A named WitWave agent is deployed as a pod-shaped unit. The named agent is the operational boundary, and its containers
+A named Witwave agent is deployed as a pod-shaped unit. The named agent is the operational boundary, and its containers
 cooperate around a shared runtime:
 
 - A **harness** container receives A2A traffic, schedules heartbeats, runs jobs/tasks/triggers/continuations, and routes
@@ -184,7 +184,7 @@ repo-managed state into the pod at stable paths.
 
 ### Backend images and tool surfaces
 
-WitWave currently maintains separate backend images for:
+Witwave currently maintains separate backend images for:
 
 - Claude.
 - Codex.
@@ -213,11 +213,11 @@ Each backend has its own tool path:
 
 Today, backend-native execution still runs inside the backend container. If Claude Bash or Codex `LocalShellTool` runs
 `go test`, it uses the tools installed in that backend image. MCP can call external services or future sidecars, but
-WitWave does not yet generate a dedicated project toolchain sidecar for local execution.
+Witwave does not yet generate a dedicated project toolchain sidecar for local execution.
 
 ### MCP components
 
-WitWave currently ships MCP components under `tools/`:
+Witwave currently ships MCP components under `tools/`:
 
 - `mcp-kubernetes` for Kubernetes API access.
 - `mcp-helm` for Helm release management.
@@ -229,13 +229,13 @@ disabled, and are consumed by backend `mcp.json` entries. Chart-rendered MCP too
 
 Stdio MCP entries are guarded as well. The shared `mcp_command_allowlist` restricts accepted commands and rejects unsafe
 interpreter forms such as inline code, stdin scripts, unsafe `uv`/`uvx` patterns, or positional scripts outside allowed
-paths. This gives WitWave useful MCP safety machinery, but the current MCP tools mostly expose cluster and observability
+paths. This gives Witwave useful MCP safety machinery, but the current MCP tools mostly expose cluster and observability
 gateways. They do not provide local project execution for commands such as `cargo test`, `npm test`, or
 `terraform validate`.
 
 ### Shared filesystem and authority boundaries
 
-WitWave relies on repo-managed files and stable mounted paths:
+Witwave relies on repo-managed files and stable mounted paths:
 
 - `.witwave/` contains harness runtime config: `backend.yaml`, `HEARTBEAT.md`, jobs, tasks, triggers, continuations,
   webhooks, and the public agent card.
@@ -267,7 +267,7 @@ Today there is no:
 - Trace model that distinguishes local project execution from external authority calls.
 - Routing model that explains why `cargo test` ran in the Rust toolchain and `pytest` ran in the Python toolchain.
 
-That is the gap: WitWave can already give agents tools, but it does not yet give project-specific execution a clear
+That is the gap: Witwave can already give agents tools, but it does not yet give project-specific execution a clear
 architectural home.
 
 ---
@@ -738,7 +738,7 @@ withhold all tools; it should be to place tools behind boundaries that match the
 The Dev Container ecosystem is relevant because many repositories already describe their development environments in
 `.devcontainer/devcontainer.json`.
 
-A future WitWave toolchain design could support:
+A future Witwave toolchain design could support:
 
 ```yaml
 toolchains:
@@ -747,7 +747,7 @@ toolchains:
       path: .devcontainer/devcontainer.json
 ```
 
-This would let projects reuse an existing development-container definition instead of writing a WitWave-specific image
+This would let projects reuse an existing development-container definition instead of writing a Witwave-specific image
 from scratch.
 
 Dev containers are not a complete solution. The platform still needs:
@@ -945,7 +945,7 @@ routing should wait until traces show common patterns.
 
 The recommendation is straightforward: make toolchains a first-class architectural layer.
 
-WitWave should treat model runtime, project-local execution, and external authority as separate responsibilities. The
+Witwave should treat model runtime, project-local execution, and external authority as separate responsibilities. The
 repo and workspace mounts remain the shared source of truth. External systems remain behind explicit authority gateways.
 Project-local execution belongs between those layers, in dedicated toolchain containers that can be mounted, governed,
 traced, and replaced independently.
@@ -954,6 +954,6 @@ MCP fits this design well. It can be the standard protocol a backend uses to cal
 the standard protocol for calling Kubernetes, Helm, Prometheus, GitHub, or cloud gateways. The protocol is not the
 boundary. The container, credential, and authority model is the boundary.
 
-That separation lets WitWave grow one layer at a time. Toolchains evolve with projects. Gateways carry external
+That separation lets Witwave grow one layer at a time. Toolchains evolve with projects. Gateways carry external
 authority. Backends remain focused on model work. The agent gets the tools it needs, and the platform keeps a clear
 answer to where those tools belong.

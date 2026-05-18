@@ -1,7 +1,7 @@
 # GitHub Agent Account Runbook
 
 Use this runbook when creating a GitHub account for a new witwave self-team agent, such as `mira-agent-witwave`. The
-result is a verified GitHub user, member/owner access in the WitWave organization, a profile avatar, and an encrypted
+result is a verified GitHub user, member/owner access in the Witwave organization, a profile avatar, and an encrypted
 `agent.sops.env` file ready for `ww agent create`.
 
 ## Placeholders
@@ -19,7 +19,7 @@ result is a verified GitHub user, member/owner access in the WitWave organizatio
 - Access to the agent's `witwave.ai` mailbox.
 - Access to the "standard password" from the approved secure store.
 - Authy available for two-factor authentication.
-- A separate browser/session logged in as an owner of the WitWave GitHub organization.
+- A separate browser/session logged in as an owner of the Witwave GitHub organization.
 - Local SOPS/age setup working for this repo.
 - An approved secure place, such as 1Password, for recovery codes and PAT storage.
 
@@ -73,13 +73,13 @@ result is a verified GitHub user, member/owner access in the WitWave organizatio
 8. Download the chosen avatar into `.agents/self/<agent-name>/assets/avatar.png`.
 9. Update the GitHub public profile with the new avatar image, public email address, website, and pronouns.
 
-### Join The WitWave Organization
+### Join The Witwave Organization
 
-1. In a separate browser/session logged in as the owner of the WitWave GitHub organization, open the organization
+1. In a separate browser/session logged in as the owner of the Witwave GitHub organization, open the organization
    **People** tab.
 2. Invite `<agent-name>-agent-witwave` as an owner.
 3. In the agent's mailbox, open the organization invitation email.
-4. Click through the invitation link to join the WitWave organization.
+4. Click through the invitation link to join the Witwave organization.
 
 ### Create And Store The GitHub Token
 
