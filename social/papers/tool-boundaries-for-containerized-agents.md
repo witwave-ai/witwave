@@ -6,43 +6,43 @@
 
 ## Executive summary
 
-Containerized AI agents need tools. That statement sounds simple until the agent is expected to maintain real software
-over time.
+Containerized AI agents need tools. That sounds obvious until the agent is expected to maintain real software across
+many repositories, languages, clouds, and operating environments.
 
-A local desktop agent can often use whatever is already installed on the developer's machine: a shell, a filesystem,
-language runtimes, `git`, package managers, cloud CLIs, Kubernetes CLIs, browser access, and local configuration. The
-agent inherits the developer workstation as its execution environment. That inheritance is convenient, but it is also
-ambient: the agent gets whatever the host happens to have, with whatever credentials and operating assumptions are
-present.
+A desktop agent inherits the developer workstation. If the human has `git`, `go`, Python, Rust, Node, `kubectl`, Helm,
+cloud CLIs, browser access, local credentials, and package caches, the agent can often use them directly. That is
+convenient, but ambient. The agent gets whatever the host happens to provide.
 
-A containerized agent has a different problem. Its tools have to be deliberately provided. If the agent needs `go`,
-Python, Rust, Node, Java, `kubectl`, `helm`, `gh`, `terraform`, `sops`, `age`, `make`, or a project-specific build
-system, those capabilities must exist somewhere in the deployment. Putting all of them into every backend image is not a
-durable answer. A backend image that starts as "the Claude runtime" or "the Codex runtime" eventually becomes a
-universal development workstation image, and universal development workstation images do not stay small, secure, or
-project-neutral for long.
+A containerized agent has no such default. Every capability must be deliberately supplied. The platform has to decide
+where compilers live, where CLIs live, where credentials live, where source code is mounted, how commands are audited,
+and how one model backend can work on projects that need very different development environments.
 
-MCP helps with this problem in two related ways. The Model Context Protocol is a good fit for mediated access to
-external systems: Kubernetes APIs, cloud accounts, observability platforms, ticketing systems, source-control APIs, and
-other authority-bearing services. It is also a practical, acceptable communication protocol between backend containers
-and local toolchain containers. It gives the backend a standardized model-facing tool surface without forcing every
-language runtime into the backend image.
+WitWave currently runs three real model backends: Claude, Codex, and Gemini. Each backend is its own image and its own
+A2A server. The platform also has a shared `backend-base` image that gives those backends a common set of useful command
+line tools: Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and related analysis and
+test tooling. That shared base solved one problem: the three backend images no longer have to build the same baseline
+utilities independently.
 
-The distinction is architectural, not anti-MCP. Compiling Rust, running `go test`, formatting Python, or executing a
-repository's `make` target are local toolchain problems. They need the right filesystem, dependencies, compilers,
-package caches, environment variables, and runtime libraries close to the workspace. MCP can be the clean way to call
-into that environment; the important boundary is that the environment lives outside the backend image.
+It did not solve the larger problem. A shared backend base is still a backend image. If every project-specific language
+runtime, linter, build system, cloud integration, and operational tool keeps moving into that layer, the backend will
+become a universal developer workstation image. That does not scale. The next Rust project, Node project, Java project,
+Solana project, Foundry project, or Terraform-heavy platform repo should not force changes across Claude, Codex, and
+Gemini.
 
-This paper argues for a three-layer model:
+The better boundary is:
 
-- **Backend containers** run the LLM integration and agent protocol.
+- **Backend containers** run model-specific agent runtimes and protocol surfaces.
 - **Toolchain containers** provide project-specific local execution environments.
-- **MCP and other gateways** mediate access to external systems and sensitive authority boundaries.
+- **MCP and other gateways** expose standardized tool calls into those environments or into external systems.
 
-The practical bridge can use MCP from the start. A toolchain sidecar can expose an MCP server over localhost, and the
-backend can call it using the MCP integration it already has. The product concept should still remain distinct:
-toolchains are the project-local execution environments; MCP is one clean protocol for reaching them. Keeping that
-distinction clear prevents the platform from collapsing back into a bloated backend image.
+MCP is not the thing to avoid. MCP is a good protocol for this. A toolchain sidecar can expose an MCP server over
+localhost, and the backend can call that server using the MCP support it already has. The important boundary is not "MCP
+versus native." The important boundary is whether the language-specific runtime lives inside the backend image or inside
+a dedicated execution container.
+
+This paper argues for a hybrid model: keep backends small and stable, use toolchain containers for local project
+execution, and use MCP or similar gateways to mediate both toolchain calls and external authority. The core goal is not
+to remove native tools or avoid MCP. The core goal is to make tool placement explicit.
 
 ---
 
@@ -51,26 +51,23 @@ distinction clear prevents the platform from collapsing back into a bloated back
 The design question is:
 
 > How should a containerized AI backend execute project-specific tools without baking every possible language and
-> workflow into the backend image?
+> workflow into every backend image?
 
-The current system already knows how to run model backends. It also knows how to attach shared volumes, mount
-workspaces, run git-sync sidecars, expose MCP tools, and grant carefully scoped Kubernetes API access. What it does not
-yet have is a first-class "execute this command in a sibling project toolchain container" concept.
+This is not hypothetical. WitWave itself is already a mixed Go and Python codebase with Helm charts, Kubernetes operator
+code, static-site content, Dockerfiles, SOPS-encrypted secrets, release automation, and agent configuration. The current
+backend images carry enough tooling to work on this repository. That is reasonable for WitWave today.
 
-That gap matters because the backend is the wrong place to accumulate all development tools.
+But WitWave is meant to run agents against more than this repository. Another workspace may need Rust. Another may need
+Node. Another may need Java. Another may need AWS account tooling, Terraform, Foundry, Solana, mobile tooling, or a
+private compiler. If the answer is always "install it in the backend image," then every new project capability creates
+backend-image churn.
 
-Today a project might need Go and Python. Tomorrow another project might need Rust, Node, Java, .NET, Terraform,
-Ansible, Foundry, Solana tooling, or a private compiler. If every backend image has to include every possible language
-toolchain, the backend stops being a portable agent runtime. It becomes a giant mutable build image with an LLM inside
-it.
+The cleaner question is not "MCP or native tools?" It is:
 
-The right boundary is not "MCP versus native tools." The more useful boundary is:
+> Which capabilities belong in the model backend, which belong in a project execution environment, and which belong
+> behind an external authority gateway?
 
-> **Local execution tools** versus **external authority tools**.
-
-Local execution tools operate on the workspace. External authority tools act on systems outside the workspace.
-
-That distinction gives us a cleaner design vocabulary.
+That gives us a more useful design vocabulary.
 
 ---
 
@@ -78,22 +75,34 @@ That distinction gives us a cleaner design vocabulary.
 
 ### Backend
 
-A backend is the model execution container: Claude, Codex, Gemini, or another LLM runtime. It owns the model SDK,
-conversation state, memory, tool-call plumbing, session binding, metrics, and agent-facing A2A server behavior.
+A backend is the model execution container. In WitWave today, the production backends are Claude, Codex, and Gemini.
+Each backend is a standalone A2A server. Each owns its model SDK integration, session handling, conversation logs,
+memory, metrics, protected inspection endpoints, and provider-specific runtime behavior.
 
-The backend may expose native model tools such as Bash, file read/write, edit, or MCP client support, depending on the
-provider and implementation. It should not be required to contain every project language runtime.
+The backend receives identity and behavior through mounted files:
+
+- `CLAUDE.md` for Claude.
+- `AGENTS.md` for Codex.
+- `GEMINI.md` for Gemini.
+
+The backend may expose provider-native tools. For example, Claude can use Claude Code-style tools such as read/search,
+Bash, edit/write, and MCP depending on configured permissions. Codex can expose a local shell tool through its Agents
+SDK integration. Gemini participates in the same backend layout and MCP configuration posture, though some lower-level
+tool-loop interposition remains less mature than Claude and Codex.
+
+The backend should know how to call tools. It should not be required to contain every possible project tool.
 
 ### Native tool
 
-A native tool is a command, API, or capability available directly inside the environment where the backend is executing.
-For a desktop agent, native tools are usually host tools. For a containerized agent, native tools are tools installed
-inside the backend container image or mounted into that container.
+A native tool is directly available inside the container where the model backend is running. For a desktop agent, native
+tools are host tools. For a containerized agent, native tools are binaries installed in the backend image or mounted
+into that backend container.
 
 Examples:
 
 - `git`
 - `gh`
+- `ww`
 - `kubectl`
 - `helm`
 - `go`
@@ -105,31 +114,32 @@ Examples:
 - `terraform`
 - `make`
 
-Native tools are fast and natural for development work, but they couple the backend image to the project toolchain.
+Native tools are direct and familiar. They also couple the backend image to the project toolchain.
 
 ### MCP-mediated tool
 
-An MCP-mediated tool is exposed by an MCP server and called through the Model Context Protocol. The tool may run in the
-same pod, in the same namespace, elsewhere in the cluster, or outside the cluster entirely.
+An MCP-mediated tool is exposed by an MCP server and called through the Model Context Protocol. The server may run as a
+cluster-shared service, a same-pod sidecar, or an external endpoint. The key feature is not where it runs; the key
+feature is that the model sees a structured tool surface instead of arbitrary ambient shell access.
 
 Examples:
 
-- Kubernetes inspection tool
-- Helm release-management tool
-- Prometheus query tool
-- GitHub issue/discussion tool
-- AWS account inspection tool
-- PagerDuty tool
-- ticketing-system tool
+- Kubernetes inspection or remediation tools.
+- Helm release-management tools.
+- Prometheus query tools.
+- GitHub issue, pull request, or discussion tools.
+- AWS account inspection tools.
+- PagerDuty or incident-management tools.
+- Toolchain execution tools such as `rust.cargo_test` or `python.pytest`.
 
-MCP is strongest when the tool is not merely "run this local command," but instead "perform a bounded action against a
-system with its own identity, policy, and audit requirements."
+MCP is strongest when the tool surface is intentionally described, bounded, observable, and policy-aware. That applies
+to external systems, and it can also apply to local toolchain containers.
 
 ### Toolchain container
 
-A toolchain container is a project-specific execution environment mounted beside the backend. It contains the compilers,
-interpreters, package managers, linters, test runners, and project-local utilities needed to work on a given repository
-or class of repositories.
+A toolchain container is a project-specific or language-specific execution environment mounted beside the backend. It
+contains compilers, interpreters, package managers, linters, test runners, project utilities, caches, and related local
+execution dependencies.
 
 Examples:
 
@@ -139,69 +149,203 @@ Examples:
 - `toolchain-terraform`
 - `toolchain-witwave`
 
-The backend does not run commands inside this container directly by magic. Containers in the same Kubernetes pod share a
-network namespace and volumes, but they do not share process environments. Therefore the toolchain container needs a
-small execution surface: an HTTP API, an MCP server, a gRPC service, or another deliberate bridge.
+The backend cannot run a process inside a sibling container by default. Kubernetes containers in one pod share network
+and volumes, but they do not share process environments. Therefore the toolchain container needs a deliberate execution
+surface: usually an HTTP API, an MCP server, gRPC, or a small local daemon.
 
 ### External authority gateway
 
-An external authority gateway is a tool service that holds or uses credentials for systems outside the workspace:
-Kubernetes, AWS, GCP, GitHub, observability systems, ticketing systems, or incident-management systems. MCP is a strong
-candidate for this layer because it gives the model a constrained tool surface rather than handing it raw credentials
-and a shell.
+An external authority gateway is a service that holds or uses credentials for systems outside the workspace: Kubernetes,
+AWS, GCP, GitHub, observability systems, ticketing systems, incident-management systems, or secrets systems.
 
-The same binary might be available as a native CLI and as a mediated gateway. For example, `kubectl` can be installed in
-a toolchain container for local diagnostics, while an MCP Kubernetes gateway can expose a narrower, audited subset of
-cluster actions.
+A gateway may also expose MCP. The distinction is not the protocol. The distinction is the authority boundary.
+
+A Rust toolchain and an AWS gateway can both expose MCP tools. The Rust toolchain boundary is the containerized project
+execution environment. The AWS gateway boundary is credentials, account scope, audit, and blast radius.
 
 ---
 
 ## What we have today
 
-The current architecture already contains several relevant pieces:
+WitWave already has several tool surfaces. They are useful, but they are not yet a first-class toolchain layer.
 
-- Backend containers can expose model-native tools.
-- Claude can use Claude Code-style tools and MCP entries.
-- Codex has a local shell executor that runs subprocesses inside the Codex backend container.
-- Backends can read MCP configuration.
-- MCP stdio commands are guarded by command allowlists.
-- Agent pods already contain multiple containers: harness, backends, git-sync sidecars, and optional MCP/tool-related
-  containers.
-- Shared storage and workspace references can mount files into backend containers.
-- Kubernetes API access can be granted at the agent level with read-only or namespace-write modes.
+### One deployable agent, multiple containers
 
-What is missing is a first-class execution environment abstraction:
+A named WitWave agent is deployed as a pod-shaped unit:
 
-- No `toolchains:` block exists on the agent spec.
-- No operator rendering exists for toolchain sidecars.
-- No generated MCP config points a backend at a local toolchain sidecar.
-- No common `toolchaind` execution API exists.
-- No routing policy tells a backend which execution environment should handle `cargo test` versus `go test`.
-- No audit model separates "the model asked to run a local build" from "the model asked to act against an external
-  system."
+- A **harness** container receives A2A traffic, schedules heartbeats, runs jobs/tasks/triggers/continuations, and routes
+  work to a backend according to `.witwave/backend.yaml`.
+- One or more **backend** containers run model-specific A2A servers. The common production shape is Claude, Codex, and
+  Gemini sidecars.
+- Optional **git-sync** sidecars materialize repository content into the pod.
+- Optional **MCP tools** run as separate deployments/services today, with chart and operator support for MCP tool
+  rendering.
+- Workspace volumes can be mounted into participating backend containers through `WitwaveWorkspace` references.
 
-That does not mean the design is blocked. It means the next layer needs to be made explicit.
+The repo remains the source of truth. Agent identity, routing, prompts, schedules, backend-specific instructions,
+settings, MCP configuration, skills, docs, and website content all live in git. At runtime, git-sync and workspace
+mounts make those files visible to containers at stable paths. This is an important design point: the agent is not
+configured by hand inside the pod. The pod is a runtime projection of repo-managed state.
+
+### Three backend images plus one shared backend base
+
+WitWave currently maintains separate backend images for:
+
+- Claude.
+- Codex.
+- Gemini.
+
+Those images share `images/backend-base/`, published as `ghcr.io/witwave-ai/images/backend-base:<version>`. The base
+image includes common CLIs, runtimes, and analyzers such as Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck,
+hadolint, gitleaks, trivy, and test tooling.
+
+That shared base is useful. It removed duplicated installation work across the three backend Dockerfiles and keeps
+common tool versions pinned in one place.
+
+But it is still part of the backend-image family. It is not a separate project execution environment. If a new language
+or linter goes into `backend-base`, that capability still lands in every backend that inherits from it. That can be the
+right short-term move for common platform tools. It should not become the default answer for every project-specific
+runtime.
+
+The base image also does not grant authority. Installing `kubectl` does not grant cluster access. In-cluster Kubernetes
+authority is controlled separately through `WitwaveAgent.spec.kubernetesApiAccess` or explicit ServiceAccount/RBAC
+configuration.
+
+### Claude tool execution
+
+The Claude backend uses Claude Code-style tool configuration. Its default posture is conservative: read/search tools are
+allowed by default, while Bash, Write/Edit, and WebFetch require explicit enablement through `ALLOWED_TOOLS` or
+`.claude/settings.json` `permissions.allow`.
+
+Claude also reads `.claude/mcp.json` through `MCP_CONFIG_PATH`. The backend validates and hot-reloads MCP configuration.
+For stdio MCP entries, commands are passed through the shared MCP command allowlist before they can spawn inside the
+backend container.
+
+So Claude already has two relevant execution surfaces:
+
+- Provider-native tools such as Bash/read/edit when enabled.
+- MCP tools described in `.claude/mcp.json`.
+
+Both execute from the Claude backend's point of view. Neither creates a separate project execution environment by
+itself.
+
+### Codex tool execution
+
+The Codex backend reads `.codex/config.toml` for built-in tool flags and `.codex/mcp.json` for MCP servers.
+
+Its local shell tool is implemented by a `LocalShellTool` executor that runs `subprocess.run(...)` inside the Codex
+backend container. The shell path has baseline denial rules, audit logging, timeouts, environment sanitization, and
+trace instrumentation. The important part for this paper is simple: when Codex runs a shell command today, the process
+runs in the Codex backend container.
+
+Codex also loads MCP configuration, validates MCP config paths, and applies the same shared stdio MCP command allowlist
+and argument safety checks used by the other backends.
+
+So Codex also has two relevant execution surfaces:
+
+- A direct local shell inside the backend image.
+- MCP tools described in `.codex/mcp.json`.
+
+Again, neither is a separate toolchain layer yet.
+
+### Gemini tool execution
+
+The Gemini backend follows the same high-level backend pattern: mounted identity document, memory/log layout, MCP
+configuration shape, metrics, and protected backend endpoints. Its MCP and hook surfaces are being kept aligned with the
+other backends where possible.
+
+Gemini matters for this design even where its local tool loop is less mature, because any toolchain architecture should
+not require each backend to reinvent project execution. If a toolchain sidecar exposes MCP tools, Gemini can eventually
+use the same described tool surface as Claude and Codex rather than needing Gemini-specific Rust, Go, Node, or Terraform
+images.
+
+### MCP components
+
+WitWave currently ships MCP components under `tools/`:
+
+- `mcp-kubernetes` for Kubernetes API access.
+- `mcp-helm` for Helm release management.
+- `mcp-prometheus` for Prometheus queries.
+
+These run long-lived FastMCP HTTP servers on port `8000`, expose `/health`, enforce bearer-token auth through shared
+middleware unless explicitly disabled, and are consumed by backend `mcp.json` entries. Chart-rendered MCP tools are
+cluster services such as `http://<release>-mcp-kubernetes:8000`, not binaries inside a backend container.
+
+WitWave also protects stdio MCP entries. A malicious or misreviewed `mcp.json` should not be able to spawn arbitrary
+binaries inside a backend pod. The shared `mcp_command_allowlist` limits accepted commands and rejects unsafe
+interpreter argument shapes such as inline code, stdin scripts, unsafe `uv`/`uvx` patterns, or positional scripts
+outside explicitly allowed paths.
+
+This posture is useful for a future toolchain design: if toolchains expose MCP, the platform already has concepts for
+MCP config, reload, authentication, body caps, command allowlists, and metrics. But the current MCP tools are mostly
+external gateways. They do not yet solve local project execution.
+
+### Shared filesystem and repo-as-source
+
+WitWave relies heavily on repo-managed files and stable mounted paths:
+
+- `.witwave/` contains runtime harness configuration such as `backend.yaml`, `HEARTBEAT.md`, jobs, tasks, triggers,
+  continuations, webhooks, and the public agent card.
+- `.claude/`, `.codex/`, and `.gemini/` contain backend-specific identity and tool configuration.
+- `.agents/` stores self and test team definitions, including per-agent behavior files and SOPS-encrypted secret
+  mirrors.
+- `WitwaveWorkspace` can provision shared volumes and stamp shared config files and existing Secrets onto participating
+  agents.
+- Runtime memory, logs, and conversation state are persisted through backend/harness storage paths rather than being
+  baked into images.
+
+This matters because a toolchain container does not need a separate idea of the project. It needs the same source tree
+and workspace files mounted at the same path as the backend. The repo remains the contract. The toolchain is just a
+better place to execute project-local tools against that contract.
+
+### Kubernetes API access is separate from tools
+
+WitWave now has `spec.kubernetesApiAccess` for agents. When enabled, the operator creates a per-agent ServiceAccount,
+namespace-scoped Role, and RoleBinding. The current presets distinguish read-only inspection from bounded
+namespace-write remediation.
+
+This is a useful precedent: image composition and authority are separate. The backend image can contain `kubectl`, but
+`kubectl` only works if the pod has a Kubernetes identity with matching RBAC. The same principle should apply to future
+toolchains. A toolchain image may contain a powerful binary, but credentials and external authority should be separate,
+explicit, and preferably mediated.
+
+### What is missing
+
+The missing layer is not MCP support. The missing layer is a first-class execution environment abstraction.
+
+Today there is no:
+
+- `toolchains:` block on `WitwaveAgent` or `WitwaveWorkspace`.
+- Operator or chart renderer for toolchain sidecars.
+- Standard toolchain image contract.
+- Generated backend MCP config pointing to local toolchain sidecars.
+- Common `toolchaind` or structured MCP server for project-local execution.
+- Policy model for command, cwd, timeout, output, environment, network, and secrets at the toolchain boundary.
+- Trace model that distinguishes local project execution from external authority calls.
+- Routing model that explains why `cargo test` ran in the Rust toolchain and `pytest` ran in the Python toolchain.
+
+That is the actual gap this paper is about.
 
 ---
 
 ## Why backend images should not become universal toolboxes
 
-A backend image has a clear job: run the model backend reliably.
+The backend images have a clear job: run model backends reliably.
 
-For Claude, that means the Claude Agent SDK or Claude Code execution surface, session handling, memory, metrics, hooks,
-MCP configuration, auth, and the A2A server. For Codex, it means the OpenAI Agents SDK backend, shell tool integration,
-session handling, memory, metrics, and the A2A server. Gemini has its own provider-specific version of the same problem.
+Claude needs the Claude runtime. Codex needs the OpenAI Agents SDK runtime. Gemini needs the Google Gemini runtime. Each
+backend already has provider-specific dependencies, provider-specific configuration, provider-specific tool behavior,
+provider-specific metrics, and provider-specific failure modes.
 
-WitWave maintains three separate backend images: Claude, Codex, and Gemini. If every tool lives inside those backends,
-then every new capability becomes a three-image maintenance problem. Supporting a new programming language, adding a new
-set of linters, introducing a new build system, or wiring in a new external integration would require updating and
-releasing all three backend images.
+If every tool lives inside those backends, every new capability becomes a three-image maintenance problem. Supporting a
+new language, adding a linter suite, introducing a build system, or wiring a new external integration means updating and
+releasing Claude, Codex, and Gemini images.
 
-That approach becomes unsustainable quickly. Each backend already has provider-specific complexity. Tooling should not
-multiply that complexity across every backend type.
+The shared `backend-base` image helps with common baseline tools, but it does not remove the matrix. It just moves the
+shared part of the matrix into a common parent. For truly common platform utilities, that is useful. For
+project-specific toolchains, it is still the wrong center of gravity.
 
-For example, if a project needs Rust support and the project can run on Claude, Codex, and Gemini, then the naive
-backend-image strategy creates three Rust-capable backend images:
+For example, if a project needs Rust support and the project can run on all three backends, the naive backend-image
+strategy creates this product surface:
 
 ```text
 claude + rust
@@ -217,7 +361,7 @@ codex + node + terraform
 gemini + node + terraform
 ```
 
-If a third project needs Go, Python, Rust, Foundry, and Helm:
+If another project needs Go, Python, Rust, Foundry, and Helm:
 
 ```text
 claude + go + python + rust + foundry + helm
@@ -225,30 +369,28 @@ codex + go + python + rust + foundry + helm
 gemini + go + python + rust + foundry + helm
 ```
 
-This turns the backend matrix into a product problem:
+That turns tool support into this matrix:
 
 ```text
 backend type x project toolchain x version x security posture
 ```
 
-That matrix grows quickly and creates several failure modes:
+The failure modes are predictable:
 
-- Large backend images.
-- Slow image builds.
-- More CVE surface.
-- More cache invalidation.
-- More language-specific maintenance in provider-specific images.
-- Harder reproducibility.
-- Confusing ownership: is the Claude backend team responsible for Rust versioning?
-- Harder project portability: each repo needs a custom backend image rather than a custom execution environment.
+- Backend images grow large.
+- Build times increase.
+- CVE surface expands.
+- Toolchain version drift becomes harder to reason about.
+- Provider runtime changes are coupled to project language changes.
+- Project portability suffers because each repo wants a custom backend image.
+- Ownership becomes unclear: should the Claude backend image own Rust versioning?
 
-Dedicated toolchain containers break that multiplier. The backend images can stay small, generic, and stable while the
-project-specific capabilities move into one purpose-built execution environment. Adding Rust support should mean
-creating or updating one Rust toolchain container, not rebuilding Claude, Codex, and Gemini. Adding a new linter suite
-should mean updating the relevant project toolchain, not touching every model backend. Adding a new external integration
-should be handled by a dedicated toolchain or gateway container with its own policy and release cadence.
+Dedicated toolchain containers break that multiplier. The backend images stay small, generic, and stable. Adding Rust
+support means creating or updating one Rust toolchain container, not rebuilding Claude, Codex, and Gemini. Adding a new
+linter suite means updating the relevant project toolchain. Adding a new external integration means creating a gateway
+or toolchain container with its own policy and release cadence.
 
-The backend should know how to use tools. It should not need to contain every tool.
+The backend should know how to call tools. It should not need to contain every tool.
 
 ---
 
@@ -261,6 +403,7 @@ agent pod
 ├── harness
 ├── claude-backend
 ├── codex-backend
+├── gemini-backend
 ├── toolchain-go-python
 ├── toolchain-rust
 └── shared workspace volume
@@ -271,29 +414,41 @@ Each toolchain container has:
 - A project-specific or language-specific image.
 - The shared workspace mounted at a known path.
 - A small local execution service.
-- A port on localhost inside the pod.
-- Command allowlists or structured tools.
-- Output limits.
-- Timeouts.
-- Audit logs.
-- Resource requests and limits.
+- A localhost port inside the pod.
+- Structured tools or tightly controlled command execution.
+- Command, cwd, timeout, output, and environment policy.
+- Audit logs and metrics.
+- Resource requests and limits independent of the backend.
 
-The backend calls the toolchain service rather than trying to run the toolchain process itself.
+The backend calls the toolchain service. It does not directly spawn toolchain processes.
 
-For example:
+For example, a Rust toolchain sidecar might expose an MCP tool equivalent to:
 
-```http
-POST http://localhost:8702/run
-Content-Type: application/json
-
+```json
 {
-  "command": ["cargo", "test"],
-  "cwd": "/workspaces/witwave/source",
-  "timeoutSeconds": 300
+  "tool": "rust.cargo_test",
+  "arguments": {
+    "cwd": "/workspaces/witwave/source",
+    "package": "operator",
+    "timeoutSeconds": 300
+  }
 }
 ```
 
-The Rust toolchain sidecar runs the command inside the Rust container and returns:
+Or it might expose a more generic but constrained execution tool:
+
+```json
+{
+  "tool": "toolchain.exec_allowed",
+  "arguments": {
+    "command": ["cargo", "test"],
+    "cwd": "/workspaces/witwave/source",
+    "timeoutSeconds": 300
+  }
+}
+```
+
+The toolchain container runs the command inside the Rust environment and returns structured output:
 
 ```json
 {
@@ -305,22 +460,24 @@ The Rust toolchain sidecar runs the command inside the Rust container and return
 }
 ```
 
-This keeps the Rust compiler in the Rust environment and the LLM runtime in the backend environment.
+This keeps the Rust compiler in the Rust environment, keeps the LLM runtime in the backend environment, and keeps the
+source tree as the shared contract between them.
 
 ---
 
 ## How the backend would execute toolchain work
 
-There are several possible integration paths. They are not equivalent.
+There are several possible integration paths. They can coexist, but they should not be treated as equally desirable.
 
 ### Option 1: Toolchain sidecars expose MCP
 
-This is the most practical first implementation because the backends already understand MCP.
+This is the most practical first implementation.
 
-In this model, each toolchain sidecar runs an MCP server over HTTP. The operator renders the sidecar and also renders
-the backend MCP configuration that points at the sidecar's localhost port.
+The backends already know how to consume MCP configuration. Claude, Codex, and Gemini use the same broad `mcp.json`
+shape. A toolchain sidecar can run an MCP server over HTTP on localhost, and the chart/operator layer can render backend
+MCP entries that point at those local sidecars.
 
-Example generated MCP configuration:
+Example generated backend MCP configuration:
 
 ```json
 {
@@ -335,14 +492,14 @@ Example generated MCP configuration:
 }
 ```
 
-The Rust toolchain MCP server might expose structured tools:
+The Rust toolchain MCP server might expose:
 
 ```text
-rust.cargo_test
 rust.cargo_check
+rust.cargo_test
 rust.rustfmt_check
 rust.clippy
-rust.exec_allowed
+toolchain.exec_allowed
 ```
 
 The Go/Python toolchain MCP server might expose:
@@ -352,40 +509,37 @@ go.test
 go.vet
 python.pytest
 python.ruff_check
-python.ruff_format
+python.ruff_format_check
 toolchain.exec_allowed
 ```
 
-This gives the backend a familiar model-facing tool surface. Claude, Codex, and Gemini can use the same MCP description
-surface once their backend MCP handling is wired consistently.
-
-The important conceptual point is that MCP is a good communication protocol here. The toolchain container remains the
-architectural boundary, and MCP becomes the standardized way for Claude, Codex, Gemini, or future backends to discover
-and call the tools exposed by that boundary. The primary goal is not to avoid MCP; the primary goal is to keep
-language-specific tooling out of the backend images.
+This is not a compromise or a misuse of MCP. MCP can be the clean, standardized communication protocol between the
+backend and the toolchain container. The important boundary is the container boundary: language-specific tools live in a
+dedicated execution environment rather than in the backend image.
 
 Benefits:
 
 - Reuses existing backend MCP support.
-- Avoids per-backend custom tool implementation at first.
-- Gives each toolchain its own described tool surface.
-- Allows multiple toolchains in one pod.
+- Avoids immediate per-backend native tool implementation.
+- Gives each toolchain a described model-facing tool surface.
+- Allows multiple named toolchains in one pod.
 - Makes tool availability explicit to the model.
-- Can use existing MCP auth/audit/body-cap patterns.
+- Fits existing MCP auth, body-cap, metrics, audit, and reload patterns.
 
 Risks and controls:
 
-- A generic `exec` tool is still powerful and needs clear policy.
+- Generic `exec` remains powerful and needs strict policy.
 - Tool descriptions must be precise and safe.
-- MCP servers need strict cwd, command, timeout, output, and environment policy.
-- The model may choose the wrong toolchain unless names and descriptions are clear.
+- CWD must be restricted to approved workspace paths.
+- Commands and arguments need allowlists or structured wrappers.
+- Timeouts and output caps are mandatory.
+- Toolchain names and descriptions must be clear enough that the model can choose correctly.
 
-This is probably the best MVP path.
+This is the best MVP path.
 
 ### Option 2: Backend-native `run_toolchain` tool
 
-The backend could expose a provider-native tool named something like `run_toolchain`. That tool would call a local
-toolchain HTTP API directly.
+The backend could expose a provider-native tool named `run_toolchain` and call a local toolchain HTTP API directly.
 
 Example:
 
@@ -401,41 +555,36 @@ Example:
 Benefits:
 
 - Clear product abstraction.
-- One policy engine can sit in the backend.
-- Toolchain calls can be represented consistently in backend traces.
-- The toolchain contract can be expressed without routing through MCP.
+- Backend traces can represent toolchain calls consistently.
+- A central backend policy layer can mediate calls.
+- The toolchain contract is not dependent on MCP.
 
 Costs:
 
 - Requires implementation in each backend.
-- Claude, Codex, and Gemini have different native tool surfaces.
-- Harder to ship quickly.
-- The platform has to maintain a new tool protocol and SDK integration layer.
+- Claude, Codex, and Gemini have different native tool APIs.
+- Slower to ship.
+- Adds another protocol surface to maintain.
 
-This may be the cleaner long-term abstraction, but it is probably not the easiest first step.
+This may become attractive later, but it is not the simplest first implementation.
 
 ### Option 3: Backend uses `kubectl exec` into a sibling container
 
-This is the tempting shortcut.
-
-The backend can run:
+This is the tempting shortcut:
 
 ```bash
 kubectl exec <pod> -c toolchain-rust -- cargo test
 ```
 
-This should not become the product primitive.
+It should remain a debugging technique, not a platform primitive.
 
-It requires the backend to have `pods/exec` authority. It turns Kubernetes into the execution API. It is harder to audit
-as an agent tool action. It is awkward to scope. It encourages broad Kubernetes permissions in a container that is
-already exposed to model-driven tool use. It also couples local tool execution to Kubernetes API availability even
-though the containers are already in the same pod.
-
-This can be useful for debugging. It should not be the platform design.
+It requires the backend to have `pods/exec` permission. It turns Kubernetes into the command-execution API. It is harder
+to audit as an agent tool action. It couples local project execution to Kubernetes API authority even though the
+containers already share a pod. It also encourages granting broad Kubernetes capabilities to a model-facing backend.
 
 ### Option 4: Project-specific backend images
 
-The simplest short-term answer is still valid for some cases: build a custom backend image for the project.
+A project can still build a custom backend image:
 
 ```dockerfile
 FROM ghcr.io/witwave-ai/images/claude:0.27.1
@@ -444,26 +593,12 @@ RUN install-rust-toolchain
 RUN install-project-tools
 ```
 
-Benefits:
-
-- Simple.
-- Works with existing backend tool execution.
-- No new sidecar bridge required.
-
-Costs:
-
-- Repeats across backend types.
-- Bloats backend images.
-- Couples project toolchains to provider runtime images.
-- Does not scale across languages or projects.
-
-This is acceptable as an escape hatch. It should not be the default architecture.
+This is simple and sometimes useful. It should remain an escape hatch, not the default design. It repeats work across
+backend types, bloats backend images, and couples project toolchains to provider runtimes.
 
 ### Option 5: Ephemeral runner jobs
 
-Another option is to run toolchain work in short-lived Kubernetes Jobs.
-
-The backend asks the harness, operator, or a runner service to launch a job:
+Heavy or risky execution can move into short-lived Kubernetes Jobs:
 
 ```text
 run cargo test in image ghcr.io/org/project-rust-toolchain:sha
@@ -471,22 +606,57 @@ mount workspace snapshot
 return logs and exit code
 ```
 
-Benefits:
+This is useful for expensive builds, matrix tests, integration tests, or untrusted workloads. It gives stronger
+isolation and cleaner resource lifecycle. It is also slower and more complex than a sidecar, so it should complement the
+sidecar model rather than replace it at first.
 
-- Strong isolation.
-- Good for expensive or risky jobs.
-- Clean resource lifecycle.
-- Easier to scale for heavy builds.
+---
 
-Costs:
+## MCP as protocol, toolchain as boundary
 
-- Slower.
-- More Kubernetes machinery.
-- Harder to preserve local workspace mutations.
-- More complicated for interactive agent loops.
+MCP is a protocol. Toolchain is an architectural role.
 
-This is a good future path for heavy builds, matrix tests, and untrusted execution. It is likely too heavy for the first
-toolchain MVP.
+It is reasonable for a Rust toolchain, a Go/Python toolchain, a Prometheus gateway, and an AWS gateway to all expose MCP
+tools. The question is not whether local toolchains are allowed to use MCP. They are. The question is whether the
+platform preserves the right boundary behind the protocol.
+
+For toolchains, the boundary is local execution:
+
+- Workspace-mounted source code.
+- Language runtimes.
+- Compilers.
+- Linters.
+- Test runners.
+- Package caches.
+- Local build scripts.
+
+For external systems, the boundary is authority:
+
+- Credentials.
+- Account scope.
+- Cluster scope.
+- Read/write posture.
+- Audit.
+- Blast radius.
+
+The same protocol can serve both layers. The layer still matters.
+
+| Capability              | Primary concern          | Better conceptual bucket      |
+| ----------------------- | ------------------------ | ----------------------------- |
+| `cargo test`            | Local project execution  | Toolchain                     |
+| `go test ./...`         | Local project execution  | Toolchain                     |
+| `ruff format`           | Local project mutation   | Toolchain                     |
+| `make test`             | Local project execution  | Toolchain                     |
+| `kubectl get pods`      | Cluster authority        | Native tool or MCP gateway    |
+| `helm template`         | Local chart rendering    | Toolchain                     |
+| `helm upgrade`          | Cluster mutation         | MCP gateway or controlled CLI |
+| `aws sts assume-role`   | Cloud authority          | MCP/gateway                   |
+| `aws s3 ls prod-bucket` | Cloud authority/data     | MCP/gateway                   |
+| `gh issue create`       | Source-control authority | MCP/gateway or native CLI     |
+| `prometheus query`      | Observability access     | MCP/gateway                   |
+
+The important claim is modest: use MCP where it helps, but do not let the protocol hide whether a tool is local
+execution or external authority.
 
 ---
 
@@ -496,7 +666,7 @@ The first design should be deliberately small:
 
 > Add named toolchain sidecars that expose structured MCP tools over localhost.
 
-The platform-level primitive should be `toolchains`, even if the first transport is MCP.
+The platform primitive should be `toolchains`. The first transport can be MCP.
 
 Example future agent spec:
 
@@ -536,71 +706,35 @@ spec:
 The operator would render:
 
 - One sidecar per toolchain.
-- A shared workspace mount into each toolchain sidecar.
-- A backend MCP config entry for each toolchain.
-- Optional environment variables describing toolchain names and URLs.
+- Workspace mounts into each toolchain sidecar.
+- Backend MCP config entries for local toolchain URLs.
 - Per-toolchain resource requests and limits.
 - Per-toolchain security context.
+- Optional environment variables describing toolchain names and URLs.
 - Optional network-policy controls.
 
 The sidecar would provide:
 
-- `/health`
-- `/metrics`
-- MCP endpoint
-- Structured tools
-- Command allowlist
-- CWD restriction
-- Timeout enforcement
-- Output cap
-- Audit log
+- `/health`.
+- `/metrics`.
+- An MCP endpoint.
+- Structured tools.
+- Optional constrained `exec_allowed`.
+- CWD restriction.
+- Timeout enforcement.
+- Output caps.
+- Audit logs.
 
-The backend would not need to know that Rust is installed anywhere. It would only need to know that a `toolchain-rust`
-MCP server exists and exposes safe Rust tools.
-
----
-
-## MCP as protocol, toolchain as boundary
-
-MCP is a protocol. `toolchain` is an architectural role.
-
-It is perfectly reasonable for a Rust build toolchain, a Go/Python toolchain, a Prometheus gateway, and an AWS gateway
-to all expose MCP tools. The issue is not that local toolchains use MCP. The issue is whether the platform preserves the
-right operational boundary behind the protocol.
-
-For toolchains, the important boundary is the container boundary: language-specific tools live in a dedicated execution
-environment that mounts the workspace and has its own image, resources, policy, and audit. MCP can be the standardized
-way the backend calls into that environment.
-
-For external systems, the important boundary is authority: credentials, account scope, read/write posture, audit, and
-blast radius. MCP can also be the standardized way the backend calls into those gateways.
-
-The same protocol can serve both layers. The layer still matters.
-
-The distinction matters:
-
-| Capability              | Primary concern          | Better conceptual bucket      |
-| ----------------------- | ------------------------ | ----------------------------- |
-| `cargo test`            | Local project execution  | Toolchain                     |
-| `go test ./...`         | Local project execution  | Toolchain                     |
-| `ruff format`           | Local project mutation   | Toolchain                     |
-| `kubectl get pods`      | Cluster authority        | Native tool or MCP gateway    |
-| `helm upgrade`          | Cluster mutation         | MCP gateway or controlled CLI |
-| `aws sts assume-role`   | Cloud authority          | MCP/gateway                   |
-| `aws s3 ls prod-bucket` | Cloud authority/data     | MCP/gateway                   |
-| `gh issue create`       | Source-control authority | MCP/gateway or native CLI     |
-| `prometheus query`      | Observability access     | MCP/gateway                   |
-| `make test`             | Local project execution  | Toolchain                     |
-
-The same transport can be used for more than one bucket, but the platform should preserve the semantic boundary.
+The backend would not need to know that Rust is installed in its own filesystem. It would only need to know that a
+`toolchain-rust` MCP server exists and exposes safe Rust tools.
 
 ---
 
 ## Multiple execution environments
 
-Multiple toolchains should be allowed, but they should be intentionally bounded.
+Multiple toolchains should be supported, but bounded.
 
-It is reasonable for an agent pod to have two to five toolchain containers:
+It is reasonable for an agent pod to have a small number of named toolchain containers:
 
 ```text
 toolchain-go-python
@@ -609,15 +743,15 @@ toolchain-node
 toolchain-terraform
 ```
 
-It is not reasonable for an agent pod to have hundreds. Each toolchain is a container with resource requests, image
-pulls, patch cadence, security posture, logs, metrics, and operational overhead.
+It is not reasonable for an agent pod to have hundreds. Each toolchain has image pulls, resource requests, patch
+cadence, security posture, logs, metrics, and operational overhead.
 
-The design should optimize for a small set of named environments:
+The design should optimize for:
 
 - One default project toolchain.
 - Optional language-specific toolchains for heavy runtimes.
-- Optional high-risk toolchains with tighter permissions.
-- Optional build-runner jobs for expensive matrix work.
+- Optional high-risk toolchains with tighter network or secret posture.
+- Optional runner jobs for expensive matrix work.
 
 Toolchain selection should start explicit:
 
@@ -648,29 +782,31 @@ toolchain selected: rust
 selection reason: command cargo matched toolchain rust handles.commands
 ```
 
-This matters because automatic routing failures will be confusing. If the model asks for `make test`, should that run in
-the Go/Python toolchain, the Rust toolchain, or a project-default toolchain? The platform should not hide that decision.
+Hidden routing should wait until traces show the common patterns. If the model asks for `make test`, the platform should
+not silently guess between Go/Python, Rust, Node, or project-default toolchains without leaving an explanation.
 
 ---
 
 ## Security posture
 
 Toolchain execution is powerful. It is local code execution against a shared workspace. That should be treated as a
-high-trust but bounded capability, not as harmless convenience.
+high-trust but bounded capability.
 
 Minimum controls:
 
 - **No cluster credentials by default.** Toolchain containers should not automatically receive Kubernetes service
-  account tokens unless explicitly needed.
+  account tokens.
 - **No cloud credentials by default.** AWS, GCP, Azure, GitHub, and other external authority should be mediated
-  separately.
-- **CWD restriction.** Commands should only run inside approved workspace paths.
-- **Command allowlist.** Either expose structured tools or restrict generic exec to approved binaries.
+  separately unless explicitly required.
+- **CWD restriction.** Commands should run only inside approved workspace paths.
+- **Structured tools first.** Prefer `rust.cargo_test` or `python.pytest` over a generic shell when possible.
+- **Command allowlist.** If generic exec exists, restrict approved binaries.
 - **Argument policy.** Interpreters and package runners need special handling because `python -c`, `node -e`, `bash -c`,
   `uvx`, `npx`, and similar forms can defeat naive command allowlists.
 - **Timeouts.** Every execution needs a bounded timeout.
 - **Output caps.** Large output should be truncated with clear metadata.
-- **Audit logs.** Record command, cwd, exit code, duration, truncation, toolchain name, session hash, and backend.
+- **Audit logs.** Record toolchain name, backend, session hash, command or structured tool, cwd, exit code, duration,
+  truncation, and policy decisions.
 - **Resource limits.** Toolchains should have CPU and memory requests/limits independent of the backend.
 - **Network posture.** Some toolchains need package download access; others should be egress-restricted.
 - **Secret posture.** Secrets required for external systems should not be casually mounted into local build toolchains.
@@ -695,16 +831,16 @@ toolchains:
 ```
 
 This would let projects reuse an existing development-container definition instead of writing a WitWave-specific
-toolchain image from scratch.
+execution image from scratch.
 
-That said, dev containers are not a complete solution by themselves. The platform still needs:
+Dev containers are not a complete solution by themselves. The platform still needs:
 
-- A way for the backend to call the toolchain.
-- A way to expose safe tools to the model.
-- A way to audit executions.
-- A way to set output caps and timeouts.
-- A way to define secrets and external authority boundaries.
-- A way to run more than one toolchain when a project needs multiple environments.
+- A backend-to-toolchain call path.
+- A model-facing tool surface.
+- Audit logs.
+- Timeouts and output caps.
+- Secret and network policy.
+- Support for more than one execution environment.
 
 Dev containers can help define the image. They do not define the agent execution contract.
 
@@ -712,11 +848,9 @@ Dev containers can help define the image. They do not define the agent execution
 
 ## Relationship to MCP gateways
 
-MCP remains important.
+Toolchains should sit beside MCP gateways, not replace them.
 
-The toolchain layer should not replace MCP gateways. It should sit beside them.
-
-Examples:
+A possible deployment could look like this:
 
 ```text
 Local project execution:
@@ -732,36 +866,44 @@ External authority:
   mcp-github-discussions
 ```
 
-In some cases the boundary is mixed. Kubernetes is the clearest example.
+Some tools have both local and authority-bearing modes.
 
-`kubectl` installed in a backend or toolchain container is useful for diagnostics and parity with human workflows. But
-if the agent needs production cluster authority, an MCP Kubernetes gateway with scoped credentials, read-only mode,
-audit, and bounded verbs may be safer.
+Kubernetes:
 
-Helm has the same split:
+- `kubectl` in a backend or toolchain container is useful for diagnostics and parity with human workflows.
+- Production cluster access is safer behind scoped identity, RBAC, and often an MCP gateway.
 
-- Local `helm template` and `helm lint` can be toolchain work.
-- `helm upgrade` against a live cluster is external authority and may belong behind a gateway.
+Helm:
 
-Prometheus is mostly external observability access, so MCP is a reasonable conceptual fit.
+- `helm template` and `helm lint` are local chart work and fit a toolchain.
+- `helm upgrade` against a live cluster is external authority and may belong behind a gateway or a tightly controlled
+  native path.
 
-AWS multi-account access is an even stronger gateway case. Native `aws` CLI can work for one account with one scoped
-identity, but multi-account role switching quickly becomes hard to reason about inside a model-driven shell. A set of
-MCP or gateway instances scoped by account, environment, and permission tier is easier to audit and safer to operate.
+AWS:
+
+- Native `aws` CLI can work for one account with one scoped identity.
+- Multi-account role switching is easier to audit when it is represented as a gateway surface scoped by account,
+  environment, and permission tier.
+
+Prometheus:
+
+- Prometheus is mostly observability access, so MCP is a natural fit.
+- The value comes less from where the client binary lives and more from scoping query access, limiting response size,
+  and auditing what the agent asked.
 
 ---
 
 ## Draft implementation stages
 
-### Stage 1: Document the concept
+### Stage 1: Keep the paper as a design record
 
-Name the layer and write down the boundaries:
+Name the boundaries clearly:
 
 - Backend runtime.
 - Toolchain execution.
-- MCP/external authority gateway.
+- External authority gateway.
 
-This paper is part of that stage.
+Use this paper to avoid re-litigating the same boundary every time a new language or CLI appears.
 
 ### Stage 2: Build one local toolchain sidecar
 
@@ -771,7 +913,7 @@ It should:
 
 - Run as a sidecar.
 - Mount the same source/workspace volume as the backend.
-- Expose `/health`.
+- Expose `/health` and `/metrics`.
 - Expose an MCP server over localhost.
 - Provide structured tools for the current repo's common checks.
 - Record audit logs.
@@ -783,14 +925,14 @@ Initial tools could be:
 go_test
 go_test_package
 python_pytest
-ruff_check
-ruff_format_check
+python_ruff_check
+python_ruff_format_check
 repo_command_allowed
 ```
 
 Avoid starting with a wide-open shell.
 
-### Stage 3: Add CRD/chart support
+### Stage 3: Add chart/operator support
 
 Add a `toolchains` block to the chart and operator.
 
@@ -832,53 +974,46 @@ handles:
   files: ["Cargo.toml", "*.rs"]
 ```
 
-Start by exposing hints to the model and traces. Only later should the system automatically route commands.
+Expose hints to the model and traces first. Add automatic routing only after usage patterns are clear.
 
 ### Stage 6: Add runner jobs for heavy execution
 
-For expensive builds, integration tests, matrix runs, or untrusted code, use short-lived runner pods/jobs rather than
+For expensive builds, integration tests, matrix runs, or untrusted code, use short-lived runner pods or jobs rather than
 long-running sidecars.
 
 ---
 
 ## Open questions
 
-Several choices are still unresolved.
-
-### Should the first bridge be MCP or a custom toolchain API?
-
-MCP is the fastest path because the backends already know how to consume MCP tools. A custom API may be cleaner
-long-term, but it requires backend-specific integration.
-
-The pragmatic answer is likely:
-
-- Use MCP for the first bridge.
-- Preserve `toolchain` as the product concept.
-- Avoid generic shell unless heavily constrained.
-- Revisit a native backend `run_toolchain` tool after the model proves useful.
-
 ### Should toolchains be per-agent or per-workspace?
 
 Per-agent is easier to render because agents already own their pods.
 
-Per-workspace is conceptually attractive because toolchains are project-specific, not personality-specific. Multiple
-agents bound to the same workspace probably want the same execution environments.
+Per-workspace is conceptually cleaner because toolchains are project-specific, not personality-specific. Multiple agents
+bound to the same workspace probably want the same execution environments.
 
-The first version can be per-agent while the design leaves room for workspace-level defaults later.
+A practical path is to support per-agent toolchains first and leave room for workspace-level defaults later.
 
-### Should toolchains share package caches?
+### Should package caches be shared?
 
-Probably yes, eventually. Language package caches are expensive to rebuild.
+Probably, eventually. Language package caches are expensive to rebuild.
 
-But shared caches introduce state, invalidation, security, and storage concerns. The first version can tolerate slower
+But shared caches introduce state, invalidation, poisoning, and storage concerns. The first version can tolerate slower
 execution in exchange for simpler semantics.
 
 ### Should toolchains have network access?
 
 Some must. Package managers need network access unless dependencies are vendored or cached.
 
-But network access changes the risk model. A toolchain running untrusted project scripts with broad egress is a larger
-attack surface than one limited to local compilation. Network policy should become part of the toolchain spec.
+But network access changes the risk model. A toolchain running project scripts with broad egress is a larger attack
+surface than one limited to local compilation. Network policy should become part of the toolchain spec.
+
+### How generic should the execution tool be?
+
+The safest first tools are structured: `cargo_test`, `go_test`, `python_pytest`, `ruff_check`.
+
+A generic `exec_allowed` tool may still be necessary, but it should be treated as a controlled escape hatch with strict
+command, cwd, argument, timeout, output, and audit policy.
 
 ### How much should the model choose automatically?
 
@@ -891,23 +1026,19 @@ routing should wait until traces show common patterns.
 
 ## Conclusion
 
-Containerized agents need a tool model that respects the difference between model runtime, local execution, and external
-authority.
+Containerized agents need a tool model that respects three different responsibilities: model runtime, project-local
+execution, and external authority.
 
-Putting every language and operational tool into every backend image will not scale. MCP can be the right protocol for
-reaching local toolchains, but it should not erase the architectural distinction between a project-local execution
-environment and an external authority gateway. Relying on `kubectl exec` into sibling containers is useful for debugging
-but too awkward and authority-heavy to be the platform primitive.
+WitWave already has the pieces that make this problem visible. It has three real backends. It has a shared backend base
+with useful native tools. It has MCP gateways. It has git-backed agent configuration. It has shared workspaces. It has a
+repo-as-source operating model. Those choices are coherent, but they also reveal the next boundary: project-specific
+execution should not keep accumulating inside backend images.
 
-The better path is a hybrid:
+The next architectural step is to make toolchains first-class. A toolchain container gives an agent the right compiler,
+interpreter, linter, test runner, package manager, and local execution environment for the workspace it is maintaining.
+MCP can be the standard way the backend calls into that container. The backend stays focused on model execution. The
+repo remains the source of truth. External systems remain behind explicit gateways and credentials.
 
-- Keep backend containers focused on LLM runtime and agent protocol.
-- Use named toolchain sidecars for project-local execution.
-- Use MCP or similar gateways for external systems and sensitive authority.
-- Use MCP as a practical, standardized transport for toolchain sidecars.
-- Keep the product concept distinct so the architecture remains understandable.
-
-The result is a containerized agent that can work across many kinds of projects without pretending one backend image can
-be every developer workstation. The agent gets the right tools for the project, the platform keeps the authority
-boundaries visible, and the execution environment becomes a deliberate part of the agent spec rather than an accidental
-property of whatever happened to be installed in the backend image.
+That boundary keeps the system understandable as it grows. Claude, Codex, and Gemini should not each become every
+possible developer workstation. They should be stable model runtimes that can reach the right execution environment for
+the job in front of them.
