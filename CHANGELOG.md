@@ -6,9 +6,14 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
-## [0.27.5] — 2026-05-18
+## [0.27.6] — 2026-05-18
 
-Documentation + identity-scaffolding patch. Normalised "Witwave" casing across the repo and website content, authored
+Documentation + identity-scaffolding patch — re-cut of v0.27.5. The v0.27.5 tag (2026-05-18 15:05Z) was published but
+its three release workflows (Container Images, ww CLI, Helm Charts) all hard-failed at their `wait-for-sibling-ci` gate
+because `CI — Docs` on the tag SHA refused a `prettier@3.4.2 --check` formatting warning in the auto-generated CHANGELOG
+entry. No artifacts were published for v0.27.5. v0.27.6 ships the identical content from a green main HEAD
+(`.agents/self/iris/.claude/skills/release/SKILL.md` now pins `prettier@3.4.2 --write` as a mandatory pre-flight to
+close the recurring pattern). Substance: normalised "Witwave" casing across the repo and website content, authored
 one-paragraph docstrings on public Python symbols in the harness scheduler and the four backends, and added header
 comments to shell-script functions in the installer and operator parity check. Also scaffolds the new **milo** agent
 (resources / team-ops role) under `.agents/self/milo/` with matching team-roster surfacing on the social website. No
