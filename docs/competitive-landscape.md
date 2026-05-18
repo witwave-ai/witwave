@@ -32,21 +32,22 @@ refinement applied that pass: CrewAI's **v1.14.5 alpha line** (`1.14.5a4` on 202
 sixteenth pass missed this), headline being the deprecation of `CrewAgentExecutor` in favour of defaulting Crew agents
 to `AgentExecutor` (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a5>, accessed 2026-05-15 — alpha
 line has since graduated to stable `v1.14.5` on 2026-05-18, captured at the top of this preface). Sixteenth pass
-(earlier on 2026-05-15) captured multiple version bumps in the four-day window since the fifteenth pass: **Claude Agent SDK jumped
-onto the v0.2 line** with `v0.2.82` (2026-05-15), introducing two breaking changes — MCP servers now connect in the
-background by default (sessions start immediately with slow servers reporting `status: "pending"`) and headless / SDK
-sessions migrate from `TodoWrite` to a new **Task tools** family (`TaskCreate`, `TaskUpdate`, `TaskGet`, `TaskList`);
-also exports a public `EffortLevel` type alias and bumps the `mcp` dependency to `>=1.23.0` for CVE-2025-66416 (DNS
-rebinding) (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-05-15). **LangGraph
-v1.2.0 shipped GA on 2026-05-12** — the v1.2 alpha series the fifteenth pass mentioned is now stable, headlining
-`durable error-handler resume across host crashes`, `set_node_defaults()` on `StateGraph`, and delta-channel snapshot
-handling improvements (source: <https://github.com/langchain-ai/langgraph/releases>, accessed 2026-05-15). **Microsoft
-Agent Framework** moved to `python-1.4.0` (2026-05-15) and `dotnet-1.6.1` (2026-05-14), continuing the near-weekly minor
-cadence on the v1 line (source: <https://github.com/microsoft/agent-framework/releases>, accessed 2026-05-15). **OpenAI
-Agents SDK** bumped to `v0.17.2` (2026-05-12) — bug-fix release covering OpenAI Conversations reasoning persistence,
-realtime tools, and session management (source: <https://github.com/openai/openai-agents-python/releases>, accessed
-2026-05-15). **OpenClaw** rolled forward: stable now `v2026.5.12` (2026-05-14), latest pre-release `v2026.5.14-beta.2`
-(2026-05-15); star count re-pinned to **372,000+ / 77,100+ forks** (sources: <https://github.com/openclaw/openclaw>,
+(earlier on 2026-05-15) captured multiple version bumps in the four-day window since the fifteenth pass: **Claude Agent
+SDK jumped onto the v0.2 line** with `v0.2.82` (2026-05-15), introducing two breaking changes — MCP servers now connect
+in the background by default (sessions start immediately with slow servers reporting `status: "pending"`) and headless /
+SDK sessions migrate from `TodoWrite` to a new **Task tools** family (`TaskCreate`, `TaskUpdate`, `TaskGet`,
+`TaskList`); also exports a public `EffortLevel` type alias and bumps the `mcp` dependency to `>=1.23.0` for
+CVE-2025-66416 (DNS rebinding) (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed
+2026-05-15). **LangGraph v1.2.0 shipped GA on 2026-05-12** — the v1.2 alpha series the fifteenth pass mentioned is now
+stable, headlining `durable error-handler resume across host crashes`, `set_node_defaults()` on `StateGraph`, and
+delta-channel snapshot handling improvements (source: <https://github.com/langchain-ai/langgraph/releases>, accessed
+2026-05-15). **Microsoft Agent Framework** moved to `python-1.4.0` (2026-05-15) and `dotnet-1.6.1` (2026-05-14),
+continuing the near-weekly minor cadence on the v1 line (source:
+<https://github.com/microsoft/agent-framework/releases>, accessed 2026-05-15). **OpenAI Agents SDK** bumped to `v0.17.2`
+(2026-05-12) — bug-fix release covering OpenAI Conversations reasoning persistence, realtime tools, and session
+management (source: <https://github.com/openai/openai-agents-python/releases>, accessed 2026-05-15). **OpenClaw** rolled
+forward: stable now `v2026.5.12` (2026-05-14), latest pre-release `v2026.5.14-beta.2` (2026-05-15); star count re-pinned
+to **372,000+ / 77,100+ forks** (sources: <https://github.com/openclaw/openclaw>,
 <https://github.com/openclaw/openclaw/releases>, accessed 2026-05-15). **A2A** re-pinned to **23,800+ stars**
 (<https://github.com/a2aproject/A2A>, accessed 2026-05-15); v1.0.0 (2026-03-12) unchanged. Fifteenth pass (2026-05-11)
 was a light verification-and-refinement pass per zora ADVANCE dispatch (P2 cadence-floor breach, +4h15m / 3h floor):
@@ -421,10 +422,10 @@ Alpha-line cadence continues post-stable at `1.14.5a7` (also 2026-05-18). The pr
 (2026-04-30) introduced Responses API support for the Azure OpenAI provider, You.com MCP tools (search / research /
 content extraction), Tavily Research integration, custom persistence keys for `@persist`, and a `litellm` bump for an
 SSTI fix (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.4>, accessed 2026-05-06); the v1.14.0 / v1.14.2
-substance detailed below remains intact under v1.14.5. Headline 2025–2026 capabilities: **unified Memory class** (LLM-inferred hierarchical scopes, composite
-recall scoring, non-blocking background saves, `crewai memory` terminal browser), **Tool search** (dynamic tool
-injection — loads only tools relevant to the current task rather than the full allow-list), Qdrant Edge for on-device
-vector storage, Enterprise Control Plane with real-time tracing.
+substance detailed below remains intact under v1.14.5. Headline 2025–2026 capabilities: **unified Memory class**
+(LLM-inferred hierarchical scopes, composite recall scoring, non-blocking background saves, `crewai memory` terminal
+browser), **Tool search** (dynamic tool injection — loads only tools relevant to the current task rather than the full
+allow-list), Qdrant Edge for on-device vector storage, Enterprise Control Plane with real-time tracing.
 
 **v1.14.0 (2026-04-07) — checkpoint/resume primitives:** First-class `CheckpointConfig` auto-checkpointing,
 `checkpoint list` / `checkpoint info` CLI, `SqliteProvider` checkpoint store, runtime-state checkpointing with
@@ -530,10 +531,9 @@ pass advanced stable from `v2026.5.12` to `v2026.5.18` and the beta head from `v
 new meme-maker / Python-debug skills, Gateway startup optimizations, and a CLI plugin system) — the exact number drifts
 fast, so re-pin before quoting in marketing or external docs (sources: <https://github.com/openclaw/openclaw>,
 <https://github.com/openclaw/openclaw/releases>, and <https://github.com/openclaw/openclaw/releases/tag/v2026.5.18>,
-accessed 2026-05-18). Runs
-on user-controlled infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to
-Claude, OpenAI, DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev
-channels; very active development cadence.**
+accessed 2026-05-18). Runs on user-controlled infrastructure (notable community trend: a Mac Mini hardware rush for 24/7
+hosting). Connects to Claude, OpenAI, DeepSeek, and local models. **MIT licensed; calendar-versioned releases
+(`vYYYY.M.D`) with beta and dev channels; very active development cadence.**
 
 **Implementation + architecture:** TypeScript / Node.js (v22.16+, v24 recommended). The Gateway is a local control plane
 deployed on user machines (macOS, Linux, Windows via WSL2). No cloud requirement; runs entirely on user infrastructure.
