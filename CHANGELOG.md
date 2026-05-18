@@ -6,6 +6,19 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.27.4] — 2026-05-18
+
+Recovery patch release re-publishing v0.27.3's artifacts. The v0.27.3 tag fired against a commit whose `CHANGELOG.md`
+entry was not Prettier-reflowed to the 120-char prose-wrap; `CI — Docs` failed on the tag commit and all four
+release-window workflows aborted before publishing any container images, `ww` CLI binaries, Helm charts, or the social
+website update. This release tags the reflow-fixed tip of `main` so v0.27.3's tool-boundaries whitepaper content cycle
+actually reaches consumers. No code or content changes since v0.27.3 — the only commit is the CHANGELOG reflow fix.
+
+### Fixed
+
+- **changelog**: Reflow the v0.27.3 entry to the 120-char Prettier prose-wrap so `CI — Docs` passes and the release
+  pipeline can publish artifacts.
+
 ## [0.27.3] — 2026-05-18
 
 Patch release covering a content cycle on the tool-boundaries whitepaper: seven editorial passes on the `social/` source
