@@ -22,10 +22,8 @@ A2A server. The platform also has a shared `backend-base` image that gives those
 command-line tools: Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and related
 analysis and test tooling.
 
-That shared base is useful, but it is still a backend image. It is the right place for common platform utilities. It is
-not the right long-term home for every project-specific language runtime, linter, build system, cloud integration, or
-operational workflow. The next Rust project, Node project, Java project, Solana project, Foundry project, or
-Terraform-heavy platform repo should not force matching changes across Claude, Codex, and Gemini.
+That baseline is useful. It also raises the next design question: where should project-specific execution live when a
+workspace needs tools beyond the shared platform baseline?
 
 The better boundary is:
 
@@ -38,9 +36,9 @@ localhost, and the backend can call that server using the MCP support it already
 versus native." The important boundary is whether the language-specific runtime lives inside the backend image or inside
 a dedicated execution container.
 
-This paper argues for a hybrid model: keep backends focused on model execution, use toolchain containers for local
-project execution, and use MCP or similar gateways to mediate both toolchain calls and external authority. The core goal
-is not to remove native tools or avoid MCP. The core goal is to make tool placement explicit.
+This paper argues for a hybrid model: backends run model runtimes, toolchain containers run project-local tools, and MCP
+or similar gateways mediate structured calls into toolchains and external systems. The core goal is not to remove native
+tools or avoid MCP. The core goal is to make tool placement explicit.
 
 ---
 
@@ -57,8 +55,7 @@ backend images carry enough tooling to work on this repository. That is reasonab
 
 But WitWave is meant to run agents against more than this repository. Another workspace may need Rust. Another may need
 Node. Another may need Java. Another may need AWS account tooling, Terraform, Foundry, Solana, mobile tooling, or a
-private compiler. If the answer is always "install it in the backend image," then every new project capability creates
-backend-image churn.
+private compiler. Those tools need a deliberate home.
 
 The cleaner question is not "MCP or native tools?" It is:
 
@@ -112,7 +109,7 @@ Examples:
 - `terraform`
 - `make`
 
-Native tools are direct and familiar. They also couple the backend image to the project toolchain.
+Native tools are direct and familiar. They are also the closest coupling between model runtime and project execution.
 
 ### MCP-mediated tool
 
@@ -204,10 +201,6 @@ copying installation logic across three Dockerfiles. It is also intentionally on
 `kubectl` does not grant cluster access. In-cluster Kubernetes authority is controlled separately through
 `WitwaveAgent.spec.kubernetesApiAccess` or explicit ServiceAccount/RBAC configuration.
 
-The important limitation is scope. `backend-base` is still inherited by backend images. Anything placed there is placed
-in every backend that uses it. That is acceptable for shared platform utilities. It is too broad for project-specific
-toolchains.
-
 ### Claude tool execution
 
 The Claude backend uses Claude Code-style tool configuration. Its default posture is conservative: read/search tools are
@@ -255,8 +248,7 @@ other backends where possible.
 
 Gemini matters for this design even where its local tool loop is less mature, because any toolchain architecture should
 not require each backend to reinvent project execution. If a toolchain sidecar exposes MCP tools, Gemini can eventually
-use the same described tool surface as Claude and Codex rather than needing Gemini-specific Rust, Go, Node, or Terraform
-images.
+use the same described tool surface as Claude and Codex.
 
 ### MCP components
 
@@ -333,13 +325,18 @@ a clearer architectural home.
 
 ## Why backend images should not become universal toolboxes
 
-The backend images have a clear job: run model backends reliably. Claude needs the Claude runtime. Codex needs the
-OpenAI Agents SDK runtime. Gemini needs the Google Gemini runtime. Each backend already has provider-specific
-dependencies, configuration, tool behavior, metrics, and failure modes.
+The backend images should remain small, generic, and stable. Their job is to run model backends reliably. Claude needs
+the Claude runtime. Codex needs the OpenAI Agents SDK runtime. Gemini needs the Google Gemini runtime. Each backend
+already has provider-specific dependencies, configuration, tool behavior, metrics, and failure modes.
 
 If every project tool lives inside those backends, every new capability becomes backend-image work. A new language, a
 new linter suite, a new build system, or a new integration must be evaluated against Claude, Codex, and Gemini even when
 the tool has nothing to do with the model provider.
+
+The shared `backend-base` image is the right place for common platform utilities. It removes duplicated setup across the
+three backend Dockerfiles and keeps baseline versions pinned in one place. It should not become the default landing zone
+for project-specific runtimes. Anything added to `backend-base` becomes part of every backend image that inherits from
+it.
 
 That creates the wrong matrix:
 
@@ -358,9 +355,8 @@ The failure modes are predictable:
 - Ownership becomes unclear: should the Claude backend image own Rust versioning?
 
 Dedicated toolchain containers break that multiplier. Adding Rust support means creating or updating one Rust toolchain
-container, not rebuilding Claude, Codex, and Gemini. Adding a linter suite means updating the relevant project
-toolchain. Adding an external integration means creating a gateway or controlled tool surface with its own policy and
-release cadence.
+container. Adding a linter suite means updating the relevant project toolchain. Adding an external integration means
+creating a gateway or controlled tool surface with its own policy and release cadence.
 
 The backend should know how to call tools. It should not need to contain every tool.
 
@@ -1000,15 +996,15 @@ routing should wait until traces show common patterns.
 
 The recommendation is straightforward: make toolchains a first-class architectural layer.
 
-WitWave should keep model backends focused on model execution, session continuity, memory, metrics, and provider
-integration. It should keep the repo and workspace mounts as the shared source of truth. It should keep external systems
-behind explicit authority gateways. Project-local execution belongs between those two worlds, in dedicated toolchain
-containers that can be mounted, governed, traced, and replaced independently.
+WitWave should treat model runtime, project-local execution, and external authority as separate responsibilities. The
+repo and workspace mounts remain the shared source of truth. External systems remain behind explicit authority gateways.
+Project-local execution belongs between those two worlds, in dedicated toolchain containers that can be mounted,
+governed, traced, and replaced independently.
 
 MCP fits this design well. It can be the standard protocol a backend uses to call a toolchain sidecar, just as it can be
 the standard protocol for calling Kubernetes, Helm, Prometheus, GitHub, or cloud gateways. The protocol is not the
 boundary. The container, credential, and authority model is the boundary.
 
-That separation lets WitWave grow without turning Claude, Codex, and Gemini into three copies of every possible
-developer workstation. Backends stay stable. Toolchains evolve with projects. Gateways carry external authority. The
-agent gets the tools it needs, but the platform keeps a clear answer to where those tools belong.
+That separation lets WitWave grow one layer at a time. Toolchains can evolve with projects. Gateways can carry external
+authority. Backends can keep doing the model work. The agent gets the tools it needs, and the platform keeps a clear
+answer to where those tools belong.
