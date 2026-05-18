@@ -22,15 +22,16 @@ durable answer. A backend image that starts as "the Claude runtime" or "the Code
 universal development workstation image, and universal development workstation images do not stay small, secure, or
 project-neutral for long.
 
-MCP helps with part of this problem, but it is not the whole answer. The Model Context Protocol is a good fit for
-mediated access to external systems: Kubernetes APIs, cloud accounts, observability platforms, ticketing systems,
-source-control APIs, and other authority-bearing services. It provides a model-facing tool contract, a place to attach
-policy, and a way to separate tool servers from model runtimes.
+MCP helps with this problem in two related ways. The Model Context Protocol is a good fit for mediated access to
+external systems: Kubernetes APIs, cloud accounts, observability platforms, ticketing systems, source-control APIs, and
+other authority-bearing services. It is also a practical, acceptable communication protocol between backend containers
+and local toolchain containers. It gives the backend a standardized model-facing tool surface without forcing every
+language runtime into the backend image.
 
-But MCP is not automatically the right conceptual answer for local project execution. Compiling Rust, running `go test`,
-formatting Python, or executing a repository's `make` target are not primarily external-authority problems. They are
-local toolchain problems. They need the right filesystem, dependencies, compilers, package caches, environment
-variables, and runtime libraries close to the workspace.
+The distinction is architectural, not anti-MCP. Compiling Rust, running `go test`, formatting Python, or executing a
+repository's `make` target are local toolchain problems. They need the right filesystem, dependencies, compilers,
+package caches, environment variables, and runtime libraries close to the workspace. MCP can be the clean way to call
+into that environment; the important boundary is that the environment lives outside the backend image.
 
 This paper argues for a three-layer model:
 
@@ -38,11 +39,10 @@ This paper argues for a three-layer model:
 - **Toolchain containers** provide project-specific local execution environments.
 - **MCP and other gateways** mediate access to external systems and sensitive authority boundaries.
 
-The practical bridge can still use MCP at first. A toolchain sidecar can expose an MCP server over localhost, and the
-backend can call it using the MCP integration it already has. But the product concept should remain distinct: toolchains
-are for local project execution; MCP gateways are for mediated external authority. Keeping that distinction clear
-prevents the platform from collapsing into either a bloated backend image or a generic remote-shell server with a
-protocol label on it.
+The practical bridge can use MCP from the start. A toolchain sidecar can expose an MCP server over localhost, and the
+backend can call it using the MCP integration it already has. The product concept should still remain distinct:
+toolchains are the project-local execution environments; MCP is one clean protocol for reaching them. Keeping that
+distinction clear prevents the platform from collapsing back into a bloated backend image.
 
 ---
 
@@ -359,8 +359,10 @@ toolchain.exec_allowed
 This gives the backend a familiar model-facing tool surface. Claude, Codex, and Gemini can use the same MCP description
 surface once their backend MCP handling is wired consistently.
 
-The important conceptual point is that this does not mean "MCP replaces native tools." It means MCP is used as the
-transport and discovery layer for a local execution environment. The product primitive is still the toolchain.
+The important conceptual point is that MCP is a good communication protocol here. The toolchain container remains the
+architectural boundary, and MCP becomes the standardized way for Claude, Codex, Gemini, or future backends to discover
+and call the tools exposed by that boundary. The primary goal is not to avoid MCP; the primary goal is to keep
+language-specific tooling out of the backend images.
 
 Benefits:
 
@@ -371,9 +373,9 @@ Benefits:
 - Makes tool availability explicit to the model.
 - Can use existing MCP auth/audit/body-cap patterns.
 
-Risks:
+Risks and controls:
 
-- A generic `exec` tool can become remote shell with protocol paint.
+- A generic `exec` tool is still powerful and needs clear policy.
 - Tool descriptions must be precise and safe.
 - MCP servers need strict cwd, command, timeout, output, and environment policy.
 - The model may choose the wrong toolchain unless names and descriptions are clear.
@@ -401,7 +403,7 @@ Benefits:
 - Clear product abstraction.
 - One policy engine can sit in the backend.
 - Toolchain calls can be represented consistently in backend traces.
-- The tool does not need to masquerade as MCP.
+- The toolchain contract can be expressed without routing through MCP.
 
 Costs:
 
@@ -558,12 +560,22 @@ MCP server exists and exposes safe Rust tools.
 
 ---
 
-## Why not just call everything MCP?
+## MCP as protocol, toolchain as boundary
 
 MCP is a protocol. `toolchain` is an architectural role.
 
-Collapsing the two creates confusion. A Prometheus MCP server, an AWS MCP server, and a Rust build toolchain can all
-expose MCP tools, but they do not represent the same kind of authority.
+It is perfectly reasonable for a Rust build toolchain, a Go/Python toolchain, a Prometheus gateway, and an AWS gateway
+to all expose MCP tools. The issue is not that local toolchains use MCP. The issue is whether the platform preserves the
+right operational boundary behind the protocol.
+
+For toolchains, the important boundary is the container boundary: language-specific tools live in a dedicated execution
+environment that mounts the workspace and has its own image, resources, policy, and audit. MCP can be the standardized
+way the backend calls into that environment.
+
+For external systems, the important boundary is authority: credentials, account scope, read/write posture, audit, and
+blast radius. MCP can also be the standardized way the backend calls into those gateways.
+
+The same protocol can serve both layers. The layer still matters.
 
 The distinction matters:
 
@@ -882,16 +894,17 @@ routing should wait until traces show common patterns.
 Containerized agents need a tool model that respects the difference between model runtime, local execution, and external
 authority.
 
-Putting every language and operational tool into every backend image will not scale. Using MCP for everything flattens
-important trust boundaries and risks turning local execution into a generic remote shell. Relying on `kubectl exec` into
-sibling containers is useful for debugging but too awkward and authority-heavy to be the platform primitive.
+Putting every language and operational tool into every backend image will not scale. MCP can be the right protocol for
+reaching local toolchains, but it should not erase the architectural distinction between a project-local execution
+environment and an external authority gateway. Relying on `kubectl exec` into sibling containers is useful for debugging
+but too awkward and authority-heavy to be the platform primitive.
 
 The better path is a hybrid:
 
 - Keep backend containers focused on LLM runtime and agent protocol.
 - Use named toolchain sidecars for project-local execution.
 - Use MCP or similar gateways for external systems and sensitive authority.
-- Use MCP as the first transport for toolchain sidecars if that is the shortest path through existing backend support.
+- Use MCP as a practical, standardized transport for toolchain sidecars.
 - Keep the product concept distinct so the architecture remains understandable.
 
 The result is a containerized agent that can work across many kinds of projects without pretending one backend image can
