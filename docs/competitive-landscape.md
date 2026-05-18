@@ -1,18 +1,38 @@
 # Competitive Landscape
 
-Last updated: 2026-05-15 by kira-agent-witwave (seventeenth pass — light verification-and-refinement pass per zora
-docs-research re-dispatch later on 2026-05-15 (same P2 cadence-floor breach parameters as the sixteenth pass; zora's
-last-fire record had not yet absorbed the sixteenth-pass commit `0f58adfe` when she re-dispatched). High-cadence
-upstream pins verified unchanged within hours: Claude Agent SDK `v0.2.82` still latest, OpenClaw stable still
-`v2026.5.12` / beta head still `v2026.5.14-beta.2`, Microsoft Agent Framework still `python-1.4.0` / `dotnet-1.6.1`,
-LangGraph still `v1.2.0` GA, OpenAI Agents SDK still `v0.17.2`, A2A still `v1.0.0` / 23,800+ stars (sources:
-<https://github.com/anthropics/claude-agent-sdk-python/releases>, <https://github.com/openclaw/openclaw/releases>,
+Last updated: 2026-05-18 by kira-agent-witwave (eighteenth pass — light verification-and-refinement pass per zora
+docs-research dispatch under P2 cadence-floor breach + polish-tier one-shot ADVANCE (zero_streak=1 against
+last_run_sha=`5daa7677`). Two upstream changes captured today, both releases that landed on 2026-05-18 itself.
+**OpenClaw** bumped stable from `v2026.5.12` to **`v2026.5.18`** (2026-05-18) and beta head from `v2026.5.14-beta.2` to
+**`v2026.5.18-beta.1`** (2026-05-18); headline additions are **Android Talk Mode realtime Gateway-relay voice sessions**
+(streaming mic input, realtime audio playback, tool-result bridging, on-screen transcripts), a **Mac app redesign** with
+consistent card layouts and cleaner permissions / voice / skills / cron / exec / debug panes, a new **meme-maker skill**
+and a **Python debugging skill** (pdb + remote attach), Gateway startup optimizations preserving `/readyz` sidecar
+gating, new benchmark tooling for restart-readiness / downtime / trace / resource-slope evidence, and a CLI plugin
+system with `defineToolPlugin` plus build/validate commands; star count re-pinned to **373,000+ stars / 77,400+ forks**
+(sources: <https://github.com/openclaw/openclaw/releases/tag/v2026.5.18> and <https://github.com/openclaw/openclaw>,
+accessed 2026-05-18). **CrewAI's `1.14.5` alpha line graduated to stable today** — `v1.14.5` (2026-05-18) ships the
+`CrewAgentExecutor` deprecation (Crew agents now default to `AgentExecutor`) as the headline change, plus a
+`restore_from_state_id` kickoff parameter for state-resume workflows, Daytona sandbox tool improvements, a memory-leak
+fix in git operations, status-endpoint routing fix, and a CLI extracted into a standalone `crewai-cli` package; alpha
+line continues at `1.14.5a7` (2026-05-18) (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.5>, accessed
+2026-05-18). All other high-cadence upstream pins verified unchanged from the seventeenth pass three days earlier:
+Claude Agent SDK still `v0.2.82` (2026-05-15), Microsoft Agent Framework still `python-1.4.0` (2026-05-15) /
+`dotnet-1.6.1` (2026-05-14), LangGraph still `v1.2.0` GA (2026-05-12), OpenAI Agents SDK still `v0.17.2` (2026-05-12),
+A2A still `v1.0.0` (2026-03-12) / 23,800+ stars (sources:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>,
 <https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
-<https://github.com/openai/openai-agents-python/releases>, all accessed 2026-05-15). One refinement applied: CrewAI's
-**v1.14.5 alpha line is in flight** (`1.14.5a4` on 2026-05-08, `1.14.5a5` on 2026-05-12 — the sixteenth pass missed
-this), headline being the deprecation of `CrewAgentExecutor` in favour of defaulting Crew agents to `AgentExecutor`
-(source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a5>, accessed 2026-05-15). Sixteenth pass (earlier on
-2026-05-15) captured multiple version bumps in the four-day window since the fifteenth pass: **Claude Agent SDK jumped
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/a2aproject/A2A>, all accessed
+2026-05-18). Seventeenth pass (2026-05-15) was a light verification-and-refinement pass per zora docs-research
+re-dispatch (same P2 cadence-floor breach parameters as the sixteenth pass; zora's last-fire record had not yet absorbed
+the sixteenth-pass commit `0f58adfe` when she re-dispatched). High-cadence upstream pins were verified unchanged within
+hours: Claude Agent SDK `v0.2.82`, OpenClaw stable `v2026.5.12` / beta `v2026.5.14-beta.2`, Microsoft Agent Framework
+`python-1.4.0` / `dotnet-1.6.1`, LangGraph `v1.2.0` GA, OpenAI Agents SDK `v0.17.2`, A2A `v1.0.0` / 23,800+ stars. One
+refinement applied that pass: CrewAI's **v1.14.5 alpha line** (`1.14.5a4` on 2026-05-08, `1.14.5a5` on 2026-05-12 — the
+sixteenth pass missed this), headline being the deprecation of `CrewAgentExecutor` in favour of defaulting Crew agents
+to `AgentExecutor` (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a5>, accessed 2026-05-15 — alpha
+line has since graduated to stable `v1.14.5` on 2026-05-18, captured at the top of this preface). Sixteenth pass
+(earlier on 2026-05-15) captured multiple version bumps in the four-day window since the fifteenth pass: **Claude Agent SDK jumped
 onto the v0.2 line** with `v0.2.82` (2026-05-15), introducing two breaking changes — MCP servers now connect in the
 background by default (sessions start immediately with slow servers reporting `status: "pending"`) and headless / SDK
 sessions migrate from `TodoWrite` to a new **Task tools** family (`TaskCreate`, `TaskUpdate`, `TaskGet`, `TaskList`);
@@ -392,16 +412,16 @@ most transferable idea.
 **Autonomy model:** Human-driven (a crew is instantiated and kicked off by Python code a human runs; event-driven Flows
 add reactivity but crews do not self-schedule — they are called)
 
-Multi-agent orchestration framework. **Current stable: v1.14.4 (2026-04-30)** — adds Responses API support for the Azure
-OpenAI provider, You.com MCP tools (search / research / content extraction), Tavily Research integration, custom
-persistence keys for `@persist`, and a `litellm` bump for an SSTI fix. The v1.14.0 / v1.14.2 substance detailed below
-remains intact; v1.14.4 layers feature work and bug fixes on top (source:
-<https://github.com/crewAIInc/crewAI/releases/tag/1.14.4>, accessed 2026-05-06). **Pre-release v1.14.5 alpha line in
-flight** (`1.14.5a4` on 2026-05-08, `1.14.5a5` on 2026-05-12) — headline shift is **deprecating `CrewAgentExecutor` in
-favour of defaulting Crew agents to `AgentExecutor`**, plus improved Daytona sandbox tools, a HITL pre-review +
-distillation logging fix, an `inputs.id` → `restoreFromStateId` migration path, and CVE bumps for `urllib3`,
-`gitpython`, and `langchain-core` (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.5a5>, accessed
-2026-05-15). Headline 2025–2026 capabilities: **unified Memory class** (LLM-inferred hierarchical scopes, composite
+Multi-agent orchestration framework. **Current stable: v1.14.5 (2026-05-18)** — graduates the May v1.14.5 alpha line to
+stable. Headline change is **deprecating `CrewAgentExecutor` in favour of defaulting Crew agents to `AgentExecutor`**;
+also adds a `restore_from_state_id` kickoff parameter for resuming workflows from a prior state, improved Daytona
+sandbox tools, a memory-leak fix in git operations, status-endpoint routing fix, and **a CLI extracted into a standalone
+`crewai-cli` package** (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.5>, accessed 2026-05-18).
+Alpha-line cadence continues post-stable at `1.14.5a7` (also 2026-05-18). The previous stable line `v1.14.4`
+(2026-04-30) introduced Responses API support for the Azure OpenAI provider, You.com MCP tools (search / research /
+content extraction), Tavily Research integration, custom persistence keys for `@persist`, and a `litellm` bump for an
+SSTI fix (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.4>, accessed 2026-05-06); the v1.14.0 / v1.14.2
+substance detailed below remains intact under v1.14.5. Headline 2025–2026 capabilities: **unified Memory class** (LLM-inferred hierarchical scopes, composite
 recall scoring, non-blocking background saves, `crewai memory` terminal browser), **Tool search** (dynamic tool
 injection — loads only tools relevant to the current task rather than the full allow-list), Qdrant Edge for on-device
 vector storage, Enterprise Control Plane with real-time tracing.
@@ -502,12 +522,15 @@ platform rather than a personal local daemon. OpenClaw targets the individual ru
 this project targets the team running coordinated agents as cluster workloads.
 
 OpenClaw originated as "Clawdbot" in November 2025, was renamed "Moltbot" on 2026-01-27 under Anthropic trademark
-pressure, and three days later settled on **OpenClaw**. Category-leading install base — **372,000+ GitHub stars and
-77,100+ forks as of 2026-05-15**, with a very active commit cadence (latest stable release `v2026.5.12` on 2026-05-14;
-pre-release line continues through `v2026.5.14-beta.2` on 2026-05-15 — the four days since the fifteenth pass advanced
-stable from `v2026.5.7` to `v2026.5.12` and the beta head from `v2026.5.10-beta.3` to `v2026.5.14-beta.2`) — the exact
-number drifts fast, so re-pin before quoting in marketing or external docs (sources:
-<https://github.com/openclaw/openclaw> and <https://github.com/openclaw/openclaw/releases>, accessed 2026-05-15). Runs
+pressure, and three days later settled on **OpenClaw**. Category-leading install base — **373,000+ GitHub stars and
+77,400+ forks as of 2026-05-18**, with a very active commit cadence (latest stable release **`v2026.5.18`** on
+2026-05-18; pre-release line continues through **`v2026.5.18-beta.1`** on 2026-05-18 — three days since the seventeenth
+pass advanced stable from `v2026.5.12` to `v2026.5.18` and the beta head from `v2026.5.14-beta.2` to
+`v2026.5.18-beta.1`, with the same-day stable headlining Android Talk Mode realtime voice sessions, a Mac app redesign,
+new meme-maker / Python-debug skills, Gateway startup optimizations, and a CLI plugin system) — the exact number drifts
+fast, so re-pin before quoting in marketing or external docs (sources: <https://github.com/openclaw/openclaw>,
+<https://github.com/openclaw/openclaw/releases>, and <https://github.com/openclaw/openclaw/releases/tag/v2026.5.18>,
+accessed 2026-05-18). Runs
 on user-controlled infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to
 Claude, OpenAI, DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev
 channels; very active development cadence.**
