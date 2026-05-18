@@ -18,16 +18,14 @@ where compilers live, where CLIs live, where credentials live, where source code
 and how one model backend can work on projects that need very different development environments.
 
 WitWave currently runs three real model backends: Claude, Codex, and Gemini. Each backend is its own image and its own
-A2A server. The platform also has a shared `backend-base` image that gives those backends a common set of useful command
-line tools: Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and related analysis and
-test tooling. That shared base solved one problem: the three backend images no longer have to build the same baseline
-utilities independently.
+A2A server. The platform also has a shared `backend-base` image that gives those backends a pinned baseline of common
+command-line tools: Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and related
+analysis and test tooling.
 
-It did not solve the larger problem. A shared backend base is still a backend image. If every project-specific language
-runtime, linter, build system, cloud integration, and operational tool keeps moving into that layer, the backend will
-become a universal developer workstation image. That does not scale. The next Rust project, Node project, Java project,
-Solana project, Foundry project, or Terraform-heavy platform repo should not force changes across Claude, Codex, and
-Gemini.
+That shared base is useful, but it is still a backend image. It is the right place for common platform utilities. It is
+not the right long-term home for every project-specific language runtime, linter, build system, cloud integration, or
+operational workflow. The next Rust project, Node project, Java project, Solana project, Foundry project, or
+Terraform-heavy platform repo should not force matching changes across Claude, Codex, and Gemini.
 
 The better boundary is:
 
@@ -40,9 +38,9 @@ localhost, and the backend can call that server using the MCP support it already
 versus native." The important boundary is whether the language-specific runtime lives inside the backend image or inside
 a dedicated execution container.
 
-This paper argues for a hybrid model: keep backends small and stable, use toolchain containers for local project
-execution, and use MCP or similar gateways to mediate both toolchain calls and external authority. The core goal is not
-to remove native tools or avoid MCP. The core goal is to make tool placement explicit.
+This paper argues for a hybrid model: keep backends focused on model execution, use toolchain containers for local
+project execution, and use MCP or similar gateways to mediate both toolchain calls and external authority. The core goal
+is not to remove native tools or avoid MCP. The core goal is to make tool placement explicit.
 
 ---
 
@@ -167,20 +165,22 @@ execution environment. The AWS gateway boundary is credentials, account scope, a
 
 ## What we have today
 
-WitWave already has several tool surfaces. They are useful, but they are not yet a first-class toolchain layer.
+WitWave already has a real, working tool model. It is not starting from theory. The current system has backend-native
+tools, MCP tools, shared images, git-backed configuration, workspace volumes, and Kubernetes-scoped authority. What it
+does not yet have is a first-class place to put project-specific execution environments.
 
 ### One deployable agent, multiple containers
 
-A named WitWave agent is deployed as a pod-shaped unit:
+A named WitWave agent is deployed as a pod-shaped unit. The named agent is the operational boundary; the containers
+inside it cooperate to make that agent work.
 
 - A **harness** container receives A2A traffic, schedules heartbeats, runs jobs/tasks/triggers/continuations, and routes
   work to a backend according to `.witwave/backend.yaml`.
-- One or more **backend** containers run model-specific A2A servers. The common production shape is Claude, Codex, and
-  Gemini sidecars.
+- One or more **backend** containers run model-specific A2A servers. The common production shape can include Claude,
+  Codex, and Gemini sidecars for the same named agent.
 - Optional **git-sync** sidecars materialize repository content into the pod.
-- Optional **MCP tools** run as separate deployments/services today, with chart and operator support for MCP tool
-  rendering.
-- Workspace volumes can be mounted into participating backend containers through `WitwaveWorkspace` references.
+- Optional **MCP tools** run as separate deployments/services, with chart and operator support for MCP tool rendering.
+- Workspace volumes can be mounted into participating containers through `WitwaveWorkspace` references.
 
 The repo remains the source of truth. Agent identity, routing, prompts, schedules, backend-specific instructions,
 settings, MCP configuration, skills, docs, and website content all live in git. At runtime, git-sync and workspace
@@ -199,17 +199,14 @@ Those images share `images/backend-base/`, published as `ghcr.io/witwave-ai/imag
 image includes common CLIs, runtimes, and analyzers such as Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck,
 hadolint, gitleaks, trivy, and test tooling.
 
-That shared base is useful. It removed duplicated installation work across the three backend Dockerfiles and keeps
-common tool versions pinned in one place.
+This base image gives the backends parity for common platform work. It keeps tool versions pinned once instead of
+copying installation logic across three Dockerfiles. It is also intentionally only image composition. Installing
+`kubectl` does not grant cluster access. In-cluster Kubernetes authority is controlled separately through
+`WitwaveAgent.spec.kubernetesApiAccess` or explicit ServiceAccount/RBAC configuration.
 
-But it is still part of the backend-image family. It is not a separate project execution environment. If a new language
-or linter goes into `backend-base`, that capability still lands in every backend that inherits from it. That can be the
-right short-term move for common platform tools. It should not become the default answer for every project-specific
-runtime.
-
-The base image also does not grant authority. Installing `kubectl` does not grant cluster access. In-cluster Kubernetes
-authority is controlled separately through `WitwaveAgent.spec.kubernetesApiAccess` or explicit ServiceAccount/RBAC
-configuration.
+The important limitation is scope. `backend-base` is still inherited by backend images. Anything placed there is placed
+in every backend that uses it. That is acceptable for shared platform utilities. It is too broad for project-specific
+toolchains.
 
 ### Claude tool execution
 
@@ -226,8 +223,9 @@ So Claude already has two relevant execution surfaces:
 - Provider-native tools such as Bash/read/edit when enabled.
 - MCP tools described in `.claude/mcp.json`.
 
-Both execute from the Claude backend's point of view. Neither creates a separate project execution environment by
-itself.
+Both execute from the Claude backend's point of view. If Bash runs `go test`, it runs from inside the Claude backend
+container and can only use tools available there. MCP can call remote or sidecar services, but the current Claude
+backend does not yet have a dedicated project toolchain sidecar generated for it.
 
 ### Codex tool execution
 
@@ -246,7 +244,8 @@ So Codex also has two relevant execution surfaces:
 - A direct local shell inside the backend image.
 - MCP tools described in `.codex/mcp.json`.
 
-Again, neither is a separate toolchain layer yet.
+Again, the local execution path is inside the backend container. Codex can use MCP where configured, but its built-in
+local shell does not by itself cross into a separate language/toolchain container.
 
 ### Gemini tool execution
 
@@ -277,8 +276,9 @@ interpreter argument shapes such as inline code, stdin scripts, unsafe `uv`/`uvx
 outside explicitly allowed paths.
 
 This posture is useful for a future toolchain design: if toolchains expose MCP, the platform already has concepts for
-MCP config, reload, authentication, body caps, command allowlists, and metrics. But the current MCP tools are mostly
-external gateways. They do not yet solve local project execution.
+MCP config, reload, authentication, body caps, command allowlists, and metrics. But the current MCP tools mostly expose
+cluster and observability gateways. They do not yet provide a local project execution environment for commands such as
+`cargo test`, `npm test`, `terraform validate`, or a repo-specific release check.
 
 ### Shared filesystem and repo-as-source
 
@@ -291,8 +291,8 @@ WitWave relies heavily on repo-managed files and stable mounted paths:
   mirrors.
 - `WitwaveWorkspace` can provision shared volumes and stamp shared config files and existing Secrets onto participating
   agents.
-- Runtime memory, logs, and conversation state are persisted through backend/harness storage paths rather than being
-  baked into images.
+- Runtime memory, logs, task-store state, and conversation state are persisted through backend/harness storage paths
+  rather than being baked into images.
 
 This matters because a toolchain container does not need a separate idea of the project. It needs the same source tree
 and workspace files mounted at the same path as the backend. The repo remains the contract. The toolchain is just a
@@ -311,7 +311,9 @@ explicit, and preferably mediated.
 
 ### What is missing
 
-The missing layer is not MCP support. The missing layer is a first-class execution environment abstraction.
+The missing layer is not MCP support, shell support, or shared storage. Those already exist in different forms. The
+missing layer is a first-class execution environment abstraction that says, "this workspace needs these project tools,
+mounted here, exposed through this safe tool surface, with this policy."
 
 Today there is no:
 
@@ -324,52 +326,22 @@ Today there is no:
 - Trace model that distinguishes local project execution from external authority calls.
 - Routing model that explains why `cargo test` ran in the Rust toolchain and `pytest` ran in the Python toolchain.
 
-That is the actual gap this paper is about.
+That is the actual gap this paper is about. WitWave can already give agents tools. The next step is to give those tools
+a clearer architectural home.
 
 ---
 
 ## Why backend images should not become universal toolboxes
 
-The backend images have a clear job: run model backends reliably.
+The backend images have a clear job: run model backends reliably. Claude needs the Claude runtime. Codex needs the
+OpenAI Agents SDK runtime. Gemini needs the Google Gemini runtime. Each backend already has provider-specific
+dependencies, configuration, tool behavior, metrics, and failure modes.
 
-Claude needs the Claude runtime. Codex needs the OpenAI Agents SDK runtime. Gemini needs the Google Gemini runtime. Each
-backend already has provider-specific dependencies, provider-specific configuration, provider-specific tool behavior,
-provider-specific metrics, and provider-specific failure modes.
+If every project tool lives inside those backends, every new capability becomes backend-image work. A new language, a
+new linter suite, a new build system, or a new integration must be evaluated against Claude, Codex, and Gemini even when
+the tool has nothing to do with the model provider.
 
-If every tool lives inside those backends, every new capability becomes a three-image maintenance problem. Supporting a
-new language, adding a linter suite, introducing a build system, or wiring a new external integration means updating and
-releasing Claude, Codex, and Gemini images.
-
-The shared `backend-base` image helps with common baseline tools, but it does not remove the matrix. It just moves the
-shared part of the matrix into a common parent. For truly common platform utilities, that is useful. For
-project-specific toolchains, it is still the wrong center of gravity.
-
-For example, if a project needs Rust support and the project can run on all three backends, the naive backend-image
-strategy creates this product surface:
-
-```text
-claude + rust
-codex + rust
-gemini + rust
-```
-
-If the next project needs Node and Terraform:
-
-```text
-claude + node + terraform
-codex + node + terraform
-gemini + node + terraform
-```
-
-If another project needs Go, Python, Rust, Foundry, and Helm:
-
-```text
-claude + go + python + rust + foundry + helm
-codex + go + python + rust + foundry + helm
-gemini + go + python + rust + foundry + helm
-```
-
-That turns tool support into this matrix:
+That creates the wrong matrix:
 
 ```text
 backend type x project toolchain x version x security posture
@@ -385,10 +357,10 @@ The failure modes are predictable:
 - Project portability suffers because each repo wants a custom backend image.
 - Ownership becomes unclear: should the Claude backend image own Rust versioning?
 
-Dedicated toolchain containers break that multiplier. The backend images stay small, generic, and stable. Adding Rust
-support means creating or updating one Rust toolchain container, not rebuilding Claude, Codex, and Gemini. Adding a new
-linter suite means updating the relevant project toolchain. Adding a new external integration means creating a gateway
-or toolchain container with its own policy and release cadence.
+Dedicated toolchain containers break that multiplier. Adding Rust support means creating or updating one Rust toolchain
+container, not rebuilding Claude, Codex, and Gemini. Adding a linter suite means updating the relevant project
+toolchain. Adding an external integration means creating a gateway or controlled tool surface with its own policy and
+release cadence.
 
 The backend should know how to call tools. It should not need to contain every tool.
 
@@ -1026,19 +998,17 @@ routing should wait until traces show common patterns.
 
 ## Conclusion
 
-Containerized agents need a tool model that respects three different responsibilities: model runtime, project-local
-execution, and external authority.
+The recommendation is straightforward: make toolchains a first-class architectural layer.
 
-WitWave already has the pieces that make this problem visible. It has three real backends. It has a shared backend base
-with useful native tools. It has MCP gateways. It has git-backed agent configuration. It has shared workspaces. It has a
-repo-as-source operating model. Those choices are coherent, but they also reveal the next boundary: project-specific
-execution should not keep accumulating inside backend images.
+WitWave should keep model backends focused on model execution, session continuity, memory, metrics, and provider
+integration. It should keep the repo and workspace mounts as the shared source of truth. It should keep external systems
+behind explicit authority gateways. Project-local execution belongs between those two worlds, in dedicated toolchain
+containers that can be mounted, governed, traced, and replaced independently.
 
-The next architectural step is to make toolchains first-class. A toolchain container gives an agent the right compiler,
-interpreter, linter, test runner, package manager, and local execution environment for the workspace it is maintaining.
-MCP can be the standard way the backend calls into that container. The backend stays focused on model execution. The
-repo remains the source of truth. External systems remain behind explicit gateways and credentials.
+MCP fits this design well. It can be the standard protocol a backend uses to call a toolchain sidecar, just as it can be
+the standard protocol for calling Kubernetes, Helm, Prometheus, GitHub, or cloud gateways. The protocol is not the
+boundary. The container, credential, and authority model is the boundary.
 
-That boundary keeps the system understandable as it grows. Claude, Codex, and Gemini should not each become every
-possible developer workstation. They should be stable model runtimes that can reach the right execution environment for
-the job in front of them.
+That separation lets WitWave grow without turning Claude, Codex, and Gemini into three copies of every possible
+developer workstation. Backends stay stable. Toolchains evolve with projects. Gateways carry external authority. The
+agent gets the tools it needs, but the platform keeps a clear answer to where those tools belong.
