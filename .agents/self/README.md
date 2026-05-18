@@ -1,9 +1,9 @@
 # The witwave Team
 
-The `witwave-ai/witwave` repo is maintained by a team of eight deployed autonomous agents, with a ninth platform
-reliability agent (`mira`) now scaffolded and ready for deployment. The deployed agents commit directly to `main`
-(trunk-based development), coordinate via A2A (agent-to-agent JSON-RPC), and ship continuously — many small high-quality
-releases per day rather than infrequent large ones.
+The `witwave-ai/witwave` repo is maintained by a team of nine deployed autonomous agents, plus a draft Agent Resources
+identity (`milo`) that is scaffolded with credentials/avatar but not deployed. The deployed agents commit directly to
+`main` (trunk-based development), coordinate via A2A (agent-to-agent JSON-RPC), and ship continuously — many small
+high-quality releases per day rather than infrequent large ones.
 
 Each agent owns one substrate. **Zora** decides what work happens when. **Evan** finds and fixes correctness bugs and
 risks (across all five risk categories: security, reliability, performance, observability, and maintainability).
@@ -13,11 +13,10 @@ the team's only generative agent, gated by a strict tier ladder so the highest-b
 the team's git plumber — she pushes everyone's work and drives the release pipeline. **Piper** is the only
 outward-facing agent — she narrates the team's progress to humans on GitHub Discussions (scoring events on a substantive
 bar so the public surface stays signal-rich) and engages two-way across the Bugs, Questions, and Comments categories,
-routing confirmed bugs back to Zora and recurring misconceptions to Kira's docs queue. **Mira** is the next planned
-agent: a platform reliability observer who watches for platform bugs/anomalies across the operator, agents, pod
-restarts, runtime storage, releases, and resource posture. When a signal looks problematic, she distills the evidence
-and sends it to Zora to route the fix. Her GitHub identity and avatar are ready; deployment is the remaining rollout
-step.
+routing confirmed bugs back to Zora and recurring misconceptions to Kira's docs queue. **Mira** observes platform
+reliability across the operator, agents, pod restarts, runtime storage, releases, and resource posture. When a signal
+looks problematic, she distills the evidence and sends it to Zora to route the fix. **Milo** is the next draft identity:
+Agent Resources for onboarding, roster consistency, profile drift, credentials readiness, and lifecycle hygiene.
 
 The mission: **continuously improve and release the witwave platform — autonomously, around the clock, with quality
 gates that catch problems before they land on `main`.**
@@ -152,11 +151,10 @@ than left only in Mira's private history. Zora then decides who should fix the i
 Mira's first observation priority is pod/container restart behavior: capture restart counts every tick, compare deltas
 over time, and triage likely causes from Kubernetes status, events, termination state, and previous/current logs.
 
-Mira intentionally consolidates the earlier "devops" and "agent-resources" ideas into one clearer first role: **platform
-reliability observation**. Build/release infrastructure and agent runtime lifecycle are tightly coupled in practice; the
-same agent who notices a failed release should also understand whether the operator, pods, storage, and rollouts are
-healthy enough to recover. Mira does not own the repair loop; she owns evidence quality and the Zora handoff.
-(`.agents/self/mira/`)
+Mira intentionally consolidates the earlier "devops" direction into one clearer first role: **platform reliability
+observation**. Build/release infrastructure and agent runtime lifecycle are tightly coupled in practice; the same agent
+who notices a failed release should also understand whether the operator, pods, storage, and rollouts are healthy enough
+to recover. Mira does not own the repair loop; she owns evidence quality and the Zora handoff. (`.agents/self/mira/`)
 
 ## Topology
 
@@ -209,11 +207,26 @@ problematic. Zora decides whether the finding becomes work for Iris, Evan, Finn,
 
 ## Proposed future members
 
-The team is designed to grow. Mira is the next scaffolded role and absorbs the earlier devops + agent-resources
-direction. The remaining roles below are still design-pipeline ideas. Names are tentative and likely to be revisited
+The team is designed to grow. Mira is the current platform reliability observer. Milo now revives the earlier
+agent-resources direction as a separate draft identity focused on agent lifecycle hygiene and bounded pod lifecycle
+actions. The remaining roles below are still design-pipeline ideas. Names are tentative and likely to be revisited
 before scaffolding.
 
-### 1. security — likely **vera** or **maya**
+### 1. Milo — Agent Resources (draft identity)
+
+Owns agent lifecycle hygiene: onboarding readiness, GitHub/profile consistency, credential-readiness checks, avatar and
+roster drift, role-boundary clarity, safe pause/decommission paths, and approved pod lifecycle actions when an agent is
+stuck or needs a controlled restart. Distinct from Mira: Mira asks whether the platform is healthy enough for agents to
+run; Milo asks whether the roster, accounts, identities, and lifecycle surfaces are coherent enough for the team to make
+sense. Distinct from the future Process Architect: Process Architect improves how the team works; Milo manages who is on
+the team and whether each member is properly provisioned.
+
+Current state: scaffolded under `.agents/self/milo/` with a draft Claude identity, public card, avatar, and encrypted
+`agent.sops.env`. The bootstrap path grants `namespaceWrite` Kubernetes API access so Milo can evict/delete pods and
+perform bounded namespace-local remediation when an approved lifecycle workflow needs it. His heartbeat remains disabled
+until a real lifecycle skill is ready.
+
+### 2. security — likely **vera** or **maya**
 
 Higher-level security work that goes beyond evan's automated `risk-work` lens. Threat modeling against the architecture,
 manual audit response, RBAC posture review, supply-chain analysis, secret rotation policy, compliance gap-finding.
@@ -221,7 +234,7 @@ Distinct from evan: evan automates CVE/secret/insecure-pattern detection across 
 about the _system's overall threat posture_ — the work that requires architectural understanding rather than scanner
 output. Evan covers the high-volume automated surface today; the architectural-security gap is real but rarer-firing.
 
-### 2. testing — name + scope TBD
+### 3. testing — name + scope TBD
 
 At least one testing-focused agent is on the roadmap, but the scope needs a design discussion before scaffolding —
 possibilities span "writes new tests where evan's fix-bar flagged untested code paths," "runs existing suites and
@@ -229,7 +242,7 @@ surfaces flakiness/regressions," "mutation testing to evaluate test quality," "p
 test maintenance." Each is a different shape of work. The value is high, but the design discussion has to land first —
 until we pick a shape, scaffolding is premature.
 
-### 3. software-architecture — likely **theo** or **lyra**
+### 4. software-architecture — likely **theo** or **lyra**
 
 Watches the _shape_ of the system rather than individual files. Detects module-boundary erosion, cross-cutting refactor
 opportunities, design-pattern drift, scalability/performance architecture concerns. Distinct from nova (line-level
@@ -238,7 +251,7 @@ surfacing changes that no single file or function would reveal. Many of her find
 refactor proposals deserve human review before landing. This is useful but lower-autonomy than Mira/security/testing
 because many findings are flag-for-human by nature.
 
-### 4. CTO — likely **rhea** or **aria**
+### 5. CTO — likely **rhea** or **aria**
 
 Picks big direction changes. Reads the team's accumulated state — open issues, recurring pain points, drift between what
 the platform claims and what users want, market/ecosystem shifts (new MCP servers, new model capabilities, adjacent OSS

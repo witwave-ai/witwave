@@ -458,18 +458,71 @@ run should report whether the deployed container actually has the read-only tool
 create the platform-health snapshot directory under memory, and confirm whether she can send a distilled anomaly report
 to zora when needed. Historical anomaly detection will become useful after several heartbeat snapshots accumulate.
 
+## Step 12 — Deploy Milo
+
+Milo is the team's Agent Resources peer. He owns lifecycle hygiene around the agent roster itself: onboarding readiness,
+GitHub/profile consistency, credential readiness, avatar/roster drift, safe pause/decommission paths, and role-boundary
+clarity. Milo is intentionally separate from Mira: Mira watches whether the platform is healthy enough for agents to
+run; Milo watches whether the team membership and lifecycle surfaces are coherent enough for the roster to make sense.
+
+Milo needs bounded Kubernetes write access because lifecycle work sometimes includes pod-level intervention: evicting or
+deleting a stuck agent pod, verifying the replacement comes back healthy, or cleaning up namespace-local lifecycle
+artifacts during an approved pause/decommission flow. Use the operator-managed `namespaceWrite` preset rather than a
+hand-rolled ServiceAccount. It grants namespace-local remediation permissions while still excluding secrets, RBAC
+mutation, raw pod creation, and cluster-scoped resources.
+
+His heartbeat remains disabled until a real lifecycle skill is ready. Deploying him now gives the team a reachable A2A
+identity, mounted config, credentials, workspace access, persistence, and the namespace-write Kubernetes API identity.
+
+```bash
+mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/milo/agent.sops.env -- \
+  ww agent create milo \
+  --namespace witwave-self \
+  --workspace witwave-self \
+  --with-persistence \
+  --backend claude \
+  --kubernetes-api-access=namespaceWrite \
+  --harness-env TASK_TIMEOUT_SECONDS=7200 \
+  --harness-env CONVERSATIONS_AUTH_DISABLED=true \
+  --backend-env claude:TASK_TIMEOUT_SECONDS=7200 \
+  --backend-env claude:CONVERSATIONS_AUTH_DISABLED=true \
+  --backend-secret-from-env claude=CLAUDE_CODE_OAUTH_TOKEN \
+  --backend-secret-from-env claude=GITHUB_TOKEN \
+  --backend-secret-from-env claude=GITHUB_USER \
+  --gitsync-bundle https://github.com/witwave-ai/witwave.git@main:.agents/self/milo \
+  --gitsync-secret-from-env GITSYNC_USERNAME:GITSYNC_PASSWORD
+```
+
+After Milo is deployed, verify the Kubernetes API identity before giving him any lifecycle work:
+
+```bash
+kubectl auth can-i delete pods \
+  --namespace witwave-self \
+  --as system:serviceaccount:witwave-self:milo
+
+kubectl auth can-i patch deployments \
+  --namespace witwave-self \
+  --as system:serviceaccount:witwave-self:milo
+
+kubectl auth can-i get secrets \
+  --namespace witwave-self \
+  --as system:serviceaccount:witwave-self:milo
+```
+
+The expected answers are `yes`, `yes`, and `no`.
+
 ## Verify the team
 
-After all nine agents deploy, verify the workspace binding:
+After all ten agents deploy, verify the workspace binding:
 
 ```bash
 ww agent list \
   --namespace witwave-self
 ```
 
-`ww agent list` should now show nine rows (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`) all
-in state `Ready`. `ww workspace status witwave-self` should report all nine under the bound-agents section. zora's
-heartbeat fires every 30 minutes; her first tick will discover the team and start dispatching cadence-floor work.
+`ww agent list` should now show ten rows (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`,
+`milo`) all in state `Ready`. `ww workspace status witwave-self` should report all ten under the bound-agents section.
+zora's heartbeat fires every 30 minutes; her next tick will discover the team and start dispatching cadence-floor work.
 
 ## Tear it down
 
@@ -477,6 +530,13 @@ Tear down in reverse order: agents, workspace, operator, namespaces. Each comman
 
 Delete each agent (cascades the pod, Service, per-backend PVC `<name>-claude-data`, and the ww-managed `<name>-claude`
 Secret; `--delete-git-secret` also reaps the per-agent `<name>-gitsync` Secret minted by `--gitsync-secret-from-env`):
+
+```bash
+ww agent delete milo \
+  --namespace witwave-self \
+  --delete-git-secret \
+  --yes
+```
 
 ```bash
 ww agent delete mira \
