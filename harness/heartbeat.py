@@ -346,6 +346,24 @@ async def heartbeat_runner(
     bus: MessageBus,
     backends_ready: asyncio.Event | None = None,
 ) -> None:
+    """Watch ``HEARTBEAT.md`` and (re)launch the cron-driven fire loop.
+
+    On entry, calls :func:`load_heartbeat` to read schedule + prompt
+    content from ``HEARTBEAT_PATH``. A successful load spawns the
+    inner ``_run_loop`` task that fires heartbeat :class:`Message`
+    instances onto *bus* on the configured cron cadence; load failures
+    or an empty / disabled file leave the runner in the idle state
+    where it only watches for file changes.
+
+    The outer loop polls for the heartbeat directory to exist (with
+    10s backoff) and then uses ``watchfiles.awatch`` to react to edits
+    on ``HEARTBEAT.md``. Each edit cancels and joins the current loop
+    via :func:`_stop_and_join`, reloads the file, and re-spawns the
+    loop with the new schedule — so operators can re-pace the
+    heartbeat without restarting the harness. ``backends_ready`` is
+    forwarded into ``_run_loop`` so the very first fire waits for
+    backend readiness before dispatching.
+    """
     try:
         loaded = load_heartbeat()
     except Exception as e:

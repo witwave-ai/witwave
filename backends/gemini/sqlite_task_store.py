@@ -141,6 +141,18 @@ class SqliteTaskStore(TaskStore):
         return self._conn
 
     async def save(self, task: Task, context: ServerCallContext | None = None) -> None:
+        """Persist *task* via UPSERT on the ``tasks`` table.
+
+        Serialises the Task to JSON with Pydantic, then acquires
+        ``self._lock`` (records the wait under the ``save`` label of
+        ``backend_sqlite_task_store_lock_wait_seconds``) and dispatches
+        INSERT … ON CONFLICT UPDATE to a worker thread via
+        ``asyncio.to_thread``. The single shared ``sqlite3.Connection``
+        is serialised through the asyncio lock — see the class
+        docstring for the rationale and the upgrade path. ``context``
+        is accepted for :class:`TaskStore` protocol compatibility and
+        unused.
+        """
         data = task.model_dump_json()
         _wait_start = time.perf_counter()
         async with self._lock:
@@ -149,6 +161,15 @@ class SqliteTaskStore(TaskStore):
         logger.debug("Task %s saved to SQLite store.", task.id)
 
     async def get(self, task_id: str, context: ServerCallContext | None = None) -> Task | None:
+        """Return the stored Task with id *task_id*, or ``None`` if absent.
+
+        Holds ``self._lock`` for the read (records the wait under the
+        ``get`` label) so the shared connection is not used
+        concurrently. Reconstructs the Task via
+        :meth:`Task.model_validate_json`; missing rows log at DEBUG and
+        return ``None``. ``context`` is accepted for protocol
+        compatibility and unused.
+        """
         _wait_start = time.perf_counter()
         async with self._lock:
             _observe_lock_wait("get", time.perf_counter() - _wait_start)
@@ -161,6 +182,13 @@ class SqliteTaskStore(TaskStore):
         return task
 
     async def delete(self, task_id: str, context: ServerCallContext | None = None) -> None:
+        """Remove the row for *task_id* if present.
+
+        Acquires ``self._lock`` (records the wait under the ``delete``
+        label) and runs the DELETE on a worker thread. Deleting an
+        absent row is a no-op. ``context`` is accepted for protocol
+        compatibility and unused.
+        """
         _wait_start = time.perf_counter()
         async with self._lock:
             _observe_lock_wait("delete", time.perf_counter() - _wait_start)

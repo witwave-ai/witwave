@@ -51,6 +51,20 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Message:
+    """Single unit of work flowing through :class:`MessageBus`.
+
+    ``kind`` is the dedup key used by :meth:`MessageBus.try_send` and the
+    label on bus-level Prometheus metrics; reusing the same ``kind`` for
+    two semantically distinct schedules will cause one to silently
+    suppress the other when ``try_send`` is in play. ``result`` is a
+    future the bus worker resolves with the dispatch outcome — callers
+    that go through :meth:`MessageBus.send` await it; ``try_send``
+    callers can also await it but typically don't. ``trace_context``
+    carries the W3C trace headers attached on inbound A2A requests so
+    downstream backend calls and webhook deliveries propagate the same
+    span tree (#468).
+    """
+
     prompt: str
     session_id: str | None = None
     kind: str = "a2a"  # "a2a", "heartbeat", "job:<name>", "task:<name>", "trigger:<endpoint>", "continuation:<name>"
@@ -101,6 +115,17 @@ class MessageBus:
         self._pending_kinds: set[str] = set()
 
     async def send(self, message: Message) -> str:
+        """Enqueue *message* unconditionally and await its result.
+
+        Always enqueues — no dedup against ``_pending_kinds`` — so
+        overlapping schedules each get their own dispatch and their own
+        future. Raises :class:`asyncio.QueueFull` (with the implicit
+        ``TimeoutError`` chain suppressed) when the queue stays full for
+        longer than ``BUS_SEND_TIMEOUT``. On any exception path
+        (timeout, cancellation, worker failure) the ``_pending_kinds``
+        slot for this ``kind`` is cleared so future sends are not
+        starved.
+        """
         loop = asyncio.get_running_loop()
         # #1182: re-mint the future if the Message is being reused and its
         # previous future is already resolved. A stale done future would
@@ -163,6 +188,15 @@ class MessageBus:
         return True
 
     async def receive(self) -> Message:
+        """Block for the next queued message and refresh the depth gauge.
+
+        Updates ``harness_bus_queue_depth`` after the ``get()`` returns
+        so the gauge reflects the post-dequeue size. The
+        ``_pending_kinds`` slot is *not* released here — that's the bus
+        worker's responsibility via :meth:`release_pending` once
+        processing finishes, so re-fires of the same ``kind`` continue
+        to dedup until the prior one has finished executing (#514).
+        """
         message = await self._queue.get()
         if harness_bus_queue_depth is not None:
             harness_bus_queue_depth.set(self._queue.qsize())

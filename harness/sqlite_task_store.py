@@ -175,6 +175,15 @@ class SqliteTaskStore(TaskStore):
         return conn
 
     async def save(self, task: Task, context: ServerCallContext | None = None) -> None:
+        """Persist *task* via an UPSERT on the ``tasks`` table.
+
+        The Task is serialised to JSON via Pydantic, then handed to an
+        ``asyncio.to_thread`` worker that resolves the per-thread
+        connection and runs the INSERT … ON CONFLICT UPDATE under the
+        :func:`_retry_on_operational` budget. ``context`` is accepted
+        for protocol compatibility with :class:`TaskStore` and is
+        unused.
+        """
         data = task.model_dump_json()
 
         # Resolve the per-thread connection inside the worker thread
@@ -187,6 +196,15 @@ class SqliteTaskStore(TaskStore):
         logger.debug("Task %s saved to SQLite store.", task.id)
 
     async def get(self, task_id: str, context: ServerCallContext | None = None) -> Task | None:
+        """Return the stored Task with id *task_id*, or ``None`` if absent.
+
+        Reads a single row via ``asyncio.to_thread`` and reconstructs
+        the Task with :meth:`Task.model_validate_json`. A missing row
+        is logged at DEBUG and surfaces as ``None`` rather than an
+        exception. ``context`` is accepted for protocol compatibility
+        with :class:`TaskStore` and is unused.
+        """
+
         def _op() -> str | None:
             return _db_get(self._get_conn(), task_id)
 
@@ -199,6 +217,13 @@ class SqliteTaskStore(TaskStore):
         return task
 
     async def delete(self, task_id: str, context: ServerCallContext | None = None) -> None:
+        """Remove the row for *task_id* if present.
+
+        Deleting an absent row is a no-op (SQLite simply matches zero
+        rows). ``context`` is accepted for protocol compatibility with
+        :class:`TaskStore` and is unused.
+        """
+
         def _op() -> None:
             _db_delete(self._get_conn(), task_id)
 

@@ -177,6 +177,17 @@ class SqliteTaskStore(TaskStore):
         conn.commit()
 
     async def save(self, task: Task, context: ServerCallContext | None = None) -> None:
+        """Persist *task* via UPSERT on the ``tasks`` table.
+
+        Serialises the Task to JSON with Pydantic, then dispatches to
+        ``asyncio.to_thread`` where the worker resolves the
+        per-thread connection (``threading.local``) and runs INSERT …
+        ON CONFLICT UPDATE. The histogram label ``save`` records
+        threadpool-queue + SQLite ``busy_timeout`` wait time measured
+        inside the worker callable (#1753), not round-trip latency.
+        ``context`` is accepted for :class:`TaskStore` protocol
+        compatibility and unused.
+        """
         data = task.model_dump_json()
         # #1753: record threadpool-queue + SQLite busy_timeout wait by
         # measuring from before to_thread dispatch until the worker
@@ -194,6 +205,14 @@ class SqliteTaskStore(TaskStore):
         logger.debug("Task %s saved to SQLite store.", task.id)
 
     async def get(self, task_id: str, context: ServerCallContext | None = None) -> Task | None:
+        """Return the stored Task with id *task_id*, or ``None`` if absent.
+
+        Reads a single row in a worker thread that uses its own
+        per-thread connection. Missing rows log at DEBUG and return
+        ``None`` instead of raising; the lock-wait histogram is
+        labelled ``get``. ``context`` is accepted for protocol
+        compatibility and unused.
+        """
         _wait_start = time.perf_counter()
 
         def _get_with_wait(tid: str) -> str | None:
@@ -209,6 +228,13 @@ class SqliteTaskStore(TaskStore):
         return task
 
     async def delete(self, task_id: str, context: ServerCallContext | None = None) -> None:
+        """Remove the row for *task_id* if present.
+
+        Dispatches the DELETE to a worker thread on its per-thread
+        connection; deleting an absent row is a no-op. The lock-wait
+        histogram is labelled ``delete``. ``context`` is accepted for
+        protocol compatibility and unused.
+        """
         _wait_start = time.perf_counter()
 
         def _delete_with_wait(tid: str) -> None:

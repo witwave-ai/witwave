@@ -73,6 +73,14 @@ _ready = False
 
 
 def build_agent_card() -> AgentCard:
+    """Return the A2A :class:`AgentCard` advertised at ``/.well-known``.
+
+    Uses the module-level ``AGENT_NAME`` / ``AGENT_URL`` /
+    ``AGENT_VERSION`` constants (resolved from env at import time) and
+    declares a single ``echo`` skill. Streaming is disabled — the echo
+    executor produces a single response synchronously and has no
+    incremental delivery surface.
+    """
     return AgentCard(
         name=AGENT_NAME,
         description=_AGENT_DESCRIPTION,
@@ -93,6 +101,17 @@ def build_agent_card() -> AgentCard:
 
 
 async def health(request: Request) -> JSONResponse:
+    """Liveness/readiness probe handler — serves ``/health``, ``/health/live``, ``/health/ready``.
+
+    Returns HTTP 200 with ``status: "ok"`` once the startup task has
+    flipped ``_ready`` to True (i.e. uvicorn has bound the listener),
+    and HTTP 503 with ``status: "starting"`` before that. Bumps the
+    ``backend_health_checks_total`` counter and refreshes
+    ``backend_uptime_seconds`` on each call so Prometheus sees fresh
+    values without a separate scrape path. The same handler backs the
+    three probe routes — see :func:`build_app` — because the echo
+    backend has no readiness gate beyond "the socket is open".
+    """
     if metrics.backend_health_checks_total is not None:
         metrics.backend_health_checks_total.labels(**_LABELS, probe="health").inc()
     if metrics.backend_uptime_seconds is not None:
@@ -111,6 +130,14 @@ async def health(request: Request) -> JSONResponse:
 
 
 async def metrics_handler(request: Request) -> Response:
+    """Prometheus scrape handler — serves the default registry exposition.
+
+    Refreshes pull-time gauges (uptime) immediately before generating
+    the exposition so each scrape sees current values rather than the
+    value at the last event-time update. Returned content-type matches
+    ``prometheus_client.CONTENT_TYPE_LATEST`` so both v0.0.4 and
+    OpenMetrics scrapers parse it correctly.
+    """
     # Refresh gauges that are pull-time rather than event-time.
     if metrics.backend_uptime_seconds is not None:
         metrics.backend_uptime_seconds.labels(**_LABELS).set(
@@ -152,6 +179,17 @@ def build_app() -> Starlette:
 
 
 async def main() -> None:
+    """Process entry point — boot the Starlette app and uvicorn server.
+
+    Builds the A2A Starlette app via :func:`build_app`, starts uvicorn
+    on ``AGENT_HOST:BACKEND_PORT``, optionally starts the side-channel
+    metrics server when ``_metrics_enabled`` is True, and runs a
+    ``mark_ready_when_started`` companion coroutine that polls
+    ``server.started`` and flips the module-level ``_ready`` flag plus
+    the ``backend_startup_duration_seconds`` gauge. Both coroutines run
+    concurrently via :func:`asyncio.gather` so a startup failure in
+    either propagates immediately.
+    """
     global _ready
 
     app = build_app()
