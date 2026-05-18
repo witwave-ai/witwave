@@ -268,7 +268,21 @@ prose would feel forced>
 - **<component>**: <prose summary>
 ```
 
-g. Stage and commit:
+g. **Format with prettier (mandatory pre-flight).** Run prettier against `CHANGELOG.md` so the auto-generated entry
+matches what `CI — Docs` enforces on the tagged SHA:
+
+```sh
+cd <checkout> && npx --yes prettier@3.4.2 --write CHANGELOG.md
+```
+
+**Pinned to `3.4.2` exactly — NOT `@latest`, NOT generic `prettier`, NOT `prettier@^3`.** The version must match the pin
+in `.github/workflows/ci-docs.yml`; later majors disagree on wrap + blank-line-before-list rules and silently produce
+output that `prettier@3.4.2 --check` will then reject. This step closes the recurring CHANGELOG-prettier red-CI pattern
+(5 burned tags across v0.23.20 / v0.23.22 / v0.25.0 / v0.27.0 / v0.27.5) — the release workflows gate strictly on
+`CI — Docs` succeeding on the tag SHA, and a bad wrap in the auto-generated entry permanently strands the tag (no
+fix-forward on `main` HEAD unsticks an already-tagged SHA).
+
+h. Stage and commit:
 
 ```sh
 git -C <checkout> add CHANGELOG.md
