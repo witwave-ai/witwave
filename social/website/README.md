@@ -6,9 +6,10 @@ content strategy and page copy remains the `witwave` repository.
 
 ## Goals
 
-- Make the two foundational whitepapers prominent:
+- Make the three foundational whitepapers prominent:
   - `social/papers/three-phases-of-ai-adoption.md`
   - `social/papers/anatomy-of-an-agentic-team.md`
+  - `social/papers/tool-boundaries-for-containerized-agents.md`
 - Provide a clear project entry point that explains the framework and links to the GitHub repository.
 - Provide a home for project posts derived from `social/posts/` and future essays.
 - Hold lightweight marketing/positioning copy for the public site.
@@ -122,10 +123,10 @@ secret and exits cleanly without publishing when neither is configured.
   cloud-native autonomous agents, AI agent teams, Kubernetes, MCP tools, agentic AI adoption, and agent-native software
   engineering. Prefer one canonical URL per piece of content, static article pages for crawlers, and readable summaries
   that accurately describe what the page offers.
-- Keep the homepage focused: one thesis, one clear project entry point, two foundational papers, and one path to
+- Keep the homepage focused: one thesis, one clear project entry point, three foundational papers, and one path to
   blog/updates.
 - Do not bury the whitepapers behind a generic resources page.
-- Keep marketing claims grounded in the two papers unless a source is added.
+- Keep marketing claims grounded in the foundational papers unless a source is added.
 - Prefer small static changes over introducing a build system until the publishing repo requires it.
 - Keep `quickstart/index.html` short, command-first, and grounded in `clients/ww/README.md` plus
   `clients/ww/WALKTHROUGH.md`; it should always name Kubernetes cluster access as a prerequisite.

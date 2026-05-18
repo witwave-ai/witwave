@@ -27,6 +27,20 @@
       "status": "published",
       "primary": true,
       "themes": ["agentic-teams", "coordination", "memory", "operating-model"]
+    },
+    {
+      "title": "Tool Boundaries for Containerized Agents",
+      "shortTitle": "Tool Boundaries",
+      "slug": "tool-boundaries-for-containerized-agents",
+      "sourcePath": "social/papers/tool-boundaries-for-containerized-agents.md",
+      "markdownPath": "content/whitepapers/tool-boundaries-for-containerized-agents.md",
+      "websitePath": "whitepapers/tool-boundaries-for-containerized-agents/",
+      "readerPath": "reader/?paper=tool-boundaries-for-containerized-agents",
+      "updatedAt": "2026-05-18",
+      "deck": "A practical architecture for separating model backends, project toolchains, and external authority gateways.",
+      "status": "published",
+      "primary": true,
+      "themes": ["containerized-agents", "toolchains", "mcp", "architecture"]
     }
   ]
 }

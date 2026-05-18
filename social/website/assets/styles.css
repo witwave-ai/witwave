@@ -45,7 +45,10 @@ body::before {
     linear-gradient(rgba(49, 231, 211, 0.075) 1px, transparent 1px),
     linear-gradient(90deg, rgba(49, 231, 211, 0.055) 1px, transparent 1px),
     linear-gradient(135deg, transparent 0 48%, rgba(216, 255, 95, 0.035) 49% 51%, transparent 52%);
-  background-size: 42px 42px, 42px 42px, 96px 96px;
+  background-size:
+    42px 42px,
+    42px 42px,
+    96px 96px;
   mask-image: linear-gradient(to bottom, black, transparent 86%);
 }
 
@@ -366,7 +369,7 @@ p {
 
 .paper-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -709,9 +712,7 @@ p {
 
 .avatar-token.lead {
   border-color: rgba(216, 255, 95, 0.42);
-  background:
-    linear-gradient(135deg, rgba(49, 231, 211, 0.2), rgba(216, 255, 95, 0.1)),
-    rgba(5, 13, 18, 0.88);
+  background: linear-gradient(135deg, rgba(49, 231, 211, 0.2), rgba(216, 255, 95, 0.1)), rgba(5, 13, 18, 0.88);
   color: var(--ink);
   box-shadow:
     0 16px 38px rgba(0, 0, 0, 0.3),
@@ -1130,8 +1131,10 @@ p {
   width: 0.86rem;
   height: 0.86rem;
   background: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V7Zm2 0v10h8V7h-8ZM4 3a2 2 0 0 1 2-2h8v2H6v10H4V3Z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V7Zm2 0v10h8V7h-8ZM4 3a2 2 0 0 1 2-2h8v2H6v10H4V3Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V7Zm2 0v10h8V7h-8ZM4 3a2 2 0 0 1 2-2h8v2H6v10H4V3Z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V7Zm2 0v10h8V7h-8ZM4 3a2 2 0 0 1 2-2h8v2H6v10H4V3Z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
 }
 
 .copy-code-button:hover,
@@ -1778,6 +1781,8 @@ p {
   }
 
   .feature-strip article:nth-child(3),
+  .paper-card:nth-child(3),
+  .paper-detail:nth-child(3),
   .team-card:nth-child(3) {
     animation-delay: 160ms;
   }
