@@ -6,6 +6,22 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.27.3] — 2026-05-18
+
+Patch release covering a content cycle on the tool-boundaries whitepaper: seven editorial passes on the
+`social/` source draft (clarifying the backend toolchain boundary, softening the MCP framing, consolidating the
+argument, tightening the current-architecture section, and final polish), then publication of the paper through the
+website (`social/website/`) with the matching index, sitemap, llms.txt, and styling updates. No changes to the `ww`
+CLI, operator, images, or charts — all release artifacts are functionally identical to v0.27.2.
+
+### Documentation
+
+- **social**: Seven editorial passes on the tool-boundaries-for-containerized-agents paper draft — clarifying the
+  backend toolchain boundary, softening the MCP toolchain framing, revising and polishing the argument, consolidating
+  it, and tightening the current-architecture section.
+- **website**: Publish the tool-boundaries whitepaper through `social/website/` — symlinked content entry,
+  whitepapers index/JSON, sitemap, llms.txt, styles, and homepage updates.
+
 ## [0.27.2] — 2026-05-18
 
 Patch release covering a social-content cycle (Piper field notes for 2026-05-17 plus a new tool-boundaries paper draft).
