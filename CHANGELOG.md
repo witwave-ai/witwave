@@ -6,6 +6,17 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.27.2] — 2026-05-18
+
+Patch release covering a social-content cycle (Piper field notes for 2026-05-17 plus a new tool-boundaries paper draft).
+No changes to the `ww` CLI, operator, images, or charts — all release artifacts are functionally identical to v0.27.1.
+
+### Documentation
+
+- **social**: Two Piper field notes for 2026-05-17 (including "reading the diff") with a follow-up timing/phrasing fix,
+  and a new draft paper on tool boundaries for containerized agents. Includes a Prettier reflow fix on the
+  reading-the-diff post to satisfy the `CI — Docs` prose-wrap check.
+
 ## [0.27.1] — 2026-05-17
 
 Patch release for the shared backend base image introduced in v0.27.0. No API changes.
