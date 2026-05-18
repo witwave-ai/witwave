@@ -59,7 +59,7 @@ re-pinned drift-prone metrics: OpenClaw to `371,000+` stars / `76,600+` forks (w
 `All-Hands-AI/OpenHands` URLs to the post-rename canonical `OpenHands/OpenHands` (the GitHub redirect still resolves but
 the org has been renamed; sources verified via og:title on the live release pages, accessed 2026-05-09). Eleventh pass
 (2026-04-20) rewrote the OpenClaw entry with fresh research from <https://openclaw.ai/> and
-<https://github.com/openclaw/openclaw> pulled during a session-end strategic discussion. Captured owner's "witwave is
+<https://github.com/openclaw/openclaw> pulled during a session-end strategic discussion. Captured owner's "Witwave is
 OpenClaw for teams with Kubernetes clusters" positioning frame and listed OpenClaw's 20+ chat-platform integrations,
 menu-bar voice-wake companion, workspace skills system with agent-written-skill loop, and MIT + calendar-versioned
 release cadence. Marked OpenClaw as "primary open-source competitor" in the section heading; added explicit
@@ -315,10 +315,10 @@ the Claude Agent SDK and Microsoft Agent Framework — and the most directly com
 significant: agents built on OpenAI's SDK can already target Claude / Gemini / 100+ models via LiteLLM (source:
 <https://github.com/openai/openai-agents-python>, accessed 2026-05-11), eroding the historical "pick your vendor's SDK,
 get locked to their models" framing that pushed teams to either Anthropic or OpenAI camps. The sandbox-agent + harness
-pattern overlaps with this project's harness-as-pod model but at a different layer — witwave runs the harness as a
+pattern overlaps with this project's harness-as-pod model but at a different layer — Witwave runs the harness as a
 Kubernetes pod with multi-backend routing inside it (claude / codex / gemini per concern), while OpenAI's sandbox is
 per-task workspace isolation inside the SDK process. Net: a category peer whose existence reinforces that "vendor SDK +
-sandbox + sessions + MCP + guardrails + tracing" is now the standard shape; witwave's defensible differentiation narrows
+sandbox + sessions + MCP + guardrails + tracing" is now the standard shape; Witwave's defensible differentiation narrows
 further to **multi-backend routing under one named-agent identity**, **cluster-resident A2A coordination across named
 agents**, and **the published `/events/stream` wire contract consumed by multiple independent clients**.
 
@@ -496,7 +496,7 @@ requests is a straightforward gap to close.
 **Autonomy model:** Autonomous (self-hosted personal agent, runs 24/7, messaging-driven; the closest philosophical peer
 to this project in the open-source world)
 
-**The one-line positioning frame:** witwave is OpenClaw for teams with Kubernetes clusters — same autonomy model, same
+**The one-line positioning frame:** Witwave is OpenClaw for teams with Kubernetes clusters — same autonomy model, same
 messaging-first interaction surface, same multi-backend LLM routing, but deployed as a cluster-resident multi-agent
 platform rather than a personal local daemon. OpenClaw targets the individual running a 24/7 assistant on a Mac Mini;
 this project targets the team running coordinated agents as cluster workloads.
@@ -540,8 +540,8 @@ multi-backend (Claude / OpenAI / DeepSeek), operator-managed, 24/7 autonomous �
 
 _Differentiators in this project's favor:_
 
-1. **Kubernetes-native multi-agent team posture.** witwave is a cluster-resident platform with A2A-native coordination
-   between named agents; OpenClaw targets a single-user, single-machine personal assistant. "witwave is OpenClaw for
+1. **Kubernetes-native multi-agent team posture.** Witwave is a cluster-resident platform with A2A-native coordination
+   between named agents; OpenClaw targets a single-user, single-machine personal assistant. "Witwave is OpenClaw for
    teams with Kubernetes clusters" captures the split.
 2. **Multi-backend routing under one agent identity.** `backend.yaml` routes per-concern (heartbeat → claude, jobs →
    codex, etc.) within one named agent; OpenClaw's multi-model support is per-conversation, not
@@ -556,14 +556,14 @@ _Differentiators in this project's favor:_
 _OpenClaw's differentiators in its favor:_
 
 1. **Category-leading install base and community** — an order of magnitude more users and a bigger skill ecosystem.
-2. **Chat-platform breadth.** 20+ platforms out of the box. witwave ships none today (trigger + webhook primitives could
+2. **Chat-platform breadth.** 20+ platforms out of the box. Witwave ships none today (trigger + webhook primitives could
    build a subset; real work).
-3. **Skill auto-generation.** The execution-to-skill-synthesis loop is shipped; witwave's skill documents are static
+3. **Skill auto-generation.** The execution-to-skill-synthesis loop is shipped; Witwave's skill documents are static
    (see Research Themes → Self-Improvement).
-4. **Menu-bar / voice-wake surface.** OpenClaw has a live notification / voice interaction surface; witwave has a web
+4. **Menu-bar / voice-wake surface.** OpenClaw has a live notification / voice interaction surface; Witwave has a web
    dashboard on the way to maintenance-mode.
 
-**Direction implication.** If witwave's strategic direction is "CLI-first bootstrap + chat-platform integrations as user
+**Direction implication.** If Witwave's strategic direction is "CLI-first bootstrap + chat-platform integrations as user
 surface + menu-bar/tray for glance-level status + no dashboard" (patterned on OpenClaw), the competitive positioning is:
 _OpenClaw for teams deploying agents to shared Kubernetes infrastructure_. The chat-platform integration work (new issue
 not yet filed at the time of this pass) is the biggest shared-axis gap.

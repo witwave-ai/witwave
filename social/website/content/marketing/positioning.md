@@ -8,7 +8,7 @@ observability, and human escalation.
 
 ## Public framing
 
-witwave is about agent-native engineering: teams of governed agents that can work with durable identity, memory,
+Witwave is about agent-native engineering: teams of governed agents that can work with durable identity, memory,
 coordination, and safety boundaries.
 
 ## Avoid

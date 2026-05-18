@@ -70,14 +70,14 @@ Run a verifying admission controller in the cluster, and configure it to require
 - **[Sigstore policy-controller](https://docs.sigstore.dev/policy-controller/overview/)** — admission webhook that
   enforces cosign verification on every pod schedule. Refuses unsigned images cluster-wide. Drop a `ClusterImagePolicy`
   matching `ghcr.io/witwave-ai/images/*` with the certificate-identity-regexp from
-  [`SECURITY.md`](../SECURITY.md#container-images), and unsigned witwave images can't run.
+  [`SECURITY.md`](../SECURITY.md#container-images), and unsigned Witwave images can't run.
 - **[Kyverno](https://kyverno.io/)** — same shape, different policy DSL. Kyverno's
   [`verify-image-signatures`](https://kyverno.io/policies/cleanup/cleanup-sigstore-verify-images/) example is a starting
   point.
 - **[slsa-verifier](https://github.com/slsa-framework/slsa-verifier)** for the CLI binaries — drop it into your build
   pipeline that consumes `ww` and require successful verification before installing.
 
-The witwave-operator chart does not ship such a policy by default. It's an operator opt-in — adding it without opt-in
+The `witwave-operator` chart does not ship such a policy by default. It's an operator opt-in — adding it without opt-in
 would refuse unsigned third-party images that operators have legitimate reasons to run. File an issue if you'd like a
 sample policy bundle.
 

@@ -260,8 +260,8 @@ for a named agent targets the harness container. The repo's self/test agent conf
 
 ### A2A Protocol
 
-Agents communicate via the A2A protocol (HTTP/JSON-RPC). External callers always target the **witwave agent** by its
-hostname/port. witwave reads the `routing.a2a` entry from `backend.yaml` and forwards the request unchanged to the
+Agents communicate via the A2A protocol (HTTP/JSON-RPC). External callers always target the **Witwave agent** by its
+hostname/port. Witwave reads the `routing.a2a` entry from `backend.yaml` and forwards the request unchanged to the
 configured backend. The backend session ID matches the session ID provided by the external caller, preserving
 conversation continuity across turns.
 
@@ -355,7 +355,7 @@ Phase 17:    docs refinement
 Installation commands live with the artifacts they deploy:
 
 - Local test-team install through `ww` — [`.agents/test/bootstrap.md`](../.agents/test/bootstrap.md)
-- Production witwave agent install (published chart) — [`charts/witwave/README.md`](../charts/witwave/README.md)
+- Production Witwave agent install (published chart) — [`charts/witwave/README.md`](../charts/witwave/README.md)
 - Operator install — [`charts/witwave-operator/README.md`](../charts/witwave-operator/README.md)
 - Operator development (`make install` / `make run`) — [`operator/README.md`](../operator/README.md)
 - ww CLI — [`clients/ww/README.md`](../clients/ww/README.md)
@@ -389,7 +389,7 @@ and deleted at all depths to match the source exactly.
 
 ### Patterns in Use
 
-**witwave as pure infrastructure.** harness owns the scheduling and relay layer; LLM execution is the sole
+**Witwave as pure infrastructure.** harness owns the scheduling and relay layer; LLM execution is the sole
 responsibility of backend containers. This separation allows each layer to evolve independently and enables swapping LLM
 backends without touching the scheduler.
 

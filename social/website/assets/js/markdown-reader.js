@@ -25,7 +25,7 @@ async function initReader() {
     throw new Error("No whitepapers configured");
   }
 
-  document.title = `${selected.shortTitle || selected.title} | witwave`;
+  document.title = `${selected.shortTitle || selected.title} | Witwave`;
   readerTitle.textContent = "Reader controls";
   readerDeck.textContent = "Choose a paper, download its source, or return to the archive.";
   renderActions(selected);

@@ -132,7 +132,7 @@ function renderBlogPost(posts) {
   const selectedSummary = getPostSummary(selected);
 
   if (!selected) {
-    document.title = "No Blog Posts | witwave";
+    document.title = "No Blog Posts | Witwave";
     blogPostTitle.textContent = "Reader controls";
     blogPostSummary.textContent = "No published posts are available yet.";
     blogPostMeta.innerHTML = "";
@@ -145,7 +145,7 @@ function renderBlogPost(posts) {
     return;
   }
 
-  document.title = `${selectedTitle} | witwave`;
+  document.title = `${selectedTitle} | Witwave`;
   blogPostTitle.textContent = "Reader controls";
   blogPostSummary.textContent = "Choose a field note or return to the blog archive.";
   blogPostMeta.innerHTML = "";

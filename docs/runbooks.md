@@ -33,7 +33,7 @@ ww operator logs --pod <pod>
 - **CrashLoopBackOff:** check recent config changes; roll back the last `helm upgrade` if it correlates.
 - **ErrImagePull / ImagePullBackOff:** verify `ghcr.io/witwave-ai/images/*` is reachable and that the image tag is real.
 - **Node eviction:** check `kubectl describe node <node>` for resource pressure; may indicate PVC fill or memory
-  pressure unrelated to witwave.
+  pressure unrelated to Witwave.
 
 **Escalation.** If the backend is down on > 50% of agents, treat as cluster-wide incident (likely registry / node pool
 outage).

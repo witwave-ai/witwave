@@ -1,4 +1,4 @@
-# The witwave Team
+# The Witwave Team
 
 The `witwave-ai/witwave` repo is maintained by a team of nine deployed autonomous agents, plus a draft Agent Resources
 identity (`milo`) that is scaffolded with credentials/avatar but not deployed. The deployed agents commit directly to
@@ -18,7 +18,7 @@ reliability across the operator, agents, pod restarts, runtime storage, releases
 looks problematic, she distills the evidence and sends it to Zora to route the fix. **Milo** is the next draft identity:
 Agent Resources for onboarding, roster consistency, profile drift, credentials readiness, and lifecycle hygiene.
 
-The mission: **continuously improve and release the witwave platform — autonomously, around the clock, with quality
+The mission: **continuously improve and release the Witwave platform — autonomously, around the clock, with quality
 gates that catch problems before they land on `main`.**
 
 ## Secrets

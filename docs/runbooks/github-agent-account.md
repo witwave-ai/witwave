@@ -1,6 +1,6 @@
 # GitHub Agent Account Runbook
 
-Use this runbook when creating a GitHub account for a new witwave self-team agent, such as `mira-agent-witwave`. The
+Use this runbook when creating a GitHub account for a new Witwave self-team agent, such as `mira-agent-witwave`. The
 result is a verified GitHub user, member/owner access in the Witwave organization, a profile avatar, and an encrypted
 `agent.sops.env` file ready for `ww agent create`.
 

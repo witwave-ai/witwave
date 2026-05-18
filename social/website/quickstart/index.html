@@ -4,22 +4,31 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Quick Start | Run AI Agents on Kubernetes</title>
-    <meta name="description" content="Install the ww CLI, connect to a Kubernetes cluster, install the witwave operator, and run a hello-world autonomous agent." />
+    <meta
+      name="description"
+      content="Install the ww CLI, connect to a Kubernetes cluster, install the Witwave operator, and run a hello-world autonomous agent."
+    />
     <link rel="canonical" href="https://witwave.ai/quickstart/" />
-    <meta property="og:site_name" content="witwave" />
+    <meta property="og:site_name" content="Witwave" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Quick Start | Run AI Agents on Kubernetes" />
-    <meta property="og:description" content="Install the ww CLI, connect to a Kubernetes cluster, install the witwave operator, and run a hello-world autonomous agent." />
+    <meta
+      property="og:description"
+      content="Install the ww CLI, connect to a Kubernetes cluster, install the Witwave operator, and run a hello-world autonomous agent."
+    />
     <meta property="og:url" content="https://witwave.ai/quickstart/" />
     <meta property="og:image" content="https://witwave.ai/assets/images/witwave-social-preview.png" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
-    <meta property="og:image:alt" content="witwave logo over a dark, high-tech interface background." />
+    <meta property="og:image:alt" content="Witwave logo over a dark, high-tech interface background." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Quick Start | Run AI Agents on Kubernetes" />
-    <meta name="twitter:description" content="Install the ww CLI, connect to a Kubernetes cluster, install the witwave operator, and run a hello-world autonomous agent." />
+    <meta
+      name="twitter:description"
+      content="Install the ww CLI, connect to a Kubernetes cluster, install the Witwave operator, and run a hello-world autonomous agent."
+    />
     <meta name="twitter:image" content="https://witwave.ai/assets/images/witwave-social-preview.png" />
-    <meta name="twitter:image:alt" content="witwave logo over a dark, high-tech interface background." />
+    <meta name="twitter:image:alt" content="Witwave logo over a dark, high-tech interface background." />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -29,7 +38,7 @@
             "@id": "https://witwave.ai/quickstart/#webpage",
             "url": "https://witwave.ai/quickstart/",
             "name": "Quick Start | Run AI Agents on Kubernetes",
-            "description": "Install the ww CLI, connect to a Kubernetes cluster, install the witwave operator, and run a hello-world autonomous agent.",
+            "description": "Install the ww CLI, connect to a Kubernetes cluster, install the Witwave operator, and run a hello-world autonomous agent.",
             "isPartOf": { "@id": "https://witwave.ai/#website" }
           },
           {
@@ -42,7 +51,7 @@
         ]
       }
     </script>
-    <link rel="alternate" type="application/rss+xml" title="witwave field notes" href="https://witwave.ai/feed.xml" />
+    <link rel="alternate" type="application/rss+xml" title="Witwave field notes" href="https://witwave.ai/feed.xml" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-48x48.png" type="image/png" sizes="48x48" />
@@ -52,7 +61,7 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="../index.html" aria-label="witwave home">
+      <a class="brand" href="../index.html" aria-label="Witwave home">
         <img class="brand-logo" src="../assets/images/witwave-logo-terminal.svg" alt="" aria-hidden="true" />
       </a>
       <div class="header-actions">
@@ -71,7 +80,7 @@
         <p class="eyebrow">Quick Start</p>
         <h1>Install the CLI. Point it at Kubernetes. Run an agent.</h1>
         <p>
-          The fastest path into witwave starts with <code>ww</code>, the command-line tool that installs the operator,
+          The fastest path into Witwave starts with <code>ww</code>, the command-line tool that installs the operator,
           creates agents, sends prompts, and shows logs and events without needing a browser or local port-forward.
         </p>
         <div class="hero-actions">
@@ -123,7 +132,9 @@
           <div>
             <p class="card-kicker">Confirm</p>
             <h2>Check your CLI and cluster context.</h2>
-            <p>Make sure <code>ww</code> is on your path and your kubeconfig is pointed at the cluster you intend to use.</p>
+            <p>
+              Make sure <code>ww</code> is on your path and your kubeconfig is pointed at the cluster you intend to use.
+            </p>
             <div class="code-window" data-code-window>
               <div class="code-window-header">
                 <span>bash</span>
@@ -139,7 +150,7 @@ kubectl config current-context</code></pre>
           <div class="step-number">03</div>
           <div>
             <p class="card-kicker">Operator</p>
-            <h2>Install the witwave operator.</h2>
+            <h2>Install the Witwave operator.</h2>
             <p>
               The operator reconciles <code>WitwaveAgent</code>, <code>WitwavePrompt</code>, and
               <code>WitwaveWorkspace</code> resources into running infrastructure.
@@ -193,7 +204,9 @@ ww agent send hello "ping from quick start" --namespace witwave</code></pre>
     </main>
 
     <footer class="site-footer">
-      <p>Quick Start gets the operator and an echo-backed first agent running; the full walkthrough takes you deeper.</p>
+      <p>
+        Quick Start gets the operator and an echo-backed first agent running; the full walkthrough takes you deeper.
+      </p>
       <a href="https://github.com/witwave-ai/witwave/blob/main/clients/ww/WALKTHROUGH.md">Open walkthrough</a>
     </footer>
     <script src="../assets/js/quickstart-copy.js?v=copy-icon-only-20260514"></script>

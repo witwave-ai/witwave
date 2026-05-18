@@ -1,6 +1,6 @@
-# witwave
+# Witwave
 
-witwave is a cloud-native autonomous agent framework for AI agent teams. Visit [witwave.ai](https://witwave.ai) for the
+Witwave is a cloud-native autonomous agent framework for AI agent teams. Visit [witwave.ai](https://witwave.ai) for the
 public overview, whitepapers, team roster, and Quick Start.
 
 The project is built around agent-native engineering: named agents with durable identity, backend choice, schedules,
@@ -13,7 +13,7 @@ evaluate their work, coordinate with other agents, and help improve the system t
 pointed at other software projects, and the same deployment model can support a single specialized agent or a team of
 agents.
 
-What witwave includes:
+What Witwave includes:
 
 - A **harness** that routes work, schedules heartbeats/jobs/tasks, handles triggers, and chains continuations.
 - **Backend agents** for Claude, Codex, Gemini, and a zero-dependency `echo` stub for onboarding and smoke tests.
@@ -84,7 +84,7 @@ agents and you have a scheduler with nothing to dispatch to — no intelligence.
 | **ww CLI**           | `clients/ww/`              | Client              | Go + cobra command-line interface (`curl -fsSL https://github.com/witwave-ai/witwave/releases/latest/download/install.sh \| sh`, or Homebrew).       |
 | **Operator**         | `operator/`                | Kubernetes operator | Go controller that reconciles `WitwaveAgent`, `WitwavePrompt`, and `WitwaveWorkspace` CRDs.                                                          |
 | **WitwaveWorkspace** | `operator/api/v1alpha1/`   | Shared-resource CRD | Operator-reconciled bundle of shared volumes, projected Secrets, and ConfigMap files that participating agents mount. See [Workspaces](#workspaces). |
-| **Agent chart**      | `charts/witwave/`          | Deployment          | Helm chart that deploys witwave agents via templated manifests.                                                                                      |
+| **Agent chart**      | `charts/witwave/`          | Deployment          | Helm chart that deploys Witwave agents via templated manifests.                                                                                      |
 | **Operator chart**   | `charts/witwave-operator/` | Deployment          | Helm chart that installs the operator + CRD.                                                                                                         |
 
 The harness routes work to backend agents but does no LLM execution itself. Client surfaces (dashboard + ww) provide
@@ -217,7 +217,7 @@ For direct Helm installs (GitOps workflows, non-Homebrew environments, or the ma
 CLI-managed):
 
 ```bash
-# Agent chart — deploys witwave agents directly via templated manifests.
+# Agent chart — deploys Witwave agents directly via templated manifests.
 helm install witwave oci://ghcr.io/witwave-ai/charts/witwave --version 0.23.15 --namespace witwave --create-namespace
 
 # Operator chart — installs the witwave-operator controller and the WitwaveAgent CRD.
@@ -304,7 +304,7 @@ curl http://localhost:8099/health/ready
 ## Agent Structure
 
 Self-managing agents are defined under `.agents/self/` (the agents that maintain this repo). Each named agent has its
-own directory containing witwave config, backend instances, logs, and memory.
+own directory containing Witwave config, backend instances, logs, and memory.
 
 ```text
 .agents/
@@ -353,7 +353,7 @@ Each agent directory contains:
 
 ## Routing Configuration
 
-Each agent's `backend.yaml` (under `.witwave/`) controls where witwave routes each type of work:
+Each agent's `backend.yaml` (under `.witwave/`) controls where Witwave routes each type of work:
 
 ```yaml
 backend:
@@ -457,7 +457,7 @@ sessions), so each job/task/trigger invocation gets a fresh budget. All three ba
 
 ## Communication
 
-Agents communicate over the [A2A protocol](https://a2a-protocol.org) via JSON-RPC. Each witwave agent exposes:
+Agents communicate over the [A2A protocol](https://a2a-protocol.org) via JSON-RPC. Each Witwave agent exposes:
 
 - `/.well-known/agent.json` — agent card (identity and capabilities)
 - `/` — A2A JSON-RPC endpoint (`message/send`)
@@ -543,7 +543,7 @@ MCP stdio entries are gated by a per-backend command allow-list (`MCP_ALLOWED_CO
 enforces its own bearer (`MCP_TOOL_AUTH_TOKEN`) via `shared/mcp_auth.py`. Outbound webhooks go through an SSRF-resistant
 URL check that re-resolves the hostname at delivery time.
 
-The witwave-operator chart runs with a split RBAC surface (`rbac.secretsWrite=false` drops Secret write verbs while
+The `witwave-operator` chart runs with a split RBAC surface (`rbac.secretsWrite=false` drops Secret write verbs while
 keeping reads). Credential Secrets are dual-checked (label + `IsControlledBy`) before any update/delete so the operator
 never touches user-created Secrets.
 

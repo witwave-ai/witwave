@@ -1,6 +1,6 @@
-# witwave website source
+# Witwave Website Source
 
-This directory is the source for the public witwave website. In the main `witwave` repository it lives at
+This directory is the source for the public Witwave website. In the main `witwave` repository it lives at
 `social/website/`; in the dedicated GitHub Pages repository it is copied to the repository root. The source of truth for
 content strategy and page copy remains the `witwave` repository.
 

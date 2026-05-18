@@ -1,6 +1,6 @@
-# witwave
+# Witwave
 
-> witwave is a cloud-native autonomous agent framework for AI agent teams. It provides Kubernetes-native runtime
+> Witwave is a cloud-native autonomous agent framework for AI agent teams. It provides Kubernetes-native runtime
 > infrastructure, backend routing, schedules, triggers, memory, observability, MCP tool access, and human-governed
 > escalation so agents can work as durable software participants rather than isolated chat sessions.
 
@@ -10,24 +10,24 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
 ## Primary Pages
 
 - [Home](https://witwave.ai/) - Project thesis and high-level entry point.
-- [Project](https://witwave.ai/project/) - What witwave is, what the code does, and how the project uses its own
+- [Project](https://witwave.ai/project/) - What Witwave is, what the code does, and how the project uses its own
   agent-team model.
 - [Quick Start](https://witwave.ai/quickstart/) - Install the `ww` CLI, connect to Kubernetes, install the operator, and
   run a first echo-backed agent.
 - [Whitepapers](https://witwave.ai/whitepapers/) - Foundational papers on agentic AI adoption, agentic team design, and
   tool boundaries for containerized agents.
 - [Team](https://witwave.ai/team/) - Public roster of specialized AI agents and the human project steward.
-- [Blog](https://witwave.ai/blog/) - Field notes on agent-native engineering and the witwave project.
+- [Blog](https://witwave.ai/blog/) - Field notes on agent-native engineering and the Witwave project.
 - [RSS feed](https://witwave.ai/feed.xml) - Machine-readable feed for published field notes.
 
 ## Foundational Papers
 
-- [The Three Phases of Agentic AI Adoption in Software Engineering](https://witwave.ai/whitepapers/three-phases-of-ai-adoption/) -
-  Driven, delegated, and native phases for integrating agents into software delivery.
+- [The Three Phases of Agentic AI Adoption in Software Engineering][three-phases] - Driven, delegated, and native phases
+  for integrating agents into software delivery.
 - [Anatomy of an Agentic Team](https://witwave.ai/whitepapers/anatomy-of-an-agentic-team/) - Roles, coordination,
   memory, process improvement, and human responsibility in agentic teams.
-- [Tool Boundaries for Containerized Agents](https://witwave.ai/whitepapers/tool-boundaries-for-containerized-agents/) -
-  How to separate backend runtimes, project-local toolchains, and external authority gateways.
+- [Tool Boundaries for Containerized Agents][tool-boundaries] - How to separate backend runtimes, project-local
+  toolchains, and external authority gateways.
 
 ## Source Material
 
@@ -36,16 +36,14 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
 - [README](https://github.com/witwave-ai/witwave/blob/main/README.md) - Project overview and architecture entry point.
 - [CLI walkthrough](https://github.com/witwave-ai/witwave/blob/main/clients/ww/WALKTHROUGH.md) - Deeper `ww` CLI
   walkthrough.
-- [Three Phases source Markdown](https://github.com/witwave-ai/witwave/blob/main/social/papers/three-phases-of-ai-adoption.md) -
-  Canonical source for the adoption whitepaper.
-- [Agentic Team source Markdown](https://github.com/witwave-ai/witwave/blob/main/social/papers/anatomy-of-an-agentic-team.md) -
-  Canonical source for the team whitepaper.
-- [Tool Boundaries source Markdown](https://github.com/witwave-ai/witwave/blob/main/social/papers/tool-boundaries-for-containerized-agents.md) -
-  Canonical source for the containerized-agent tool boundaries whitepaper.
+- [Three Phases source Markdown][three-phases-source] - Canonical source for the adoption whitepaper.
+- [Agentic Team source Markdown][agentic-team-source] - Canonical source for the team whitepaper.
+- [Tool Boundaries source Markdown][tool-boundaries-source] - Canonical source for the containerized-agent tool
+  boundaries whitepaper.
 
 ## Interpretation Notes
 
-- Agents provide value in existing human-led and hybrid workflows; witwave argues that the compounding step is
+- Agents provide value in existing human-led and hybrid workflows; Witwave argues that the compounding step is
   lifecycle-native integration.
 - Autonomy is not the same thing as running in the cloud. The important shift is governed participation in routing,
   context, quality, memory, observability, release, and escalation loops.
@@ -58,3 +56,9 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
 - [GitHub discussions](https://github.com/witwave-ai/witwave/discussions) - Ideas, questions, bugs, announcements, and
   progress.
 - [GitHub issues](https://github.com/witwave-ai/witwave/issues) - Project issue tracker.
+
+[three-phases]: https://witwave.ai/whitepapers/three-phases-of-ai-adoption/
+[tool-boundaries]: https://witwave.ai/whitepapers/tool-boundaries-for-containerized-agents/
+[three-phases-source]: https://github.com/witwave-ai/witwave/blob/main/social/papers/three-phases-of-ai-adoption.md
+[agentic-team-source]: https://github.com/witwave-ai/witwave/blob/main/social/papers/anatomy-of-an-agentic-team.md
+[tool-boundaries-source]: https://github.com/witwave-ai/witwave/blob/main/social/papers/tool-boundaries-for-containerized-agents.md

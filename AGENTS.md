@@ -47,7 +47,7 @@ For AI coding assistants (Claude Code, Codex):
 
 ## Project Overview
 
-witwave is a multi-container autonomous agent platform. Each named agent (iris, nova, kira, …) consists of:
+Witwave is a multi-container autonomous agent platform. Each named agent (iris, nova, kira, …) consists of:
 
 - A **harness** container — the infrastructure layer (A2A relay, heartbeat scheduler, job scheduler). It owns no LLM
   itself; it forwards all work to a backend.
@@ -57,9 +57,9 @@ witwave is a multi-container autonomous agent platform. Each named agent (iris, 
   set of cluster- or system-level capabilities to backends over the Model Context Protocol. All entries under `tools/`
   are equal MCP components; backends opt into them via their own MCP configuration.
 
-Multiple named agents can collaborate as a team via the A2A protocol, but the named agent (witwave + its backends) is
-the deployable unit. MCP components are shared infrastructure — one deployment typically serves every agent in the
-cluster rather than being replicated per agent.
+Multiple named agents can collaborate as a team via the A2A protocol, but the named Witwave agent (harness + its
+backends) is the deployable unit. MCP components are shared infrastructure — one deployment typically serves every agent
+in the cluster rather than being replicated per agent.
 
 ## Architecture
 
@@ -351,7 +351,7 @@ clients/                     # User-facing interfaces to the platform
 └── ww/                      # Go + cobra CLI (ships via Homebrew tap)
 
 charts/                      # Helm charts
-├── witwave/                     # witwave Helm chart (deploys agents to Kubernetes)
+├── witwave/                     # Witwave Helm chart (deploys agents to Kubernetes)
 └── witwave-operator/            # witwave-operator Helm chart (deploys the WitwaveAgent controller)
 
 operator/                    # Kubernetes operator (Go) — reconciles WitwaveAgent CRDs
@@ -418,7 +418,7 @@ ww operator install --yes
 
 ## Installing the operator via ww
 
-The `ww` CLI ships with the witwave-operator chart embedded (v0.5.0+) and is the recommended way to install the
+The `ww` CLI ships with the `witwave-operator` chart embedded (v0.5.0+) and is the recommended way to install the
 operator. Lifecycle + diagnostics:
 
 ```bash
@@ -439,7 +439,7 @@ the local-cluster prompt heuristic.
 
 ## Interacting with Agents
 
-Use the `/remote` skill to interact with running agents. Always target the **witwave agent by name** — witwave routes
+Use the `/remote` skill to interact with running agents. Always target the **Witwave agent by name** — Witwave routes
 the request internally to its configured backend. Never target backend services directly.
 
 | Shape                            | Harness                 | First backend           | Additional backends     | Metrics |
