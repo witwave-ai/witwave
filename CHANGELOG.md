@@ -994,8 +994,8 @@ running once per 24h on a staggered cron across all five peers.
 - **zora**: polish-tier depth control extended across the team. evan dispatches now pick the depth tier per cadence
   (reset to 3 on fresh source, advance 3 → 5 → 7 → 9 after 2 consecutive 0/0/0 runs, hold otherwise) and the polish
   baseline raises 3 → 5 once cheap-pass ground has been swept. Same advance/reset/hold logic extends to nova
-  (`code-cleanup` ↔ `code-document` one-shot) and kira (`docs-cleanup` ↔ `docs-research` one-shot) — deeper passes fire
-  as one-shots when the default tier returns 0/0/0 for 2 consecutive runs on stable source, then flip back. State
+  (`code-cleanup` ↔ `code-document` one-shot) and kira (`docs-cleanup` ↔ `docs-research` one-shot) — deeper passes
+  fire as one-shots when the default tier returns 0/0/0 for 2 consecutive runs on stable source, then flip back. State
   tracked per skill in `team_state.md`. Dispatches/hour cap raised 5 → 8 to give the tightened cadence floors breathing
   room. kira `docs-cleanup` cadence floor tightens 24h → 6h so docs sweeps keep pace with the team's commit rate.
 
@@ -1962,6 +1962,7 @@ once after pulling).
   are easy to discover.
 
   Built-in catalog ships per backend type:
+
   - claude: `ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
     `AWS_SESSION_TOKEN`, `AWS_REGION`
   - codex: `OPENAI_API_KEY`, `OPENAI_ORG`, `OPENAI_PROJECT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`,
@@ -1990,6 +1991,7 @@ once after pulling).
 - **`ww tui` create modal — secrets section is now dynamic per-pair** (Phase 2). Replaces the multi-line "Backend
   secrets" TextArea with a list of editable `KEY` / `VALUE` InputField pairs that grows and shrinks at runtime. Two new
   buttons in the form's button row:
+
   - `[+ Secret]` appends a fresh empty pair and lands focus on the new pair's KEY field so the user can type
     immediately.
   - `[− Secret]` pops the trailing pair (no-op when empty) and lands focus on the previous pair's VALUE — or on the
@@ -2016,6 +2018,7 @@ once after pulling).
 
 - **`ww tui` create modal — secrets redesign (Phase 1)**. Dropped the Auth mode dropdown entirely. The four old modes
   (none / profile / from-env / existing-secret / set-inline) collapse into two more focused fields:
+
   - **Existing Secret name (optional)** — single-line. When set, references a pre-built K8s Secret as-is (verified,
     never modified). Wins over the secrets block.
   - **Backend secrets** — multi-line. One `KEY=VALUE` per line. Values prefixed with `$` are lifted from the shell
@@ -2347,6 +2350,7 @@ ww agent backend remove consensus smoke --remove-repo-folder   # drop it cleanly
 
 - **Multi-backend agents** — `ww agent create` and `ww agent scaffold` both gain a repeatable `--backend` flag. Two
   shapes accepted per entry:
+
   - `<type>` — name = type (e.g. `--backend claude`), the single- backend shortcut
   - `<name>:<type>` — explicit name + type pair (e.g. `--backend echo-1:echo --backend echo-2:echo`), required when two
     backends of the same type must coexist on one agent Each declared backend gets a distinct container name, distinct
