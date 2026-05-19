@@ -6,6 +6,28 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.27.7] — 2026-05-19
+
+Test-gap + docs-research patch. Fills the untested-public-API gap on the `ww` agent's `KubernetesApiAccessEnable` /
+`KubernetesApiAccessDisable` entrypoints (the in-place helpers were unit-tested but the exported full-flow paths were
+not), and refreshes the competitive-landscape research note against today's upstream state (OpenClaw v2026.5.18 stable +
+v2026.5.18-beta.1, CrewAI v1.14.5 graduation). No changes to the `ww` CLI runtime, operator, images, or charts — release
+artifacts are functionally identical to v0.27.6 modulo the embedded version stamp.
+
+### Fixed
+
+- **ww**: Add full-flow tests for `KubernetesApiAccessEnable` and `KubernetesApiAccessDisable` in
+  `clients/ww/internal/agent/kubernetes_api_access_test.go` — 14 net-new test cases covering Add / Update / Already-
+  Configured / Not-Found / mode-validation / input-validation paths against the package's existing fake-client fixtures.
+- **docs**: Reflow `docs/competitive-landscape.md` to the prettier@3.4.2 prose-wrap so `CI — Docs` and
+  `Publish — Social Website` pass on the research-refresh commit.
+
+### Documentation
+
+- **research**: Refresh `docs/competitive-landscape.md` against current industry state — OpenClaw stable bumped to
+  v2026.5.18 (Android Talk Mode, Mac redesign, CLI plugin system) and beta to v2026.5.18-beta.1; CrewAI v1.14.5
+  graduated to stable with the `CrewAgentExecutor` deprecation as the headline.
+
 ## [0.27.6] — 2026-05-18
 
 Documentation + identity-scaffolding patch — re-cut of v0.27.5. The v0.27.5 tag (2026-05-18 15:05Z) was published but
