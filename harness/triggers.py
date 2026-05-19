@@ -34,6 +34,20 @@ _DISABLED = object()
 
 @dataclass
 class TriggerItem:
+    """Parsed webhook-trigger definition.
+
+    Each item registers an endpoint slug (matching
+    ``^[a-z0-9][a-z0-9-]*$``) that becomes a routable inbound HTTP
+    endpoint served by the harness. ``content`` is the prompt body
+    delivered to the backend when the trigger fires; ``session_id``
+    pins the conversation (defaulting to a UUIDv5 derived from
+    ``AGENT_NAME + endpoint`` when unset). ``secret_env_var`` names
+    an env var whose value is the HMAC shared secret for signed
+    requests. ``enabled=False`` keeps the item visible on /triggers
+    for dashboard listing but excludes it from
+    ``items_by_endpoint`` so the dispatcher 404s the slug.
+    """
+
     path: str
     name: str
     endpoint: str
@@ -125,6 +139,18 @@ def parse_trigger_file(path: str) -> TriggerItem | object | None:
 
 
 class TriggerRunner:
+    """File-watching registry mapping endpoint slugs to ``TriggerItem``s.
+
+    Triggers are reactive — they don't run autonomously. The harness
+    HTTP handler calls ``items_by_endpoint`` on each inbound POST to
+    locate the matching item (if any) and invokes it. ``_running``
+    tracks endpoints that are currently executing so a second POST
+    to a busy endpoint can be rejected. The set is safe as a plain
+    Python set because asyncio runs single-threaded and the
+    check-then-add in the dispatcher has no ``await`` between the
+    two operations.
+    """
+
     def __init__(self):
         self._items: dict[str, TriggerItem] = {}
         # Endpoints currently executing. Safe as a plain set because asyncio
@@ -199,6 +225,13 @@ class TriggerRunner:
         return result
 
     def items_by_endpoint(self) -> dict[str, TriggerItem]:
+        """Map of routable endpoint -> TriggerItem.
+
+        Only enabled items are included so the HTTP dispatcher
+        returns 404 for endpoints whose trigger file is disabled,
+        even though the disabled entries remain in ``_items`` for
+        dashboard listing.
+        """
         # Only enabled triggers are routable; disabled ones stay in
         # `_items` for listing purposes but must not accept inbound
         # POSTs. Returning only enabled here means the dispatcher
@@ -206,6 +239,16 @@ class TriggerRunner:
         return {item.endpoint: item for item in self._items.values() if item.enabled}
 
     async def run(self) -> None:
+        """Run the trigger watcher loop forever.
+
+        Performs an initial ``_scan`` of ``TRIGGERS_DIR`` and then
+        drives ``awatch`` via ``run_awatch_loop`` so create/modify
+        events call ``_register(count_reload=True)`` and delete
+        events call ``_unregister(count_reload=True)`` — both paths
+        increment ``harness_triggers_reloads_total``. Survives
+        directory deletion (retries every 10s) and watcher exit
+        (self-restarts).
+        """
         logger.info(f"Trigger runner watching {TRIGGERS_DIR}")
 
         def _on_change(path: str) -> None:

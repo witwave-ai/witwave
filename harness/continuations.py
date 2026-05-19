@@ -60,6 +60,24 @@ CONTINUATION_FANIN_TTL = float(os.environ.get("CONTINUATION_FANIN_TTL", "3600"))
 
 @dataclass
 class ContinuationItem:
+    """Parsed reactive-continuation definition.
+
+    Backs an entry in ``ContinuationRunner._items``. The continuation
+    fires a downstream prompt whenever upstream prompts matching
+    every entry in ``continues_after`` (fnmatch patterns; all must
+    be satisfied for fan-in) complete and the outcome and content
+    predicates pass. ``on_success`` / ``on_error`` gate fires by
+    upstream outcome; ``trigger_when`` requires the upstream
+    response to contain a literal substring; ``delay`` (seconds)
+    defers the downstream fire. ``session_id`` pins the downstream
+    conversation, falling back to the upstream session at fire time
+    when ``None``. ``max_concurrent_fires`` is the per-continuation
+    in-flight cap; ``enabled=False`` keeps the item listed but
+    excludes it from event matching in ``notify()``. Continuations
+    have no ``next_fire`` (they are event-driven), only the
+    observed ``last_fire`` / ``last_success`` timestamps.
+    """
+
     path: str
     name: str
     continues_after: list[str]  # one or more upstream kind patterns (fnmatch); all must complete (fan-in)
@@ -318,6 +336,24 @@ async def _fire(
 
 
 class ContinuationRunner:
+    """Reactive registry mapping ``ContinuationItem``s to upstream events.
+
+    Continuations don't run on a schedule; instead the harness calls
+    ``notify()`` whenever a prompt completes, and each enabled item
+    whose ``continues_after`` pattern(s) match (and whose outcome /
+    ``trigger_when`` predicates pass) fires a downstream prompt.
+    Multiple-pattern items use fan-in: per-``(item.path,
+    session_id)`` state in ``_fanin_state`` accumulates the upstream
+    kinds seen so far and the item only fires once every configured
+    pattern is satisfied. Stale partial fan-in state is evicted
+    after ``CONTINUATION_FANIN_TTL`` seconds to bound memory growth
+    when a required upstream never arrives (#557). Two throttles
+    bound in-flight fan-out: per-item ``max_concurrent_fires`` and
+    the process-wide ``CONTINUATION_MAX_CONCURRENT_FIRES_GLOBAL``.
+    ``close()`` drains in-flight fires under a timeout so harness
+    shutdown does not abort live bus POSTs.
+    """
+
     async def close(self, timeout: float = 5.0) -> None:
         """Drain in-flight continuation fires under a timeout (#1275).
 
@@ -617,6 +653,18 @@ class ContinuationRunner:
             _t.add_done_callback(_cleanup)
 
     async def run(self) -> None:
+        """Run the continuation watcher loop forever.
+
+        Performs an initial ``_scan`` of ``CONTINUATIONS_DIR`` and
+        then drives ``awatch`` via ``run_awatch_loop`` so
+        create/modify events call ``_register`` and delete events
+        call ``_unregister``, incrementing
+        ``harness_continuation_reloads_total`` on each. Continuations
+        do not run autonomously inside ``run()`` — they are reactive
+        and fired by ``notify()`` when matching upstream events
+        arrive. The watcher self-restarts on exit and survives
+        directory deletion by retrying every 10s.
+        """
         logger.info(f"Continuation runner watching {CONTINUATIONS_DIR}")
 
         def _on_change(path: str) -> None:

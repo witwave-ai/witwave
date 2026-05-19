@@ -70,6 +70,20 @@ def _translate_day_abbrevs(expr: str) -> str:
 
 @dataclass
 class TaskItem:
+    """Parsed scheduled-task definition.
+
+    Backs an entry in ``TaskRunner._items``. Combines the schedule
+    fields (``days_expr``, ``tz``, ``window_start``, ``window_end``,
+    ``loop``, ``loop_gap``, ``start``, ``end``) with execution
+    parameters (``content``, ``model``, ``backend_id``, ``consensus``,
+    ``max_tokens``, ``done_when``) and runtime bookkeeping
+    (``task``, ``running``, ``enabled``, ``next_fire``, ``last_fire``,
+    ``last_success``). ``window_start is None`` selects run-once
+    mode (the task fires immediately and exits, with no schedule).
+    ``enabled=False`` keeps the item visible on /tasks but stops
+    ``TaskRunner._register`` from arming a schedule for it.
+    """
+
     path: str
     name: str
     days_expr: str
@@ -108,6 +122,31 @@ _DISABLED = object()
 
 
 def parse_task_file(path: str) -> "TaskItem | object | None":
+    """Parse a task markdown file into a TaskItem. Returns:
+
+    - ``TaskItem`` on success (including ``enabled=False`` items,
+      which are returned with sentinel defaults for fields that
+      would otherwise need validation — they are listed in /tasks
+      for dashboard visibility but not scheduled).
+    - ``None`` on parse error or invalid frontmatter (unknown
+      timezone, invalid ``days`` cron expression, malformed
+      ``window-start``, ``window-duration`` without ``window-start``,
+      or any uncaught exception); each such case increments
+      ``harness_sched_task_parse_errors_total`` and the caller is
+      expected to preserve any previous last-known-good
+      registration.
+
+    Supported frontmatter keys: ``name``, ``timezone``, ``days``
+    (cron weekday expression, three-letter abbreviations like
+    ``Mon`` are translated to numerics), ``window-start`` /
+    ``window_start`` (``HH:MM``; omitting it enables run-once mode),
+    ``window-duration`` / ``window_duration`` (derives
+    ``window_end`` tz-aware so DST transitions are respected, #1305),
+    ``loop`` (requires ``window-duration``), ``loop-gap`` /
+    ``loop_gap``, ``done-when`` / ``done_when``, ``start`` / ``end``
+    (ISO dates), ``model``, ``agent``, ``consensus``, ``max-tokens``
+    / ``max_tokens``, and ``enabled``.
+    """
     try:
         with open(path) as f:
             raw = f.read()
@@ -389,6 +428,28 @@ async def run_task(
     semaphore: asyncio.Semaphore | None = None,
     backends_ready: asyncio.Event | None = None,
 ) -> None:
+    """Drive a single task's lifecycle on the harness event loop.
+
+    Waits for ``backends_ready`` before doing anything so a task whose
+    window opens during early startup doesn't fire against a backend
+    pool that isn't yet ready.
+
+    When ``item.window_start is None`` the task runs once
+    immediately and returns; otherwise it loops indefinitely,
+    sleeping until the next window opens (computed by
+    ``_next_window_open`` honouring ``item.start``/``item.end`` and
+    ``item.days_expr``), firing inside the window, and — when
+    ``item.loop`` is set — re-firing with ``loop_gap`` spacing until
+    ``window_end`` is reached or ``done_when`` matches the response.
+
+    Each fire writes a ``.running.json`` checkpoint under
+    ``CHECKPOINT_DIR`` so the next ``_scan`` after an unclean restart
+    can detect the interrupted run and emit
+    ``harness_sched_task_checkpoint_stale_total``. The optional
+    ``semaphore`` (the runner's process-wide
+    ``TASKS_MAX_CONCURRENT`` gate) is acquired around each fire so
+    concurrent task items cannot exceed the cap.
+    """
     if backends_ready is not None:
         await backends_ready.wait()
 
@@ -790,6 +851,20 @@ async def run_task(
 
 
 class TaskRunner:
+    """File-watching registry that schedules ``TaskItem``s parsed from
+    ``TASKS_DIR``.
+
+    Each registered enabled item gets a long-running asyncio task
+    executing ``run_task``; disabled items stay in ``_items`` for
+    dashboard listing but are not scheduled. When
+    ``TASKS_MAX_CONCURRENT`` > 0 a process-wide ``asyncio.Semaphore``
+    caps the number of simultaneously executing task fires.
+    Registration/unregistration are driven by ``run()`` watching the
+    tasks directory and re-parsing on change; parse errors preserve
+    the last-known-good registration so transient syntax issues do not
+    drop a healthy schedule.
+    """
+
     def __init__(self, bus: MessageBus, backends_ready: asyncio.Event | None = None):
         self._bus = bus
         self._backends_ready = backends_ready
@@ -913,6 +988,17 @@ class TaskRunner:
                 await self._register(os.path.join(TASKS_DIR, filename))
 
     async def run(self) -> None:
+        """Run the task watcher loop forever.
+
+        Performs an initial ``_scan`` of ``TASKS_DIR`` (which also
+        sweeps any stale ``.running.json`` checkpoints left behind by
+        an interrupted previous process) and then drives ``awatch``
+        via ``run_awatch_loop`` so create/modify events call
+        ``_register`` and delete events call ``_unregister``,
+        incrementing ``harness_sched_task_reloads_total`` on each.
+        The loop self-restarts on watcher exit and survives directory
+        deletion by retrying every 10s.
+        """
         logger.info(f"Task runner watching {TASKS_DIR}")
 
         async def _on_change(path: str) -> None:

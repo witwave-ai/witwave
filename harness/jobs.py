@@ -47,6 +47,20 @@ _JOBS_MAX_CONCURRENT = int(os.environ.get("JOBS_MAX_CONCURRENT", "0"))
 
 @dataclass
 class JobItem:
+    """Parsed scheduled-job definition.
+
+    Backs an entry in ``JobRunner._items``. ``schedule`` is a
+    croniter-compatible cron expression or ``None`` for run-once
+    mode (``run_job`` fires once and exits). ``session_id`` pins
+    the conversation across reschedules. Runtime bookkeeping
+    (``task``, ``running``, ``enabled``, ``next_fire``, ``last_fire``,
+    ``last_success``) is populated by the cron loop and
+    ``_execute_job`` so the /jobs endpoint can render scheduling
+    state without re-parsing cron strings. ``enabled=False`` keeps
+    the item listed but stops ``JobRunner._register`` from arming
+    a cron task.
+    """
+
     path: str
     name: str
     schedule: str | None
@@ -314,6 +328,25 @@ async def run_job(
     semaphore: asyncio.Semaphore | None = None,
     backends_ready: asyncio.Event | None = None,
 ) -> None:
+    """Drive a single job's cron loop on the harness event loop.
+
+    Waits for ``backends_ready`` before doing anything so a job whose
+    cron tick would fire during early startup doesn't fire against a
+    backend pool that isn't yet ready.
+
+    When ``item.schedule is None`` the job is treated as run-once:
+    ``_execute_job`` is awaited once and the coroutine exits.
+    Otherwise the function loops forever, computing the next tick
+    from ``croniter(item.schedule, max(now, last_scheduled))`` so
+    cumulative drift (overrunning runs, system suspend/resume,
+    backwards NTP steps) cannot push subsequent ticks behind
+    wall-clock (#860). Each tick records lag against
+    ``harness_job_lag_seconds``; ticks arriving while a previous
+    fire is still running are skipped and reported on
+    ``harness_job_skips_total``. The optional ``semaphore`` is the
+    runner's ``JOBS_MAX_CONCURRENT`` gate, acquired around each
+    fire inside ``_execute_job``.
+    """
     if backends_ready is not None:
         await backends_ready.wait()
 
@@ -360,6 +393,19 @@ async def run_job(
 
 
 class JobRunner:
+    """File-watching registry that schedules ``JobItem``s parsed from
+    ``JOBS_DIR``.
+
+    Each registered enabled item gets a long-running asyncio task
+    executing ``run_job``; disabled items stay in ``_items`` for
+    dashboard listing but no cron task is created. When
+    ``JOBS_MAX_CONCURRENT`` > 0 a process-wide ``asyncio.Semaphore``
+    caps the number of simultaneously executing job fires.
+    Registration/unregistration are driven by ``run()`` watching the
+    jobs directory and re-parsing on change; parse errors preserve
+    the last-known-good registration.
+    """
+
     def __init__(self, bus: MessageBus, backends_ready: asyncio.Event | None = None):
         self._bus = bus
         self._backends_ready = backends_ready
@@ -482,6 +528,18 @@ class JobRunner:
                 await self._register(os.path.join(JOBS_DIR, filename))
 
     async def run(self) -> None:
+        """Run the job watcher loop forever.
+
+        Performs an initial ``_scan`` (which also sweeps any stale
+        ``.running.json`` checkpoints left under ``CHECKPOINT_DIR``
+        and increments ``harness_job_checkpoint_stale_total`` for
+        each one found) and then drives ``awatch`` via
+        ``run_awatch_loop`` so create/modify events call
+        ``_register`` and delete events call ``_unregister``,
+        incrementing ``harness_job_reloads_total`` on each. The
+        loop self-restarts on watcher exit and survives directory
+        deletion by retrying every 10s.
+        """
         logger.info(f"Job runner watching {JOBS_DIR}")
 
         async def _on_change(path: str) -> None:
