@@ -3,18 +3,18 @@
 Last updated: 2026-05-19 by kira-agent-witwave (nineteenth pass — light verification-and-refinement pass per zora
 docs-research dispatch under P2 cadence-floor breach + polish-tier one-shot ADVANCE (zero_streak=1 at docs-cleanup
 against last_run_sha=`ef2f67a7`). Three minor pin refinements captured ~24 hours after the eighteenth pass: **OpenAI
-Agents SDK** bumped from `v0.17.2` to **`v0.17.3`** (2026-05-19) — bug-fix release covering sandbox-credentials
-handling (keep mountpoint credentials out of sandbox commands), unified optional-dependency import errors, null-guard
-for text message outputs, output-guardrail counts in error details, FunctionTool / Codex output-schema mutation fixes,
+Agents SDK** bumped from `v0.17.2` to **`v0.17.3`** (2026-05-19) — bug-fix release covering sandbox-credentials handling
+(keep mountpoint credentials out of sandbox commands), unified optional-dependency import errors, null-guard for text
+message outputs, output-guardrail counts in error details, FunctionTool / Codex output-schema mutation fixes,
 Vercel-sandbox terminal-state skip, leading-question-mark normalization in port queries, custom voice splitter honouring
 short-audio chunks, and `Agent.instructions` documented as optional; no breaking changes (source:
 <https://github.com/openai/openai-agents-python/releases/tag/v0.17.3>, accessed 2026-05-19). **OpenClaw** beta head
 advanced same-day from `v2026.5.18-beta.1` to **`v2026.5.19-beta.1`** (released 2026-05-18 22:58 UTC, hours after the
-eighteenth pass's beta snapshot) — adds meme-maker skill (template search + render), Python debugging via pdb +
-debugpy, typed tool-plugin framework with `defineToolPlugin` and manifest generation, Android Talk Mode Gateway-relay
-streaming voice sessions, vector-search JS-fallback bounded-batch scan (prevents multi-second main-thread blocking on
-large tables), Gemini 3 tool-signature compatibility, Claude image-input fix, xAI OAuth PKCE handling, and channel
-stability fixes (Telegram / Discord / WhatsApp / Signal); stable still `v2026.5.18` (source:
+eighteenth pass's beta snapshot) — adds meme-maker skill (template search + render), Python debugging via pdb + debugpy,
+typed tool-plugin framework with `defineToolPlugin` and manifest generation, Android Talk Mode Gateway-relay streaming
+voice sessions, vector-search JS-fallback bounded-batch scan (prevents multi-second main-thread blocking on large
+tables), Gemini 3 tool-signature compatibility, Claude image-input fix, xAI OAuth PKCE handling, and channel stability
+fixes (Telegram / Discord / WhatsApp / Signal); stable still `v2026.5.18` (source:
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.19-beta.1>, accessed 2026-05-19). **A2A** star count
 re-pinned to **23,900+ stars** (was 23,800+); v1.0.0 (2026-03-12) unchanged (source:
 <https://github.com/a2aproject/A2A>, accessed 2026-05-19). All other high-cadence upstream pins verified unchanged from
@@ -348,10 +348,10 @@ the sandbox model — constraining local sandbox artifact sources to base dir fo
 realtime-session tool-approval flow, defaulting realtime sessions to `gpt-realtime-2`, and tightening MCP
 approval-policy validation; `v0.17.2` (2026-05-12) was a bug-fix release covering OpenAI Conversations reasoning
 persistence (#3268), realtime tool behaviour, and session management; `v0.17.3` (2026-05-19) extended the sandbox
-hardening with the explicit "keep mountpoint credentials out of sandbox commands" fix, normalized leading question
-marks in port queries, rejected relative workspace roots, skipped status checks when Vercel sandbox reaches terminal
-state, added output-guardrail counts in error details, fixed FunctionTool / Codex output-schema mutations, and
-documented `Agent.instructions` as optional — no breaking changes (source:
+hardening with the explicit "keep mountpoint credentials out of sandbox commands" fix, normalized leading question marks
+in port queries, rejected relative workspace roots, skipped status checks when Vercel sandbox reaches terminal state,
+added output-guardrail counts in error details, fixed FunctionTool / Codex output-schema mutations, and documented
+`Agent.instructions` as optional — no breaking changes (source:
 <https://github.com/openai/openai-agents-python/releases/tag/v0.17.3>, accessed 2026-05-19).
 
 **Relative standing:** OpenAI Agents SDK is now the third major vendor SDK in this project's reference set — alongside
@@ -551,15 +551,16 @@ pressure, and three days later settled on **OpenClaw**. Category-leading install
 77,400+ forks as of 2026-05-18**, with a very active commit cadence (latest stable release **`v2026.5.18`** on
 2026-05-18; pre-release line advanced same-day from `v2026.5.18-beta.1` (2026-05-18 16:13 UTC) to
 **`v2026.5.19-beta.1`** (2026-05-18 22:58 UTC) — the new beta adds a meme-maker skill, Python debugging via pdb +
-debugpy, a typed tool-plugin framework with `defineToolPlugin` plus manifest generation, Android Talk Mode
-Gateway-relay streaming voice sessions, vector-search JS-fallback bounded-batch scan (prevents multi-second main-thread
-blocking on large tables), Gemini 3 tool-signature compatibility, Claude image-input fix, xAI OAuth PKCE handling, and
-the usual Telegram / Discord / WhatsApp / Signal channel-stability fixes) — the exact star number drifts fast, so
-re-pin before quoting in marketing or external docs (sources: <https://github.com/openclaw/openclaw>,
+debugpy, a typed tool-plugin framework with `defineToolPlugin` plus manifest generation, Android Talk Mode Gateway-relay
+streaming voice sessions, vector-search JS-fallback bounded-batch scan (prevents multi-second main-thread blocking on
+large tables), Gemini 3 tool-signature compatibility, Claude image-input fix, xAI OAuth PKCE handling, and the usual
+Telegram / Discord / WhatsApp / Signal channel-stability fixes) — the exact star number drifts fast, so re-pin before
+quoting in marketing or external docs (sources: <https://github.com/openclaw/openclaw>,
 <https://github.com/openclaw/openclaw/releases>, <https://github.com/openclaw/openclaw/releases/tag/v2026.5.18>, and
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.19-beta.1>, accessed 2026-05-19). Runs on user-controlled infrastructure (notable community trend: a Mac Mini hardware rush for 24/7
-hosting). Connects to Claude, OpenAI, DeepSeek, and local models. **MIT licensed; calendar-versioned releases
-(`vYYYY.M.D`) with beta and dev channels; very active development cadence.**
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.19-beta.1>, accessed 2026-05-19). Runs on user-controlled
+infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to Claude, OpenAI,
+DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev channels; very
+active development cadence.**
 
 **Implementation + architecture:** TypeScript / Node.js (v22.16+, v24 recommended). The Gateway is a local control plane
 deployed on user machines (macOS, Linux, Windows via WSL2). No cloud requirement; runs entirely on user infrastructure.
