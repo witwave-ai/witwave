@@ -1,5 +1,5 @@
 # Constrained to remove build-time drift (#777). OTel + prometheus_client +
-# PyYAML pins now match backends/{claude,codex,gemini}/requirements.txt
+# PyYAML pins now match backends/{claude,openai,gemini}/requirements.txt
 # byte-for-byte so every image in the stack runs the same OTel SDK and can
 # interoperate without protocol mismatches. Tool-unique deps carry an upper
 # bound so an unrelated rebuild cannot silently pull a new major.

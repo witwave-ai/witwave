@@ -53,7 +53,7 @@ jobs:
 
   pytest:
     # Per-section pytest matrix. Each section's deps install in isolation
-    # so a missing import in (say) backends/codex doesn't block harness or
+    # so a missing import in (say) backends/openai doesn't block harness or
     # shared from running. fail-fast=false so we get the full picture on
     # every push, not just the first failure.
     runs-on: ubuntu-latest
@@ -64,7 +64,7 @@ jobs:
           - harness
           - shared
           - backends/claude
-          - backends/codex
+          - backends/openai
           - backends/gemini
           - backends/echo
           - tools/kubernetes

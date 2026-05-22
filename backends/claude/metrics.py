@@ -631,7 +631,7 @@ if _enabled:
         "backend_hooks_denials_total",
         "Total tool calls denied by a PreToolUse hook, labelled by tool name, "
         "rule source (baseline|extension), and the rule name that matched. "
-        "Canonical name across claude/codex/gemini backends.",
+        "Canonical name across claude/openai/gemini backends.",
         ["agent", "agent_id", "backend", "tool", "source", "rule"],
     )
     backend_hooks_warnings_total = prometheus_client.Counter(

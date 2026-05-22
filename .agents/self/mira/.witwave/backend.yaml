@@ -1,27 +1,28 @@
 backend:
   agents:
-    - id: claude
+    - id: openai
       url: http://localhost:8001
-      model: claude-opus-4-7
+      model: gpt-5.5
+
   routing:
     default:
-      agent: claude
-      model: claude-opus-4-7
+      agent: openai
+      model: gpt-5.5
     a2a:
-      agent: claude
-      model: claude-opus-4-7
+      agent: openai
+      model: gpt-5.5
     heartbeat:
-      agent: claude
-      model: claude-opus-4-7
+      agent: openai
+      model: gpt-5.5
     job:
-      agent: claude
-      model: claude-opus-4-7
+      agent: openai
+      model: gpt-5.5
     task:
-      agent: claude
-      model: claude-opus-4-7
+      agent: openai
+      model: gpt-5.5
     trigger:
-      agent: claude
-      model: claude-opus-4-7
+      agent: openai
+      model: gpt-5.5
     continuation:
-      agent: claude
-      model: claude-opus-4-7
+      agent: openai
+      model: gpt-5.5

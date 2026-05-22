@@ -191,7 +191,7 @@ func TestBuildSkeleton_LLMBackends(t *testing.T) {
 		backend, behaviorFile string
 	}{
 		{"claude", "CLAUDE.md"},
-		{"codex", "AGENTS.md"},
+		{"openai", "AGENTS.md"},
 		{"gemini", "GEMINI.md"},
 	}
 	for _, tc := range cases {
@@ -365,7 +365,7 @@ func TestBehaviorFileName(t *testing.T) {
 		ok      bool
 	}{
 		{"claude", "CLAUDE.md", true},
-		{"codex", "AGENTS.md", true},
+		{"openai", "AGENTS.md", true},
 		{"gemini", "GEMINI.md", true},
 		{"echo", "", false},
 		{"unknown", "", false},

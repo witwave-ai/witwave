@@ -1,6 +1,6 @@
 # witwave backend-base - the shared backend base + analyzer toolchain.
 #
-# Intent: claude/codex/gemini backend Dockerfiles use
+# Intent: claude/openai/gemini backend Dockerfiles use
 # `FROM ghcr.io/witwave-ai/images/backend-base:<version>` as their common base,
 # then layer only backend-specific runtime dependencies on top. The release
 # workflow builds and publishes backend-base first, then builds those backend images
@@ -27,7 +27,7 @@
 #   touches this file and the backend-base version tag; no chance of three
 #   backends drifting apart.
 #
-# All ARG VERSIONs below match what claude/codex/gemini previously installed
+# All ARG VERSIONs below match what claude/openai/gemini previously installed
 # directly so the base-image swap is image composition, not tool version drift.
 
 # -----------------------------------------------------------------------------
@@ -140,7 +140,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Tools venv lives at /opt/tools-venv and is exposed on PATH for direct
 # base-image usage and non-runtime checks. Backends still install pytest-class
 # tooling into their agent venv so test commands see backend dependencies.
-# Pinned versions match what claude/codex/gemini install in their agent venv.
+# Pinned versions match what claude/openai/gemini install in their agent venv.
 RUN python3 -m venv /opt/tools-venv \
     && /opt/tools-venv/bin/pip install --no-cache-dir \
         'ruff==0.6.9' \

@@ -361,7 +361,7 @@ significant: agents built on OpenAI's SDK can already target Claude / Gemini / 1
 <https://github.com/openai/openai-agents-python>, accessed 2026-05-11), eroding the historical "pick your vendor's SDK,
 get locked to their models" framing that pushed teams to either Anthropic or OpenAI camps. The sandbox-agent + harness
 pattern overlaps with this project's harness-as-pod model but at a different layer — Witwave runs the harness as a
-Kubernetes pod with multi-backend routing inside it (claude / codex / gemini per concern), while OpenAI's sandbox is
+Kubernetes pod with multi-backend routing inside it (claude / openai / gemini per concern), while OpenAI's sandbox is
 per-task workspace isolation inside the SDK process. Net: a category peer whose existence reinforces that "vendor SDK +
 sandbox + sessions + MCP + guardrails + tracing" is now the standard shape; Witwave's defensible differentiation narrows
 further to **multi-backend routing under one named-agent identity**, **cluster-resident A2A coordination across named
@@ -594,7 +594,7 @@ _Differentiators in this project's favor:_
    between named agents; OpenClaw targets a single-user, single-machine personal assistant. "Witwave is OpenClaw for
    teams with Kubernetes clusters" captures the split.
 2. **Multi-backend routing under one agent identity.** `backend.yaml` routes per-concern (heartbeat → claude, jobs →
-   codex, etc.) within one named agent; OpenClaw's multi-model support is per-conversation, not
+   openai, etc.) within one named agent; OpenClaw's multi-model support is per-conversation, not
    per-concern-within-agent.
 3. **Stronger safety posture.** Declarative `hooks.yaml` policy + MCP allow-list + session-id HMAC binding address the
    skill-RCE class OpenClaw publicly acknowledges.
@@ -630,7 +630,7 @@ project doesn't have.
 
 **Relative standing:** Our nearest cloud-native OSS competitor. Both projects are Kubernetes-native and lead with A2A +
 MCP; kagent doesn't offer a multi-backend router analogous to this project's `backend.yaml` routing across Claude /
-Codex / Gemini under one named-agent identity, and uses AutoGen rather than direct SDK wrappers. The clearest question
+OpenAI / Gemini under one named-agent identity, and uses AutoGen rather than direct SDK wrappers. The clearest question
 for our positioning: "multi-backend under one identity" and "scheduler-primitives-first" (jobs + tasks + heartbeats +
 triggers + continuations + webhooks) are the defensible differentiators vs. kagent's AutoGen-runtime-plus-prebuilt-tools
 approach.
@@ -646,7 +646,7 @@ as an AWS-managed service. Locked to Bedrock-hosted models.
 
 **Relative standing:** Mandatory hyperscaler reference. AgentCore's Policy + Evaluations track directly against this
 project's hook policy engine + emerging smoke-test surface. Differentiators: we're open-source, self-hosted, and
-model-backend-agnostic (Claude / Codex / Gemini); AgentCore is closed, managed, Bedrock-only. The competitive dynamic is
+model-backend-agnostic (Claude / OpenAI / Gemini); AgentCore is closed, managed, Bedrock-only. The competitive dynamic is
 hyperscaler-managed-SaaS vs. self-hosted-Kubernetes — classic split.
 
 ### Microsoft Agent Framework + Foundry Agent Service (Microsoft)
@@ -873,8 +873,8 @@ Last updated: 2026-04-07 by local-agent.
   announced at Cloud Next '26 — gVisor isolation, ~300 sandboxes/sec, three new primitives `Sandbox` / `SandboxTemplate`
   / `SandboxClaim`; source: <https://www.infoq.com/news/2026/05/gke-agent-sandbox-hypercluster/>, accessed 2026-05-11)
   all now occupy the same lane. Differentiators that _do_ hold up head-to-head with these: (1) **multi-backend routing
-  under one named agent identity** — Claude / Codex / Gemini behind `backend.yaml` routing rules with per-concern
-  dispatch (heartbeat to claude, jobs to codex, etc.) is unique in the Kubernetes-native OSS set; competitors are mostly
+  under one named agent identity** — Claude / OpenAI / Gemini behind `backend.yaml` routing rules with per-concern
+  dispatch (heartbeat to claude, jobs to openai, etc.) is unique in the Kubernetes-native OSS set; competitors are mostly
   single-framework (kagent on AutoGen) or single-model. (2) **Scheduler primitive breadth** — jobs, tasks, heartbeats,
   triggers, continuations, webhooks as first-class `.witwave/` frontmatter files. kagent and OpenClaw don't ship
   equivalents. (3) **Per-agent cross-pod topology** — harness + backends + shared MCP tools is a production-ready shape

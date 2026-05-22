@@ -2,7 +2,7 @@
 
 Echo doubles as a reference implementation for the common ``backend_*``
 metric baseline every backend should emit. The series declared here are
-deliberately a **subset** of what claude/codex/gemini expose — specifically
+deliberately a **subset** of what claude/openai/gemini expose — specifically
 the lifecycle, A2A request surface, and prompt-shape metrics that any
 well-behaved backend can produce regardless of whether it's LLM-backed.
 

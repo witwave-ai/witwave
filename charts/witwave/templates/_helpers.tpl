@@ -343,7 +343,7 @@ Usage:
 Resolve resources for a backend sidecar (#553). Order of precedence:
   1. backend.resources (per-backend override in values.yaml)
   2. .Values.defaults.resources.backends[<backend-name>] (per-backend-type default,
-     keyed by backend.name — e.g. "claude", "codex", "gemini")
+     keyed by backend.name — e.g. "claude", "openai", "gemini")
   3. .Values.defaults.resources.backend (shared fallback for any unknown backend)
 Returns the empty string when none of these are set.
 Usage:

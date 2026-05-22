@@ -73,7 +73,7 @@ create a Secret for each, or set `existingSecret:` / `secrets:` in values:
   kubectl create secret generic {{ .secretName }} \
     --from-literal=CLAUDE_CODE_OAUTH_TOKEN=<token> \
     -n {{ $.Release.Namespace }}
-{{- else if eq .backend "codex" }}
+{{- else if or (eq .backend "openai") (eq .backend "codex") }}
   kubectl create secret generic {{ .secretName }} \
     --from-literal=OPENAI_API_KEY=<key> \
     -n {{ $.Release.Namespace }}

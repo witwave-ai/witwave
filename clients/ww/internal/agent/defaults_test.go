@@ -32,12 +32,12 @@ func TestBackendImage(t *testing.T) {
 
 func TestIsKnownBackend(t *testing.T) {
 	t.Parallel()
-	for _, b := range []string{"echo", "claude", "codex", "gemini"} {
+	for _, b := range []string{"echo", "claude", "openai", "codex", "gemini"} {
 		if !IsKnownBackend(b) {
 			t.Errorf("IsKnownBackend(%q) = false; want true", b)
 		}
 	}
-	for _, b := range []string{"", "mistral", "ECHO", "openai"} {
+	for _, b := range []string{"", "mistral", "ECHO", "OpenAI"} {
 		if IsKnownBackend(b) {
 			t.Errorf("IsKnownBackend(%q) = true; want false", b)
 		}

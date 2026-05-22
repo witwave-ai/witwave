@@ -21,7 +21,7 @@ A containerized agent has no such default. Every capability must be deliberately
 where compilers live, where CLIs live, where credentials live, where source code is mounted, how commands are audited,
 and how one model backend can work on projects that need very different development environments.
 
-Witwave currently runs three real model backends: Claude, Codex, and Gemini. Each backend is its own image and its own
+Witwave currently runs three real model backends: Claude, OpenAI, and Gemini. Each backend is its own image and its own
 A2A server. The platform also has a shared `backend-base` image that gives those backends a pinned baseline of common
 command-line tools: Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and related
 analysis and test tooling.
@@ -78,20 +78,20 @@ That framing gives the platform a more useful design vocabulary.
 
 ### Backend
 
-A backend is the model execution container. In Witwave today, the production backends are Claude, Codex, and Gemini.
+A backend is the model execution container. In Witwave today, the production backends are Claude, OpenAI, and Gemini.
 Each backend is a standalone A2A server. Each owns its model SDK integration, session handling, conversation logs,
 memory, metrics, protected inspection endpoints, and provider-specific runtime behavior.
 
 The backend receives identity and behavior through mounted files:
 
 - `CLAUDE.md` for Claude.
-- `AGENTS.md` for Codex.
+- `AGENTS.md` for OpenAI.
 - `GEMINI.md` for Gemini.
 
 The backend may expose provider-native tools. For example, Claude can use Claude Code-style tools such as read/search,
-Bash, edit/write, and MCP depending on configured permissions. Codex can expose a local shell tool through its Agents
-SDK integration. Gemini participates in the same backend layout and MCP configuration posture, though some lower-level
-tool-loop interposition remains less mature than Claude and Codex.
+Bash, edit/write, and MCP depending on configured permissions. OpenAI can expose a shell tool through its Agents SDK
+integration. Gemini participates in the same backend layout and MCP configuration posture, though some lower-level
+tool-loop interposition remains less mature than Claude and OpenAI.
 
 The backend should know how to call tools. It should not have to contain every possible project tool.
 
@@ -182,7 +182,7 @@ cooperate around a shared runtime:
 - A **harness** container receives A2A traffic, schedules heartbeats, runs jobs/tasks/triggers/continuations, and routes
   work to a backend according to `.witwave/backend.yaml`.
 - One or more **backend** containers run model-specific A2A servers. The common production shape can include Claude,
-  Codex, and Gemini sidecars for the same named agent.
+  OpenAI, and Gemini sidecars for the same named agent.
 - Optional **git-sync** sidecars materialize repo content into the pod.
 - Optional **MCP tools** run as separate deployments/services, rendered by the chart or operator.
 - `WitwaveWorkspace` references mount shared volumes and projected config into participating containers.
@@ -196,7 +196,7 @@ repo-managed state into the pod at stable paths.
 Witwave currently maintains separate backend images for:
 
 - Claude.
-- Codex.
+- OpenAI.
 - Gemini.
 
 Those images share `images/backend-base/`, published as `ghcr.io/witwave-ai/images/backend-base:<version>`. The base
@@ -213,14 +213,14 @@ Each backend has its own tool path:
   WebFetch require explicit enablement through `ALLOWED_TOOLS` or `.claude/settings.json` `permissions.allow`. Claude
   also reads `.claude/mcp.json` through `MCP_CONFIG_PATH`, validates and hot-reloads MCP configuration, and applies the
   shared stdio MCP command allowlist.
-- **Codex** reads `.codex/config.toml` for built-in tool flags and `.codex/mcp.json` for MCP servers. Its
-  `LocalShellTool` runs `subprocess.run(...)` inside the Codex backend container with baseline denial rules, audit
-  logging, timeouts, environment sanitization, trace instrumentation, and the shared MCP command/argument safety checks.
+- **OpenAI** reads `.openai/config.toml` for built-in tool flags and `.openai/mcp.json` for MCP servers. Its `ShellTool`
+  runs local shell commands inside the OpenAI backend container with baseline denial rules, audit logging, timeouts,
+  trace instrumentation, and the shared MCP command/argument safety checks.
 - **Gemini** follows the same backend layout: mounted identity document, memory/log paths, MCP configuration shape,
   metrics, and protected backend endpoints. Its local tool loop is less mature, but the goal is to keep the same
   tool-surface direction across backends.
 
-Today, backend-native execution still runs inside the backend container. If Claude Bash or Codex `LocalShellTool` runs
+Today, backend-native execution still runs inside the backend container. If Claude Bash or OpenAI `ShellTool` runs
 `go test`, it uses the tools installed in that backend image. MCP can call external services or future sidecars, but
 Witwave does not yet generate a dedicated project toolchain sidecar for local execution.
 
@@ -248,7 +248,7 @@ Witwave relies on repo-managed files and stable mounted paths:
 
 - `.witwave/` contains harness runtime config: `backend.yaml`, `HEARTBEAT.md`, jobs, tasks, triggers, continuations,
   webhooks, and the public agent card.
-- `.claude/`, `.codex/`, and `.gemini/` contain backend-specific identity and tool config.
+- `.claude/`, `.openai/`, and `.gemini/` contain backend-specific identity and tool config.
 - `.agents/` stores self/test team definitions and SOPS-encrypted secret mirrors.
 - `WitwaveWorkspace` provisions shared volumes and stamps shared config files or existing Secrets onto participating
   agents.
@@ -284,11 +284,11 @@ architectural home.
 ## Why backend images should not become universal toolboxes
 
 The backend images should remain small, generic, and stable. Their job is to run model backends reliably. Claude needs
-the Claude runtime. Codex needs the OpenAI Agents SDK runtime. Gemini needs the Google Gemini runtime. Each backend
+the Claude runtime. OpenAI needs the OpenAI Agents SDK runtime. Gemini needs the Google Gemini runtime. Each backend
 already has provider-specific dependencies, configuration, tool behavior, metrics, and failure modes.
 
 If every project tool lives inside those backends, every new capability becomes backend-image work. A new language, a
-new linter suite, a new build system, or a new integration must be evaluated against Claude, Codex, and Gemini even when
+new linter suite, a new build system, or a new integration must be evaluated against Claude, OpenAI, and Gemini even when
 the tool has nothing to do with the model provider.
 
 The shared `backend-base` image is the right place for common platform utilities. It removes duplicated setup across the
@@ -328,7 +328,7 @@ The proposed model places project execution environments beside the backend, not
 agent pod
 ├── harness
 ├── claude-backend
-├── codex-backend
+├── openai-backend
 ├── gemini-backend
 ├── toolchain-go-python
 ├── toolchain-rust
@@ -399,7 +399,7 @@ Several integration paths are possible. They can coexist, but they are not equal
 
 This is the most practical first implementation path.
 
-The backends already know how to consume MCP configuration. Claude, Codex, and Gemini use the same broad `mcp.json`
+The backends already know how to consume MCP configuration. Claude, OpenAI, and Gemini use the same broad `mcp.json`
 shape. A toolchain sidecar can run an MCP server over HTTP on localhost; the chart/operator layer can render backend MCP
 entries that point at those local sidecars.
 
@@ -488,7 +488,7 @@ Benefits:
 Costs:
 
 - Requires implementation in each backend.
-- Claude, Codex, and Gemini have different native tool APIs.
+- Claude, OpenAI, and Gemini have different native tool APIs.
 - Slower to ship.
 - Adds another protocol surface to maintain.
 

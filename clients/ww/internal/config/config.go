@@ -63,7 +63,7 @@ type File struct {
 // --with-persistence` and the `--persist <name>` (size-omitted)
 // shortcut.
 type PersistConfig struct {
-	// Defaults is keyed by backend type (echo, claude, codex, gemini).
+	// Defaults is keyed by backend type (echo, claude, openai, gemini).
 	// Each entry overrides the code-level defaults
 	// (BackendStorageSizeDefaults / BackendStoragePresets) for that
 	// type. Either field can be omitted; resolver falls back to the
@@ -108,7 +108,7 @@ type PersistMountDefault struct {
 type TUIConfig struct {
 	CreateDefaults TUICreateDefaults `mapstructure:"create_defaults"`
 
-	// ExpectedEnvVars is keyed by backend type ("claude", "codex",
+	// ExpectedEnvVars is keyed by backend type ("claude", "openai",
 	// "gemini", echo would be empty). Each value is a list of env-
 	// var names the user expects to see suggested when typing a
 	// Secret KEY for that backend. Merged with the built-in

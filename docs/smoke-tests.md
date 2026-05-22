@@ -4,7 +4,7 @@ Two distinct smoke surfaces live in this repo:
 
 1. **Deployed-agent conversation smoke** (this document, below). Tests that the active test team (`bob`, `fred`)
    produces the expected canonical responses. The current CLI/operator test deployment runs Claude-only by default: Bob
-   and Fred are deployed, while Bob's Codex/Gemini fixtures and the Jack/Luke parity scaffolds stay dormant until
+   and Fred are deployed, while Bob's OpenAI/Gemini fixtures and the Jack/Luke parity scaffolds stay dormant until
    credentials and budget are available.
 2. **CLI hello-world smoke** (`scripts/smoke-ww-agent.sh`). Tests that the `ww agent` subtree works end-to-end against a
    real cluster: `create`, `list`, `status`, `send`, `logs`, `events`, `delete`, plus validation paths. It creates one
@@ -54,7 +54,7 @@ Fred, and any promoted Jack/Luke parity agents.
 
 ## Bob
 
-Bob is the larger smoke surface. In the default test deployment, every active Bob route targets Claude. Codex and Gemini
+Bob is the larger smoke surface. In the default test deployment, every active Bob route targets Claude. OpenAI and Gemini
 configs remain in the tree as disabled/parked fixtures for future multi-backend runs.
 
 ### Jobs - run once on deploy
@@ -73,8 +73,8 @@ These fire immediately when the stack comes up. Look for them near the top of th
 | `fanin-a`                    | default    | `FANIN_A_OK` response; first leg of fan-in continuation test                                                                                         |
 | `fanin-b`                    | default    | `FANIN_B_OK` response; second leg of fan-in continuation test                                                                                        |
 
-Disabled Codex job fixtures remain under `.agents/test/bob/.witwave/jobs/` with `enabled: false`, including GPT-5.5 and
-GPT-5.3-Codex model checks. They should not appear in the active smoke log unless the Codex backend is deliberately
+Disabled OpenAI job fixtures remain under `.agents/test/bob/.witwave/jobs/` with `enabled: false`, including GPT-5.5 and
+GPT-5.3-OpenAI model checks. They should not appear in the active smoke log unless the OpenAI backend is deliberately
 re-enabled.
 
 ### Jobs - continuation chains
@@ -90,7 +90,7 @@ These fire once and trigger continuation chains. Check that all steps appear in 
 | Fixture                        | Backend     | What to check                                                                                                          |
 | ------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `CLAUDE.md` memory instruction | bob-claude  | Spec `025.a` writes a typed project memory under `/workspaces/witwave-test/memory/agents/bob/` and updates `MEMORY.md` |
-| `AGENTS.md` memory instruction | jack-codex  | Spec `025.b`, disabled by default, performs the same namespace/index check after Jack is promoted                      |
+| `AGENTS.md` memory instruction | jack-openai  | Spec `025.b`, disabled by default, performs the same namespace/index check after Jack is promoted                      |
 | `GEMINI.md` memory instruction | luke-gemini | Spec `025.c`, disabled until Gemini can write/read workspace files; same-session recall is not memory parity           |
 
 ### Jobs - recurring
@@ -157,7 +157,7 @@ in the correct session, in order, after their upstream.
 | `animal-memory-claude-recall`  | `continuation:animal-memory-claude-turtles` | Fires after turtles; response names both hamsters and turtles                                   |
 | `continuation-fanin-test`      | `job:fanin-a` + `job:fanin-b`               | Fires only after both fan-in jobs complete; `FANIN_OK` response; verifies fan-in state tracking |
 
-Disabled Codex continuation fixtures remain in place with `enabled: false` and should stay quiet in the default smoke
+Disabled OpenAI continuation fixtures remain in place with `enabled: false` and should stay quiet in the default smoke
 run.
 
 ### Webhooks
@@ -240,7 +240,7 @@ After deploying, confirm in order:
 11. Budget: `budget-exceeded-claude` produces a `system` log entry matching
     `Budget exceeded: N tokens used of 10 limit.`
 12. Heartbeat: `HEARTBEAT_OK` appears in the conversation log within about 1 minute of each hour boundary.
-13. Disabled Codex/Gemini fixtures do not appear in the default Bob smoke log.
+13. Disabled OpenAI/Gemini fixtures do not appear in the default Bob smoke log.
 
 ---
 
@@ -254,11 +254,11 @@ conversation-log-out verification pattern.
 
 | Test                                              | What it would verify                                                                                                                   | Why deferred                                                                                          |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| **Codex backend parity**                          | `backend-check-codex`, `model-check-codex-*`, `animal-memory-codex`, `ping-codex`                                                      | Bob's Codex config is present but not deployed by default; Jack is the single-backend Codex scaffold. |
-| **Codex memory parity**                           | Jack's `AGENTS.md` memory check writes a typed project memory and namespace index under `/workspaces/witwave-test/memory/agents/jack/` | Jack requires `OPENAI_API_KEY` and is not deployed in the default Claude-first smoke run.             |
+| **OpenAI backend parity**                          | `backend-check-openai`, `model-check-openai-*`, `animal-memory-openai`, `ping-openai`                                                      | Bob's OpenAI config is present but not deployed by default; Jack is the single-backend OpenAI scaffold. |
+| **OpenAI memory parity**                           | Jack's `AGENTS.md` memory check writes a typed project memory and namespace index under `/workspaces/witwave-test/memory/agents/jack/` | Jack requires `OPENAI_API_KEY` and is not deployed in the default Claude-first smoke run.             |
 | **Gemini memory parity**                          | Luke's `GEMINI.md` memory check writes the same file-backed namespace/index shape after Gemini filesystem/tool-call support lands      | Luke requires `GEMINI_API_KEY` and the current Gemini fixture cannot write workspace memory files.    |
 | **Gemini backend parity**                         | `backend-check-gemini`, `model-check-gemini-*`, `animal-memory-gemini`, `ping-gemini`                                                  | Gemini backend is supported; Luke is the single-backend Gemini scaffold.                              |
-| **Consensus fan-out**                             | Multi-model fan-out and synthesis across Codex + Claude models                                                                         | Bob's consensus fixtures are present but disabled because they depend on the dormant Codex backend.   |
+| **Consensus fan-out**                             | Multi-model fan-out and synthesis across OpenAI + Claude models                                                                         | Bob's consensus fixtures are present but disabled because they depend on the dormant OpenAI backend.   |
 | **Prompt-kind filter on webhooks**                | `notify-on-kind` glob filter; a webhook subscribed to `job:*` fires on job responses but not trigger responses                         | Needs two webhook configs plus matching chain-sink triggers.                                          |
 | **Concurrent load ordering**                      | Multiple jobs firing at the same cron tick all complete without scheduler interleaving bugs                                            | Needs three or more jobs with identical `schedule:` plus clear log-ordering assertions.               |
 | **Session persistence across pod restart**        | Session ID and memory survive a pod restart                                                                                            | Requires manual deploy-time choreography: seed session, restart pod, verify memory.                   |

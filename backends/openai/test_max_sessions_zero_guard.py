@@ -1,4 +1,4 @@
-"""Regression coverage for the codex executor's MAX_SESSIONS=0 guard (#1629).
+"""Regression coverage for the openai executor's MAX_SESSIONS=0 guard (#1629).
 
 Risk: ``MAX_SESSIONS = int(os.environ.get("MAX_SESSIONS", "10000"))`` accepted
 ``"0"`` verbatim, and the LRU-utilization metric divides ``len(sessions) /
@@ -48,7 +48,7 @@ def _eval_clamp(env_value: str | None) -> int:
     else:
         os.environ["MAX_SESSIONS"] = env_value
     try:
-        # Mirror exactly the line in backends/codex/executor.py.
+        # Mirror exactly the line in backends/openai/executor.py.
         return max(1, int(os.environ.get("MAX_SESSIONS", "10000")))
     finally:
         if prev is None:

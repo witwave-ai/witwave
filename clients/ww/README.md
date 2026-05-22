@@ -219,7 +219,7 @@ directory directly. `ww tail --agent iris --session abc` switches to the backend
 }
 ```
 
-`--backend claude|codex|gemini|echo` adds `metadata.backend_id`; harness executors already honour that field.
+`--backend claude|openai|gemini|echo` adds `metadata.backend_id`; harness executors already honour that field.
 `--context` reuses an existing `contextId` for multi-turn sessions.
 
 ## Operator management
@@ -466,7 +466,7 @@ just through a ww-friendly CLI.
 
 With no flags, `ww agent create <name>` deploys the **echo backend** — a zero-dependency stub that returns a canned
 response quoting the caller's prompt (see [`backends/echo/`](../../backends/echo/README.md)). Pick a real LLM backend
-with `--backend claude|codex|gemini`; the chosen backend's image is published at the same version as the `ww` binary.
+with `--backend claude|openai|gemini`; the chosen backend's image is published at the same version as the `ww` binary.
 
 ### Backend credentials — four paths
 
@@ -497,8 +497,8 @@ ww agent create iris --backend claude \
   --auth-set claude:ALT_TOKEN=ghp_yyyy
 
 # Multi-backend: one --auth per backend
-ww agent create consensus --backend claude --backend codex \
-  --auth claude=oauth --auth codex=openai
+ww agent create consensus --backend claude --backend openai \
+  --auth claude=oauth --auth openai=openai
 ```
 
 On `ww agent backend add` the `<backend>:` prefix drops since the backend's already positional — each `--auth-set` entry

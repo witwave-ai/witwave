@@ -1,4 +1,4 @@
-"""Regression coverage for the codex executor's success-timestamp gating
+"""Regression coverage for the openai executor's success-timestamp gating
 (#1662).
 
 Bug: the ``backend_task_last_success_timestamp_seconds`` gauge was set
@@ -52,7 +52,7 @@ def _stamp_success_timestamp(gauge, *, budget_exceeded):
         gauge.labels().set(time.time())
 
 
-class CodexSuccessTimestampGatingTests(unittest.TestCase):
+class OpenAISuccessTimestampGatingTests(unittest.TestCase):
     """Behavioral tests for the #1662 fix."""
 
     def test_normal_success_advances_gauge(self):
@@ -80,7 +80,7 @@ class CodexSuccessTimestampGatingTests(unittest.TestCase):
         self.assertEqual(gauge.value, 1234567890.0)
 
 
-class CodexSuccessTimestampSourceShapeTests(unittest.TestCase):
+class OpenAISuccessTimestampSourceShapeTests(unittest.TestCase):
     """Pin the source shape so the gate can't be removed without tripping CI."""
 
     @classmethod

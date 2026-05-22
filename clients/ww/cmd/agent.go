@@ -920,7 +920,7 @@ func newAgentScaffoldCmd() *cobra.Command {
 				"  `<type>`        — name = type (single-backend shortcut)\n"+
 				"  `<name>:<type>` — explicit name + type pair (for multi-backend agents)\n"+
 				"Valid types: %s. Default when omitted: one %s backend.\n"+
-				"Example: --backend claude --backend codex  (multi-model consensus)\n"+
+				"Example: --backend claude --backend openai  (multi-model consensus)\n"+
 				"Example: --backend echo-1:echo --backend echo-2:echo  (two echo backends)",
 			strings.Join(agent.KnownBackends(), ", "), agent.DefaultBackend,
 		))
@@ -985,7 +985,7 @@ func newAgentCreateCmd(f *agentFlags) *cobra.Command {
 			"keys — so you can exercise an agent end-to-end with \"access to a Kubernetes\n" +
 			"cluster and the CLI\" as the only prerequisites.\n\n" +
 			"Pass --backend repeatedly to declare multiple backends:\n\n" +
-			"  ww agent create consensus-agent --backend claude --backend codex\n" +
+			"  ww agent create consensus-agent --backend claude --backend openai\n" +
 			"  ww agent create hello --backend echo-1:echo --backend echo-2:echo\n\n" +
 			"Each backend's folder in the gitOps repo (and the /home/agent/.<name>/ mount\n" +
 			"in the pod) is named after the backend's NAME, not its type — so two backends\n" +
@@ -1170,7 +1170,7 @@ func newAgentCreateCmd(f *agentFlags) *cobra.Command {
 			"Form: <backend-name>=<size>[@<storage-class>]. Operator creates a PVC named "+
 			"<agent>-<backend>-data and projects it into the container at default mount "+
 			"paths derived from the backend's TYPE: claude → projects/sessions/backups/memory/logs/state, "+
-			"codex → memory/sessions/logs/state, gemini → memory/logs/state, echo → memory (symbolic). Pair with "+
+			"openai → memory/sessions/logs/state, gemini → memory/logs/state, echo → memory (symbolic). Pair with "+
 			"--persist-mount to override the default mount list with an explicit one.")
 	cmd.Flags().StringArrayVar(&persistMounts, "persist-mount", nil,
 		"Override the default mount list on a backend's PVC (repeatable). Form: "+
@@ -1181,7 +1181,7 @@ func newAgentCreateCmd(f *agentFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&withPersistence, "with-persistence", false,
 		"Provision a per-backend PVC for every declared --backend using type-derived "+
 			"defaults (size + mount layout). Echo → 1Gi/memory; claude → 10Gi with "+
-			"projects/sessions/backups/memory/logs/state; codex → 5Gi with memory/sessions/logs/state; gemini → "+
+			"projects/sessions/backups/memory/logs/state; openai → 5Gi with memory/sessions/logs/state; gemini → "+
 			"5Gi/memory/logs/state. Also provisions a 1Gi agent runtime PVC for harness logs/state. "+
 			"Override per-type defaults in ~/.config/ww/config.toml under "+
 			"[persist.defaults.<type>] (size, storageClassName, and mounts). Explicit "+

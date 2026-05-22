@@ -1,6 +1,6 @@
 """Regression coverage for Chromium sandbox posture (#1619).
 
-Risk: ``backends/codex/computer.py`` historically launched Chromium with
+Risk: ``backends/openai/computer.py`` historically launched Chromium with
 ``--no-sandbox`` and ``--disable-setuid-sandbox`` unconditionally at both
 launch sites (stand-alone ``PlaywrightComputer._ensure_browser`` and the
 pool-scoped ``BrowserPool._ensure_browser``). On hosts whose kernels are
@@ -48,7 +48,7 @@ def _install_agents_stub() -> None:
 
 
 def _load_computer(env_overrides: dict[str, str | None]) -> types.ModuleType:
-    """Import ``backends.codex.computer`` fresh under the supplied env."""
+    """Import ``backends.openai.computer`` fresh under the supplied env."""
     _install_agents_stub()
 
     # Ensure the directory containing computer.py is importable as a

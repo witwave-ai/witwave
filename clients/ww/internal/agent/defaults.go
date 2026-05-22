@@ -64,6 +64,10 @@ const DefaultPort = DefaultHarnessPort
 const (
 	BackendEcho   = "echo"
 	BackendClaude = "claude"
+	BackendOpenAI = "openai"
+	// BackendCodex is a compatibility alias for the pre-rename OpenAI
+	// Agents SDK backend. Reserve the canonical codex name for the future
+	// Codex-native SDK backend once it lands.
 	BackendCodex  = "codex"
 	BackendGemini = "gemini"
 )
@@ -78,7 +82,7 @@ const DefaultBackend = BackendEcho
 // KnownBackends returns the backends `ww agent create --backend` accepts.
 // Order is display-order (echo first for onboarding visibility).
 func KnownBackends() []string {
-	return []string{BackendEcho, BackendClaude, BackendCodex, BackendGemini}
+	return []string{BackendEcho, BackendClaude, BackendOpenAI, BackendCodex, BackendGemini}
 }
 
 // IsKnownBackend reports whether name matches a backend this CLI knows

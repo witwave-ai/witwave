@@ -1,4 +1,4 @@
-openai-agents==0.9.3
+openai-agents==0.17.3
 a2a-sdk[http-server]==0.3.25
 mcp>=1.0.0,<2.0.0
 prometheus-client==0.24.1

@@ -11,10 +11,10 @@ After this bootstrap, the cluster is running the active test team:
 - One **WitwaveWorkspace** (`witwave-test`) with a tiny `memory` volume, bound to every deployed test agent.
 - **bob**: the main smoke-test agent, active on Claude by default.
 - **fred**: a smaller Claude-only second-agent sanity check.
-- **jack**: Codex-only filesystem scaffold, promoted only when Codex parity needs a live agent.
+- **jack**: OpenAI-only filesystem scaffold, promoted only when OpenAI parity needs a live agent.
 - **luke**: Gemini-only filesystem scaffold, promoted only when Gemini parity needs a live agent.
 
-Bob's Codex and Gemini config directories stay parked in the repo as future fixtures. They are not part of the default
+Bob's OpenAI and Gemini config directories stay parked in the repo as future fixtures. They are not part of the default
 deployment because the active smoke loop is Claude-first and should stay cheap, deterministic, and fast.
 
 Workspace binding is intentionally uniform: every deployed test agent joins `witwave-test` so smoke runs exercise the
@@ -230,10 +230,10 @@ mise exec -- scripts/sops-exec-env.py .agents/test/team.sops.env -- \
   --team test \
   --workspace witwave-test \
   --with-persistence \
-  --backend codex \
+  --backend openai \
   --harness-env CONVERSATIONS_AUTH_DISABLED=true \
-  --backend-env codex:CONVERSATIONS_AUTH_DISABLED=true \
-  --backend-secret-from-env codex=OPENAI_API_KEY \
+  --backend-env openai:CONVERSATIONS_AUTH_DISABLED=true \
+  --backend-secret-from-env openai=OPENAI_API_KEY \
   --gitsync-bundle https://github.com/witwave-ai/witwave.git@main:.agents/test/jack \
   --gitsync-secret-from-env GITSYNC_USERNAME:GITSYNC_PASSWORD \
   --yes
@@ -257,13 +257,13 @@ mise exec -- scripts/sops-exec-env.py .agents/test/team.sops.env -- \
 Bob, Fred, Jack, and Luke include memory instructions in their primary identity documents (`CLAUDE.md`, `AGENTS.md`, or
 `GEMINI.md`). The test team mirrors the self-team file-backed memory contract: each agent writes its own namespace under
 `/workspaces/witwave-test/memory/agents/<name>/`, shared team memory stays at the memory root, memory entries use typed
-frontmatter, and `MEMORY.md` is an index. Claude and Codex parity checks exercise that full shape. Gemini declares the
+frontmatter, and `MEMORY.md` is an index. Claude and OpenAI parity checks exercise that full shape. Gemini declares the
 same contract, but its parity check remains disabled until the backend can write/read workspace files; same-session
 recall is not treated as memory parity.
 
 To promote Bob back to multi-backend smoke, update Bob's `backend.yaml`, enable the relevant parked prompt fixtures, and
 update `docs/smoke-tests.md` in the same change so the checklist matches the runtime. If memory parity is part of that
-promotion, keep Bob's `.codex/AGENTS.md` and `.gemini/GEMINI.md` memory instructions aligned with the active backend
+promotion, keep Bob's `.openai/AGENTS.md` and `.gemini/GEMINI.md` memory instructions aligned with the active backend
 behavior being tested.
 
 When promoting Jack or Luke, keep them bound to `witwave-test` as shown above so parity agents exercise the same

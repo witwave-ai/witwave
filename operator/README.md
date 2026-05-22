@@ -1,7 +1,7 @@
 # witwave-operator
 
 A Kubernetes operator for the witwave platform. Provides the `WitwaveAgent` custom resource, which deploys one named
-agent — a harness orchestrator plus one or more backend sidecars (claude, codex, gemini) — as a `Deployment` +
+agent — a harness orchestrator plus one or more backend sidecars (claude, openai, gemini) — as a `Deployment` +
 `Service` + optional `ConfigMap`, `HPA`, `PDB`, and `PVC`.
 
 Built with Operator SDK v1.42 (Go). Mirrors the deployment shape of the [witwave Helm chart](../charts/witwave/) and is

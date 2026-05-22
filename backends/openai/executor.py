@@ -13,14 +13,6 @@ from collections.abc import Awaitable, Callable
 from contextlib import AsyncExitStack
 from datetime import datetime, timezone
 
-# Per-task session context (#937). The LocalShellTool baseline deny path fires
-# before the Agents SDK exposes session_id to the tool, so hook.decision events
-# previously shipped with session_id="" and broke cross-backend correlation
-# (webhooks, dashboard forensics). Stashing the current session_id in a
-# ContextVar at _run_inner entry lets the shell executor thread it through
-# without plumbing new parameters into the SDK's tool-invocation surface.
-_current_session_id: contextvars.ContextVar[str] = contextvars.ContextVar("codex_current_session_id", default="")
-
 from a2a.server.agent_execution import AgentExecutor as A2AAgentExecutor
 from a2a.server.agent_execution import RequestContext
 from a2a.server.events import EventQueue
@@ -28,10 +20,14 @@ from a2a.utils import new_agent_text_message
 from agents import (
     Agent,
     ComputerTool,
-    LocalShellCommandRequest,
-    LocalShellTool,
+    ModelSettings,
     RunConfig,
     Runner,
+    ShellCallOutcome,
+    ShellCommandOutput,
+    ShellCommandRequest,
+    ShellResult,
+    ShellTool,
     SQLiteSession,
     WebSearchTool,
 )
@@ -40,6 +36,12 @@ from agents.models.multi_provider import MultiProvider
 from computer import BrowserPool
 from exceptions import BudgetExceededError, PromptTooLargeError
 from log_utils import _append_log
+from mcp_command_allowlist import (
+    mcp_command_allowed as _openai_mcp_command_allowed,
+)
+from mcp_command_allowlist import (
+    mcp_command_args_safe as _openai_mcp_command_args_safe,
+)
 from metrics import (
     backend_a2a_last_request_timestamp_seconds,
     backend_a2a_request_duration_seconds,
@@ -73,6 +75,7 @@ from metrics import (
     backend_mcp_outbound_requests_total,
     backend_mcp_servers_active,
     backend_model_requests_total,
+    backend_openai_hooks_denials_total,
     backend_prompt_length_bytes,
     backend_prompt_too_large_total,
     backend_response_length_bytes,
@@ -117,6 +120,7 @@ from metrics import (
     backend_tool_audit_rotation_pressure_total,
     backend_watcher_events_total,
 )
+from openai.types.shared import Reasoning
 from otel import set_span_error, start_span
 from redact import redact_text, should_redact
 from tool_audit import (  # type: ignore
@@ -132,10 +136,18 @@ from validation import parse_max_tokens, sanitize_model_label
 
 logger = logging.getLogger(__name__)
 
+# Per-task session context (#937). The ShellTool baseline deny path fires
+# before the Agents SDK exposes session_id to the tool, so hook.decision events
+# previously shipped with session_id="" and broke cross-backend correlation
+# (webhooks, dashboard forensics). Stashing the current session_id in a
+# ContextVar at _run_inner entry lets the shell executor thread it through
+# without plumbing new parameters into the SDK's tool-invocation surface.
+_current_session_id: contextvars.ContextVar[str] = contextvars.ContextVar("openai_current_session_id", default="")
 
-AGENT_NAME = os.environ.get("AGENT_NAME", "codex")
+
+AGENT_NAME = os.environ.get("AGENT_NAME", "openai")
 AGENT_OWNER = os.environ.get("AGENT_OWNER") or AGENT_NAME
-AGENT_ID = os.environ.get("AGENT_ID", "codex")
+AGENT_ID = os.environ.get("AGENT_ID", "openai")
 
 # Backend→harness generic event channel (#1110 phase 3). Import lazily
 # to tolerate environments where PYTHONPATH is not set up for the
@@ -167,16 +179,37 @@ def _emit_event_safe(event_type: str, payload: dict) -> None:
         logger.debug("event emit (%s) raised: %r", event_type, exc)
 
 
+def _default_existing_path(primary: str, legacy: str) -> str:
+    """Prefer the new OpenAI path while tolerating legacy .codex mounts."""
+    if os.path.exists(primary) or not os.path.exists(legacy):
+        return primary
+    return legacy
+
+
 CONVERSATION_LOG = os.environ.get("CONVERSATION_LOG", "/home/agent/logs/conversation.jsonl")
 TRACE_LOG = os.environ.get("TRACE_LOG", "/home/agent/logs/tool-activity.jsonl")
-AGENT_MD = "/home/agent/.codex/AGENTS.md"
-CODEX_SESSION_DB = os.environ.get("CODEX_SESSION_DB", "/home/agent/logs/codex_sessions.db")
+AGENT_MD = os.environ.get(
+    "OPENAI_AGENT_MD",
+    _default_existing_path("/home/agent/.openai/AGENTS.md", "/home/agent/.codex/AGENTS.md"),
+)
+OPENAI_SESSION_DB = (
+    os.environ.get("OPENAI_SESSION_DB")
+    or os.environ.get("CODEX_SESSION_DB")
+    or _default_existing_path("/home/agent/logs/openai_sessions.db", "/home/agent/logs/codex_sessions.db")
+)
 
-CODEX_CONFIG_TOML = os.environ.get("CODEX_CONFIG_TOML", "/home/agent/.codex/config.toml")
+OPENAI_CONFIG_TOML = (
+    os.environ.get("OPENAI_CONFIG_TOML")
+    or os.environ.get("CODEX_CONFIG_TOML")
+    or _default_existing_path("/home/agent/.openai/config.toml", "/home/agent/.codex/config.toml")
+)
 # MCP server config — same wire format as claude's mcp.json so users can
-# share the file shape between backends. Codex mounts the .codex/ tree by
+# share the file shape between backends. OpenAI mounts the .openai/ tree by
 # default, so the path differs (#432).
-MCP_CONFIG_PATH = os.environ.get("MCP_CONFIG_PATH", "/home/agent/.codex/mcp.json")
+MCP_CONFIG_PATH = os.environ.get(
+    "MCP_CONFIG_PATH",
+    _default_existing_path("/home/agent/.openai/mcp.json", "/home/agent/.codex/mcp.json"),
+)
 
 # #1731: Validate the resolved MCP_CONFIG_PATH lives under a documented
 # prefix so a hostile env override (e.g. ``MCP_CONFIG_PATH=/etc/passwd``)
@@ -216,7 +249,8 @@ _MAX_PROMPT_BYTES = int(os.environ.get("MAX_PROMPT_BYTES", str(10 * 1024 * 1024)
 # Activity tab. 16 KiB default; set to 0 to disable (legacy behaviour).
 LOG_TRACE_CONTENT_MAX_BYTES = int(os.environ.get("LOG_TRACE_CONTENT_MAX_BYTES", "16384"))
 
-CODEX_MODEL = os.environ.get("CODEX_MODEL") or "gpt-5.1-codex"
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL") or os.environ.get("CODEX_MODEL") or "gpt-5.5"
+OPENAI_REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT") or os.environ.get("CODEX_REASONING_EFFORT", "")
 OPENAI_API_KEY: str | None = os.environ.get("OPENAI_API_KEY") or None
 
 
@@ -236,17 +270,17 @@ def _current_openai_api_key() -> str | None:
 def _resolve_model_label(model: str | None) -> str:
     """Resolve a non-empty, cardinality-safe model label for observability (#719).
 
-    Falls back to the module-load ``CODEX_MODEL`` default, then runs the
+    Falls back to the module-load ``OPENAI_MODEL`` default, then runs the
     result through ``sanitize_model_label`` so caller-supplied
     ``metadata.model`` values can't blow up Prometheus cardinality by
     injecting a fresh UUID per request. Using ``"unknown"`` (not ``""``)
     keeps Prometheus series and OTel span attributes filterable in
     dashboards and avoids phantom empty-string label values (#570).
     """
-    return sanitize_model_label(model or CODEX_MODEL or None)
+    return sanitize_model_label(model or OPENAI_MODEL or None)
 
 
-_BACKEND_ID = "codex"
+_BACKEND_ID = "openai"
 _LABELS = {"agent": AGENT_OWNER, "agent_id": AGENT_ID, "backend": _BACKEND_ID}
 
 
@@ -299,7 +333,7 @@ _SHELL_ENV_DENYLIST: frozenset[str] = frozenset(
 # "Tool Activity" tab.
 
 
-# PreToolUse deny EXAMPLES for LocalShellTool (#586, #722 — shell-only scope).
+# PreToolUse deny EXAMPLES for ShellTool (#586, #722 — shell-only scope).
 #
 # IMPORTANT SCOPE NOTE (#722): these rules are textual regex matches
 # against the space-joined argv.  They provide ergonomic protection
@@ -404,7 +438,7 @@ try:
     from hooks_engine import BASELINE_RULES as _SHARED_BASELINE_RULES  # type: ignore
 except Exception as _baseline_import_exc:  # noqa: BLE001 — documented single-fail path
     logger.warning(
-        "codex: failed to import shared BASELINE_RULES from hooks_engine: %r — "
+        "openai: failed to import shared BASELINE_RULES from hooks_engine: %r — "
         "predicate baseline DISABLED; legacy regex table remains active (#938)",
         _baseline_import_exc,
     )
@@ -428,20 +462,20 @@ def _evaluate_shell_baseline(cmd_parts: list[str]) -> tuple[str, str] | None:
 
     Consults the shared ``BASELINE_RULES`` first (#807) so any rule added
     to the canonical engine (used by claude's hook path) is picked up on
-    codex automatically rather than needing a manual back-port. Falls
+    openai automatically rather than needing a manual back-port. Falls
     back to the legacy in-file regex rules for coverage parity during
     the transition.
     """
     joined = " ".join(cmd_parts)
     # Shared baseline (predicate-based). Pass the joined command through
     # as ``tool_input['command']`` so predicates matching claude's Bash
-    # shape accept codex's LocalShellTool argv transparently. Import
+    # shape accept openai's ShellTool command strings transparently. Import
     # happened at module load (#938); use the cached symbol.
     BASELINE_RULES = _SHARED_BASELINE_RULES
     shared_input = {"command": joined}
     for rule in BASELINE_RULES:
         # Only Bash-scoped rules apply to the shell executor; Write/Edit
-        # rules are irrelevant to LocalShellTool argv.
+        # rules are irrelevant to ShellTool commands.
         if getattr(rule, "tool", None) != "Bash":
             continue
         predicate = getattr(rule, "predicate", None)
@@ -490,9 +524,9 @@ def _pre_tool_use_gate(
     consistent wording.
 
     STATUS — this function is ready to fire but has **no callers yet for
-    non-shell tools**. The Agents SDK (openai-agents==0.9.3) does not expose
+    non-shell tools**. The Agents SDK does not expose
     a per-tool-call pre-invoke callback for ``WebSearchTool``, ``ComputerTool``,
-    or MCP stdio/HTTP tools; only ``LocalShellTool`` accepts an ``executor=``
+    or MCP stdio/HTTP tools; only ``ShellTool`` accepts an ``executor=``
     which is already gated by :func:`_evaluate_shell_baseline`. Invoking
     this gate for the remaining tools requires either:
 
@@ -512,7 +546,7 @@ def _pre_tool_use_gate(
     TODO(#1862): subclass ``WebSearchTool`` / ``ComputerTool`` / add an MCP
     proxy wrapper and route every invocation through this gate. When done,
     remove the "scaffold" wording from this docstring and add coverage in
-    backends/codex/tests/.
+    backends/openai/tests/.
     """
     try:
         from hooks_engine import evaluate_pre_tool_use  # type: ignore
@@ -545,7 +579,7 @@ def _pre_tool_use_gate(
 async def _append_tool_audit(entry: dict) -> None:
     """Append an ``event_type='tool_audit'`` row via the shared helper (#858).
 
-    Delegates to ``shared/tool_audit.py::log_tool_audit`` so the codex and
+    Delegates to ``shared/tool_audit.py::log_tool_audit`` so the openai and
     claude write paths converge on one implementation: async via
     ``asyncio.to_thread`` over ``_append_log`` (fcntl lock + rotation),
     with the same metric bookkeeping, same error swallowing, and identical
@@ -578,22 +612,18 @@ class ShellBlockedError(RuntimeError):
     """
 
 
-class ShellTimeoutError(RuntimeError):
-    """Raised by _shell_executor when a shell command exceeds its timeout."""
-
-
 class ShellExecutionError(RuntimeError):
     """Raised by _shell_executor when subprocess.run itself faults."""
 
 
-async def _shell_executor(req: LocalShellCommandRequest) -> str:
-    # tool.call child span (#630) — the LocalShellTool invocation path. Kept
+async def _shell_executor(req: ShellCommandRequest) -> ShellResult:
+    # tool.call child span (#630) — the ShellTool invocation path. Kept
     # around the full executor body so baseline-deny short-circuits and
     # subprocess.run are both inside the span, not just the allowed branch.
     with start_span(
         "tool.call",
         kind="internal",
-        attributes={"tool.name": "LocalShell"},
+        attributes={"tool.name": "Shell"},
     ) as _tool_span:
         try:
             return await _shell_executor_inner(req)
@@ -602,158 +632,182 @@ async def _shell_executor(req: LocalShellCommandRequest) -> str:
             raise
 
 
-async def _shell_executor_inner(req: LocalShellCommandRequest) -> str:
-    cmd = req.data.action.command
-    cwd = req.data.action.working_directory or None
-    env_extra = req.data.action.env or {}
-
-    # PreToolUse deny baseline (#586 shell-only).
-    _denied = _evaluate_shell_baseline(cmd)
-    if _denied is not None:
-        rule, reason = _denied
-        if backend_codex_hooks_denials_total is not None:
-            try:
-                backend_codex_hooks_denials_total.labels(**_LABELS, rule=rule).inc()
-            except Exception:
-                pass
-        # Canonical cross-backend name (#789). codex's baseline is
-        # shell-only so tool='shell' and source='baseline' are fixed.
-        if backend_hooks_denials_total is not None:
-            try:
-                backend_hooks_denials_total.labels(
-                    **_LABELS,
-                    tool="shell",
-                    source="baseline",
-                    rule=rule,
-                ).inc()
-            except Exception:
-                pass
-        await _append_tool_audit(
-            {
-                "ts": time.time(),
-                "tool": "LocalShell",
-                "decision": "deny",
-                "rule": rule,
-                "reason": reason,
-                "command": cmd,
-            }
-        )
-        # Backend→harness hook.decision side-channel (#779). Claude's
-        # executor carries its own equivalent for the full PreToolUse
-        # surface; codex emits only on shell-baseline denials today
-        # since those are the only hooks it evaluates. gemini is
-        # blocked on #1863 (AFC/tool-loop interposition) before it can
-        # emit similarly.
-        try:
-            import hook_events as _hook_events
-
-            # Pass the pre-labelled shed counter so sustained shedding is
-            # visible on dashboards (#957). Prior to this commit
-            # schedule_post's one-shot WARN fired once and went silent,
-            # leaving a cap-reached storm undetectable.
-            _shed_counter = backend_hooks_shed_total.labels(**_LABELS) if backend_hooks_shed_total is not None else None
-            _sid = _current_session_id.get()
-            if not _sid:
-                # #1052: empty session_id means a baseline check fired
-                # outside the normal _run_inner dispatch path (warmup,
-                # lifespan, /mcp tools/call). Treat as a defect surface —
-                # WARN and bump a dedicated counter so dashboards catch
-                # the regression class that #937 closed for the primary
-                # path only.
-                logger.warning(
-                    "_shell_executor: emitting hook.decision with empty session_id (edge-dispatch path?) rule=%s",
-                    rule,
-                )
-                if backend_hook_session_missing_total is not None:
-                    try:
-                        backend_hook_session_missing_total.labels(
-                            **_LABELS,
-                            tool="shell",
-                            source="baseline",
-                        ).inc()
-                    except Exception:
-                        pass
-            _hook_events.schedule_post(
-                {
-                    # #1149: send BACKEND id (codex/claude/gemini), not
-                    # the named witwave agent — see claude/executor.py
-                    # _event_dict for the full rationale.
-                    "agent": _BACKEND_ID,
-                    # #937: carry the per-task session_id from the ContextVar
-                    # seeded in _run_inner. Falls back to "" only when the
-                    # executor is driven outside a normal task run (tests,
-                    # warmup, etc.) — same semantics as the old hard-coded "".
-                    # #1052: empty-value case is now instrumented above.
-                    "session_id": _sid,
-                    "tool": "shell",
-                    "decision": "deny",
-                    "rule_name": rule,
-                    "reason": reason,
-                    "source": "baseline",
-                    "traceparent": None,
-                },
-                shed_counter=_shed_counter,
-            )
-        except Exception as _hev_exc:
-            logger.debug("hook.decision transport scheduling failed: %r", _hev_exc)
-        logger.warning("_shell_executor: baseline deny rule=%s cmd=%r", rule, cmd)
-        # Raise so the SDK flags the tool result as is_error=True; the
-        # denial counter above still increments before the exception
-        # (#670).
-        raise ShellBlockedError(f"Command blocked by shell baseline rule '{rule}': {reason}")
-
-    # Audit allowed commands too so the log is a complete forensic trail.
-    await _append_tool_audit(
-        {
-            "ts": time.time(),
-            "tool": "LocalShell",
-            "decision": "allow",
-            "command": cmd,
-        }
-    )
-
-    # Strip keys that could be used to hijack binary resolution or loader
-    # behavior before merging caller-supplied values into the subprocess env.
-    sanitized_extra = {k: v for k, v in env_extra.items() if k not in _SHELL_ENV_DENYLIST}
-    rejected = set(env_extra) - set(sanitized_extra)
-    if rejected:
-        logger.warning("_shell_executor: stripped dangerous env vars from caller-supplied env: %s", sorted(rejected))
-    _base_env = {k: os.environ[k] for k in ("PATH", "HOME", "USER", "TMPDIR", "LANG", "LC_ALL") if k in os.environ}
-    env = {**_base_env, **sanitized_extra}
-    timeout_ms = req.data.action.timeout_ms
+async def _shell_executor_inner(req: ShellCommandRequest) -> ShellResult:
+    action = req.data.action
+    timeout_ms = action.timeout_ms
     # Clamp non-positive timeouts to the 30s default (#879). Previously
     # `if timeout_ms else 30.0` accepted any truthy value — including
     # negatives — so timeout_ms=-1 produced timeout_s=-0.001 which
     # subprocess.run treats as already-expired and raises
     # TimeoutExpired instantly. Prompt-injectable DoS via
-    # LocalShellCommandRequest. Additionally enforce a 1s floor so a
+    # ShellCommandRequest. Additionally enforce a 1s floor so a
     # legitimately tiny-positive value (e.g. timeout_ms=1) still gives
     # the subprocess enough time to execute — otherwise every
-    # invocation raises ShellTimeoutError regardless of the command
+    # invocation times out instantly regardless of the command
     # (#987).
     _SHELL_TIMEOUT_MIN_S = 1.0
     if timeout_ms and timeout_ms > 0:
         timeout_s = max(_SHELL_TIMEOUT_MIN_S, timeout_ms / 1000.0)
     else:
         timeout_s = 30.0
-    try:
-        result = await asyncio.to_thread(
-            subprocess.run,
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-            cwd=cwd,
-            env=env,
+    outputs: list[ShellCommandOutput] = []
+    for cmd in action.commands:
+        await _check_shell_command_allowed(cmd)
+        await _append_tool_audit(
+            {
+                "ts": time.time(),
+                "tool": "Shell",
+                "decision": "allow",
+                "command": cmd,
+            }
         )
-        out = result.stdout
-        if result.returncode != 0 and result.stderr:
-            out += result.stderr
-        return out
-    except subprocess.TimeoutExpired as exc:
-        raise ShellTimeoutError(f"Command timed out after {timeout_s}s") from exc
-    except Exception as exc:
-        raise ShellExecutionError(f"Shell error: {exc}") from exc
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+                shell=True,
+                executable="/bin/bash",
+                env=_safe_shell_env(),
+            )
+            outputs.append(
+                ShellCommandOutput(
+                    command=cmd,
+                    stdout=result.stdout or "",
+                    stderr=result.stderr or "",
+                    outcome=ShellCallOutcome(type="exit", exit_code=result.returncode),
+                )
+            )
+        except subprocess.TimeoutExpired as exc:
+            outputs.append(
+                ShellCommandOutput(
+                    command=cmd,
+                    stdout=_timeout_stream_to_text(exc.stdout),
+                    stderr=_timeout_stream_to_text(exc.stderr),
+                    outcome=ShellCallOutcome(type="timeout"),
+                )
+            )
+            break
+        except Exception as exc:
+            raise ShellExecutionError(f"Shell error: {exc}") from exc
+    return ShellResult(output=outputs, max_output_length=action.max_output_length)
+
+
+def _timeout_stream_to_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    return value.decode(errors="replace")
+
+
+def _safe_shell_env() -> dict[str, str]:
+    return {k: os.environ[k] for k in ("PATH", "HOME", "USER", "TMPDIR", "LANG", "LC_ALL") if k in os.environ}
+
+
+async def _check_shell_command_allowed(cmd: str) -> None:
+    # PreToolUse deny baseline (#586 shell-only).
+    _denied = _evaluate_shell_baseline([cmd])
+    if _denied is None:
+        return
+    rule, reason = _denied
+    if backend_openai_hooks_denials_total is not None:
+        try:
+            backend_openai_hooks_denials_total.labels(**_LABELS, rule=rule).inc()
+        except Exception:
+            pass
+    if backend_codex_hooks_denials_total is not None:
+        try:
+            backend_codex_hooks_denials_total.labels(**_LABELS, rule=rule).inc()
+        except Exception:
+            pass
+    # Canonical cross-backend name (#789). openai's baseline is
+    # shell-only so tool='shell' and source='baseline' are fixed.
+    if backend_hooks_denials_total is not None:
+        try:
+            backend_hooks_denials_total.labels(
+                **_LABELS,
+                tool="shell",
+                source="baseline",
+                rule=rule,
+            ).inc()
+        except Exception:
+            pass
+    await _append_tool_audit(
+        {
+            "ts": time.time(),
+            "tool": "Shell",
+            "decision": "deny",
+            "rule": rule,
+            "reason": reason,
+            "command": cmd,
+        }
+    )
+    # Backend→harness hook.decision side-channel (#779). Claude's
+    # executor carries its own equivalent for the full PreToolUse
+    # surface; openai emits only on shell-baseline denials today
+    # since those are the only hooks it evaluates. gemini is
+    # blocked on #1863 (AFC/tool-loop interposition) before it can
+    # emit similarly.
+    try:
+        import hook_events as _hook_events
+
+        # Pass the pre-labelled shed counter so sustained shedding is
+        # visible on dashboards (#957). Prior to this commit
+        # schedule_post's one-shot WARN fired once and went silent,
+        # leaving a cap-reached storm undetectable.
+        _shed_counter = backend_hooks_shed_total.labels(**_LABELS) if backend_hooks_shed_total is not None else None
+        _sid = _current_session_id.get()
+        if not _sid:
+            # #1052: empty session_id means a baseline check fired
+            # outside the normal _run_inner dispatch path (warmup,
+            # lifespan, /mcp tools/call). Treat as a defect surface —
+            # WARN and bump a dedicated counter so dashboards catch
+            # the regression class that #937 closed for the primary
+            # path only.
+            logger.warning(
+                "_shell_executor: emitting hook.decision with empty session_id (edge-dispatch path?) rule=%s",
+                rule,
+            )
+            if backend_hook_session_missing_total is not None:
+                try:
+                    backend_hook_session_missing_total.labels(
+                        **_LABELS,
+                        tool="shell",
+                        source="baseline",
+                    ).inc()
+                except Exception:
+                    pass
+        _hook_events.schedule_post(
+            {
+                # #1149: send BACKEND id (openai/claude/gemini), not
+                # the named witwave agent — see claude/executor.py
+                # _event_dict for the full rationale.
+                "agent": _BACKEND_ID,
+                # #937: carry the per-task session_id from the ContextVar
+                # seeded in _run_inner. Falls back to "" only when the
+                # executor is driven outside a normal task run (tests,
+                # warmup, etc.) — same semantics as the old hard-coded "".
+                # #1052: empty-value case is now instrumented above.
+                "session_id": _sid,
+                "tool": "shell",
+                "decision": "deny",
+                "rule_name": rule,
+                "reason": reason,
+                "source": "baseline",
+                "traceparent": None,
+            },
+            shed_counter=_shed_counter,
+        )
+    except Exception as _hev_exc:
+        logger.debug("hook.decision transport scheduling failed: %r", _hev_exc)
+    logger.warning("_shell_executor: baseline deny rule=%s cmd=%r", rule, cmd)
+    # Raise so the SDK flags the tool result as is_error=True; the
+    # denial counter above still increments before the exception
+    # (#670).
+    raise ShellBlockedError(f"Command blocked by shell baseline rule '{rule}': {reason}")
 
 
 def _load_tool_config() -> dict:
@@ -766,11 +820,11 @@ def _load_tool_config() -> dict:
         except ImportError:
             return {}
     try:
-        with open(CODEX_CONFIG_TOML, "rb") as f:
+        with open(OPENAI_CONFIG_TOML, "rb") as f:
             data = tomllib.load(f)
         return data.get("tools", {})
     except Exception as exc:
-        logger.warning("Could not read tool config from %s: %s", CODEX_CONFIG_TOML, exc)
+        logger.warning("Could not read tool config from %s: %s", OPENAI_CONFIG_TOML, exc)
         return {}
 
 
@@ -821,33 +875,26 @@ def _load_mcp_config() -> dict:
 
 # MCP stdio command allow-list (#720 — parity with claude #711). Without
 # this guard, a malicious mcp.json landed via gitSync or the WitwavePrompt
-# path could spawn an arbitrary binary inside the codex backend pod.
+# path could spawn an arbitrary binary inside the openai backend pod.
 #
 # #964: The rule now lives in shared/mcp_command_allowlist.py — the
 # three backends used to carry forked copies that drifted on defaults,
 # metric reasons, and the absolute-path fallback behaviour (#862). The
-# shared helper is the source of truth; codex keeps only its cwd
-# allow-list (cwd wasn't covered by the shared module at the time of
-# consolidation).
-from mcp_command_allowlist import (  # noqa: E402
-    mcp_command_allowed as _codex_mcp_command_allowed,
-)
-from mcp_command_allowlist import (
-    mcp_command_args_safe as _codex_mcp_command_args_safe,
-)
+# shared helper is the source of truth; openai keeps only its cwd allow-list
+# (cwd wasn't covered by the shared module at the time of consolidation).
 
-_DEFAULT_CODEX_MCP_ALLOWED_CWD_PREFIXES = "/home/agent/,/tmp/"
-_CODEX_MCP_ALLOWED_CWD_PREFIXES: tuple[str, ...] = tuple(
+_DEFAULT_OPENAI_MCP_ALLOWED_CWD_PREFIXES = "/home/agent/,/tmp/"
+_OPENAI_MCP_ALLOWED_CWD_PREFIXES: tuple[str, ...] = tuple(
     t.strip()
     for t in os.environ.get(
         "MCP_ALLOWED_CWD_PREFIXES",
-        _DEFAULT_CODEX_MCP_ALLOWED_CWD_PREFIXES,
+        _DEFAULT_OPENAI_MCP_ALLOWED_CWD_PREFIXES,
     ).split(",")
     if t.strip()
 )
 
 
-def _codex_mcp_cwd_allowed(cwd: str) -> tuple[bool, str]:
+def _openai_mcp_cwd_allowed(cwd: str) -> tuple[bool, str]:
     """Return (ok, reason) for an MCP stdio ``cwd`` value (#720).
 
     Only absolute paths whose prefix matches MCP_ALLOWED_CWD_PREFIXES are
@@ -862,7 +909,7 @@ def _codex_mcp_cwd_allowed(cwd: str) -> tuple[bool, str]:
         return False, "cwd_empty"
     if not c.startswith("/"):
         return False, "cwd_not_absolute"
-    for prefix in _CODEX_MCP_ALLOWED_CWD_PREFIXES:
+    for prefix in _OPENAI_MCP_ALLOWED_CWD_PREFIXES:
         if c.startswith(prefix):
             return True, "cwd_allowed"
     return False, "cwd_not_on_prefix"
@@ -906,7 +953,7 @@ def _build_mcp_servers(mcp_config: dict) -> list:
                 # Validate command against the allow-list BEFORE any
                 # other field processing so a rejection is logged and
                 # counted cheaply (#720).
-                cmd_ok, cmd_reason = _codex_mcp_command_allowed(cfg["command"])
+                cmd_ok, cmd_reason = _openai_mcp_command_allowed(cfg["command"])
                 if not cmd_ok:
                     logger.warning(
                         "MCP server %r: command %r rejected by allow-list "
@@ -926,7 +973,7 @@ def _build_mcp_servers(mcp_config: dict) -> list:
                             pass
                     continue
                 if "cwd" in cfg:
-                    cwd_ok, cwd_reason = _codex_mcp_cwd_allowed(cfg["cwd"])
+                    cwd_ok, cwd_reason = _openai_mcp_cwd_allowed(cfg["cwd"])
                     if not cwd_ok:
                         logger.warning(
                             "MCP server %r: cwd %r rejected by allow-list "
@@ -952,7 +999,7 @@ def _build_mcp_servers(mcp_config: dict) -> list:
                 # MCP_ALLOWED_COMMANDS doesn't silently re-open the
                 # arbitrary-code-execution path the README promises is
                 # closed.
-                args_ok, args_reason = _codex_mcp_command_args_safe(
+                args_ok, args_reason = _openai_mcp_command_args_safe(
                     cfg["command"],
                     cfg.get("args"),
                 )
@@ -1098,8 +1145,36 @@ def _get_sessions_lock() -> asyncio.Lock:
     return _sessions_lock
 
 
-# Models known to support computer_use_preview
-_COMPUTER_SUPPORTED_MODELS = {"computer-use-preview"}
+_COMPUTER_SUPPORTED_MODELS = {"computer-use-preview", "gpt-5.5"}
+_COMPUTER_SUPPORTED_MODEL_PREFIXES = ("gpt-5.5-",)
+
+
+def _supports_computer_tool(model: str) -> bool:
+    return model in _COMPUTER_SUPPORTED_MODELS or model.startswith(_COMPUTER_SUPPORTED_MODEL_PREFIXES)
+
+
+_REASONING_EFFORT_ALIASES = {
+    "extra high": "xhigh",
+    "extra-high": "xhigh",
+    "extra_high": "xhigh",
+    "x-high": "xhigh",
+}
+_REASONING_EFFORTS = {"minimal", "low", "medium", "high", "xhigh"}
+
+
+def _build_model_settings() -> ModelSettings:
+    effort = OPENAI_REASONING_EFFORT.strip().lower()
+    effort = _REASONING_EFFORT_ALIASES.get(effort, effort)
+    if not effort:
+        return ModelSettings()
+    if effort not in _REASONING_EFFORTS:
+        logger.warning(
+            "Ignoring unsupported OPENAI_REASONING_EFFORT=%r; expected one of %s.",
+            OPENAI_REASONING_EFFORT,
+            sorted(_REASONING_EFFORTS),
+        )
+        return ModelSettings()
+    return ModelSettings(reasoning=Reasoning(effort=effort))
 
 
 async def _build_tools(model: str, session_id: str, tool_config: dict | None = None) -> list:
@@ -1110,7 +1185,7 @@ async def _build_tools(model: str, session_id: str, tool_config: dict | None = N
     service workers, cache, and page state stay isolated between A2A
     sessions (#522).
 
-    ``tool_config`` is the cached [tools] table from CODEX_CONFIG_TOML,
+    ``tool_config`` is the cached [tools] table from OPENAI_CONFIG_TOML,
     maintained by ``AgentExecutor.tool_config_watcher`` (#561). If None
     (e.g. invoked outside a running AgentExecutor, such as in tests),
     falls back to a direct disk read for backwards compatibility.
@@ -1119,10 +1194,10 @@ async def _build_tools(model: str, session_id: str, tool_config: dict | None = N
     cfg = tool_config if tool_config is not None else _load_tool_config()
     tools = []
     if cfg.get("shell", False):
-        tools.append(LocalShellTool(executor=_shell_executor))
+        tools.append(ShellTool(executor=_shell_executor))
     if cfg.get("web_search", False):
         tools.append(WebSearchTool())
-    if cfg.get("computer", False) and model in _COMPUTER_SUPPORTED_MODELS:
+    if cfg.get("computer", False) and _supports_computer_tool(model):
         async with _computer_lock:
             if _browser_pool is None:
                 _browser_pool = BrowserPool()
@@ -1155,18 +1230,18 @@ async def _release_computer(session_id: str) -> None:
 
 # SQLite busy_timeout in milliseconds. Matches the harness SqliteTaskStore
 # defaults (#704) — 5s tolerates brief rsync-style locks and concurrent
-# writers from the Codex SDK without flipping every resume into an
+# writers from the OpenAI Agents SDK without flipping every resume into an
 # OperationalError. Overridable for extremely contended deployments via
-# CODEX_SQLITE_BUSY_TIMEOUT_MS (#727).
-_CODEX_SQLITE_BUSY_TIMEOUT_MS = int(os.environ.get("CODEX_SQLITE_BUSY_TIMEOUT_MS", "5000"))
+# OPENAI_SQLITE_BUSY_TIMEOUT_MS (#727).
+_OPENAI_SQLITE_BUSY_TIMEOUT_MS = int(os.environ.get("OPENAI_SQLITE_BUSY_TIMEOUT_MS", "5000"))
 
 
-def _codex_sqlite_connect(db_path: str):
+def _openai_sqlite_connect(db_path: str):
     """Open a sqlite3 connection with WAL + busy_timeout applied (#727).
 
     Mirrors the pattern used by ``harness/sqlite_task_store.py`` (#704) and
     ``backends/claude``'s SqliteTaskStore (#713).  WAL lets readers proceed
-    in parallel with the single Codex SDK writer, and busy_timeout absorbs
+    in parallel with the single OpenAI Agents SDK writer, and busy_timeout absorbs
     transient contention without raising.  Both PRAGMAs are best-effort —
     some network filesystems cannot host a WAL journal; in that case we log
     and continue on the default delete-mode journal rather than failing the
@@ -1180,25 +1255,25 @@ def _codex_sqlite_connect(db_path: str):
         conn.execute("PRAGMA journal_mode=WAL")
     except _sqlite3.OperationalError as exc:
         logger.warning(
-            "codex sqlite: journal_mode=WAL failed (%s) — continuing on default journal",
+            "openai sqlite: journal_mode=WAL failed (%s) — continuing on default journal",
             exc,
         )
     try:
-        conn.execute(f"PRAGMA busy_timeout={_CODEX_SQLITE_BUSY_TIMEOUT_MS}")
+        conn.execute(f"PRAGMA busy_timeout={_OPENAI_SQLITE_BUSY_TIMEOUT_MS}")
     except _sqlite3.OperationalError as exc:
-        logger.warning("codex sqlite: busy_timeout pragma failed (%s)", exc)
+        logger.warning("openai sqlite: busy_timeout pragma failed (%s)", exc)
     return conn
 
 
 def _sqlite_session_exists(session_id: str) -> bool:
-    """Check whether a session already has history in CODEX_SESSION_DB.
+    """Check whether a session already has history in OPENAI_SESSION_DB.
 
     Uses a direct sqlite3 query against the agent_sessions table so that
     after a process restart we correctly identify sessions that exist on disk
     even though the in-memory LRU cache is empty.  Returns False if the
     database file does not exist yet or if any error occurs.
     """
-    db_path = CODEX_SESSION_DB
+    db_path = OPENAI_SESSION_DB
     if db_path == ":memory:" or not db_path:
         return False
     import os as _os
@@ -1206,7 +1281,7 @@ def _sqlite_session_exists(session_id: str) -> bool:
     if not _os.path.exists(db_path):
         return False
     try:
-        conn = _codex_sqlite_connect(db_path)
+        conn = _openai_sqlite_connect(db_path)
         try:
             cursor = conn.execute(
                 "SELECT 1 FROM agent_sessions WHERE session_id = ? LIMIT 1",
@@ -1228,7 +1303,7 @@ def _delete_sqlite_session(session_id: str, db_path: str) -> None:
     Intended to be called via asyncio.to_thread() so the event loop is not
     stalled by SQLite I/O during timeout cleanup (#361).
     """
-    conn = _codex_sqlite_connect(db_path)
+    conn = _openai_sqlite_connect(db_path)
     try:
         conn.execute("DELETE FROM agent_sessions WHERE session_id = ?", (session_id,))
         conn.commit()
@@ -1237,10 +1312,10 @@ def _delete_sqlite_session(session_id: str, db_path: str) -> None:
 
 
 def _session_layout_self_test() -> None:
-    """Probe the codex SQLiteSession on-disk layout at startup (#806).
+    """Probe the openai SQLiteSession on-disk layout at startup (#806).
 
     Mirrors claude's #530 probe. Writes + reads + deletes a sentinel row
-    through a direct ``sqlite3`` connection against ``CODEX_SESSION_DB`` so
+    through a direct ``sqlite3`` connection against ``OPENAI_SESSION_DB`` so
     operators get an immediate signal when:
 
     - the DB directory is not writable (permissions / read-only mount),
@@ -1271,15 +1346,15 @@ def _session_layout_self_test() -> None:
             except Exception:
                 pass
 
-    db_path = CODEX_SESSION_DB
+    db_path = OPENAI_SESSION_DB
     if not db_path or db_path == ":memory:":
         logger.info(
-            "session-layout self-test: CODEX_SESSION_DB is %r — skipping probe (in-memory / unset). (#806)",
+            "session-layout self-test: OPENAI_SESSION_DB is %r — skipping probe (in-memory / unset). (#806)",
             db_path,
         )
         return
 
-    probe_id = "__witwave_codex_session_probe__"
+    probe_id = "__witwave_openai_session_probe__"
     try:
         # (1) Ensure parent dir exists + is writable.
         parent = os.path.dirname(db_path) or "."
@@ -1305,7 +1380,7 @@ def _session_layout_self_test() -> None:
         try:
             import sqlite3 as _sqlite3
 
-            conn = _codex_sqlite_connect(db_path)
+            conn = _openai_sqlite_connect(db_path)
         except Exception as exc:
             logger.error(
                 "session-layout self-test: sqlite3.connect(%r) failed: %r — session history will not persist. (#806)",
@@ -1428,7 +1503,7 @@ def _session_layout_self_test() -> None:
                 _bump("delete_failed")
 
             logger.info(
-                "session-layout self-test: CODEX_SESSION_DB=%r verified (write/read/delete round-trip OK). (#806)",
+                "session-layout self-test: OPENAI_SESSION_DB=%r verified (write/read/delete round-trip OK). (#806)",
                 db_path,
             )
         finally:
@@ -1457,7 +1532,7 @@ def _compute_agent_md_revision(content: str) -> str:
     """Return the SHA-256 hex prefix (first 12 chars) of AGENTS.md content (#1097).
 
     Used as the ``revision`` label on ``backend_agent_md_revision`` and as
-    the ``codex.agent_md_revision`` per-query span attribute so operators
+    the ``openai.agent_md_revision`` per-query span attribute so operators
     can verify a hot-reload has propagated to running queries.
     """
     return hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()[:12]
@@ -1567,7 +1642,7 @@ async def _track_session(sessions: OrderedDict[str, float], session_id: str) -> 
                 # Run the delete in a thread pool so the event loop is not blocked
                 # on slow/remote filesystems — same pattern the timeout-cleanup
                 # path at line 766 uses, and consistent with claude #426 (#450).
-                _db = CODEX_SESSION_DB
+                _db = OPENAI_SESSION_DB
                 if _db and _db != ":memory:":
                     try:
                         await asyncio.to_thread(_delete_sqlite_session, _evicted_id, _db)
@@ -1595,8 +1670,8 @@ async def run_query(
     live_mcp_servers: list | None = None,
     tool_config: dict | None = None,
 ) -> list[str]:
-    resolved_model = model or CODEX_MODEL
-    log_dir = os.path.dirname(CODEX_SESSION_DB)
+    resolved_model = model or OPENAI_MODEL
+    log_dir = os.path.dirname(OPENAI_SESSION_DB)
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
 
@@ -1612,7 +1687,7 @@ async def run_query(
     _live_mcp_servers: list = list(live_mcp_servers or [])
 
     try:
-        session = SQLiteSession(session_id, CODEX_SESSION_DB)
+        session = SQLiteSession(session_id, OPENAI_SESSION_DB)
     except Exception as _sess_exc:
         logger.error("Failed to initialise SQLiteSession for %r: %s", session_id, _sess_exc)
         if backend_session_history_save_errors_total is not None:
@@ -1635,7 +1710,11 @@ async def run_query(
             "rotation) in the backend environment. See #728 / #1501.",
             session_id,
         )
-    run_config = RunConfig(model_provider=MultiProvider(openai_api_key=_live_openai_key)) if _live_openai_key else None
+    run_config = (
+        RunConfig(model_provider=MultiProvider(openai_api_key=_live_openai_key, openai_use_responses=True))
+        if _live_openai_key
+        else None
+    )
 
     collected: list[str] = []
     _query_start = time.monotonic()
@@ -1666,10 +1745,11 @@ async def run_query(
         # MCP servers are owned by AgentExecutor's lifespan-scoped AsyncExitStack
         # (#526). We receive them already-entered; we do not enter or exit them
         # per request. The snapshot above is the caller's live list.
-        codex_agent = Agent(
+        openai_agent = Agent(
             name=AGENT_NAME,
             instructions=instructions,
             model=resolved_model,
+            model_settings=_build_model_settings(),
             tools=await _build_tools(resolved_model, session_id, tool_config=tool_config),
             mcp_servers=_live_mcp_servers,
         )
@@ -1679,13 +1759,13 @@ async def run_query(
         # long stream loop below. The span stays open for the full streaming
         # iteration so nested tool.call / mcp.call spans parent under it.
         #
-        # ``codex.agent_md_revision`` (#1097) — SHA-256 hex prefix of the
+        # ``openai.agent_md_revision`` (#1097) — SHA-256 hex prefix of the
         # AGENTS.md content that seeded ``instructions`` for this run. Paired
         # with the ``backend_agent_md_revision`` gauge so operators can verify
         # a hot-reload has propagated to in-flight queries.
         _llm_attrs = {"model": _resolve_model_label(resolved_model)}
         try:
-            _llm_attrs["codex.agent_md_revision"] = _compute_agent_md_revision(agent_md_content)
+            _llm_attrs["openai.agent_md_revision"] = _compute_agent_md_revision(agent_md_content)
         except Exception:
             pass
         _llm_ctx = start_span(
@@ -1694,7 +1774,7 @@ async def run_query(
             attributes=_llm_attrs,
         )
         _llm_ctx.__enter__()
-        result = Runner.run_streamed(codex_agent, prompt, session=session, run_config=run_config)
+        result = Runner.run_streamed(openai_agent, prompt, session=session, run_config=run_config)
         async for event in result.stream_events():
             _message_count += 1
             if event.type == "raw_response_event":
@@ -1802,8 +1882,10 @@ async def run_query(
                         # name + start-time key.
                         _pending_synth_call_ids.append(call_id)
                     name = getattr(raw, "name", None) or getattr(raw, "type", "unknown")
-                    # For local_shell, extract command as input
-                    if hasattr(raw, "action") and hasattr(raw.action, "command"):
+                    # For shell, extract command(s) as input.
+                    if hasattr(raw, "action") and hasattr(raw.action, "commands"):
+                        tool_input = {"commands": list(raw.action.commands)}
+                    elif hasattr(raw, "action") and hasattr(raw.action, "command"):
                         tool_input = {"command": raw.action.command}
                     else:
                         args_str = getattr(raw, "arguments", None)
@@ -2254,7 +2336,7 @@ async def _run_inner(
     # scopes to the current asyncio Task's context, which terminates when
     # this coroutine returns.
     _current_session_id.set(session_id)
-    resolved_model = model or CODEX_MODEL
+    resolved_model = model or OPENAI_MODEL
     if backend_model_requests_total is not None:
         backend_model_requests_total.labels(**_LABELS, model=sanitize_model_label(resolved_model)).inc()
 
@@ -2329,7 +2411,7 @@ async def _run_inner(
             # session_id starts with empty history rather than reloading the
             # potentially stale snapshot stored before the timeout.
             # Run in a thread to avoid blocking the event loop with SQLite I/O (#361).
-            _db_path = CODEX_SESSION_DB
+            _db_path = OPENAI_SESSION_DB
             if _db_path and _db_path != ":memory:":
                 try:
                     await asyncio.to_thread(_delete_sqlite_session, session_id, _db_path)
@@ -2396,13 +2478,13 @@ class AgentExecutor(A2AAgentExecutor):
         # Cached SHA-256 hex prefix of the currently-active AGENTS.md (#1097).
         # Recomputed in perform_initial_loads() and agent_md_watcher() on each
         # reload; stamped on backend_agent_md_revision gauge (value 1) and
-        # mirrored into the per-query span attribute codex.agent_md_revision.
+        # mirrored into the per-query span attribute openai.agent_md_revision.
         self._agent_md_revision: str = _compute_agent_md_revision(self._agent_md_content)
         self._stamp_agent_md_revision(self._agent_md_revision, previous=None)
         # MCP config dict loaded from MCP_CONFIG_PATH; populated and refreshed
         # by mcp_config_watcher() (#432).
         self._mcp_config: dict = {}
-        # [tools] table from CODEX_CONFIG_TOML; populated and refreshed by
+        # [tools] table from OPENAI_CONFIG_TOML; populated and refreshed by
         # tool_config_watcher() (#561). Eliminates per-request TOML re-parse
         # in _build_tools; consistent with the mcp.json / AGENTS.md cache
         # pattern elsewhere in this module.
@@ -2530,7 +2612,7 @@ class AgentExecutor(A2AAgentExecutor):
             self._tool_config = await asyncio.to_thread(_load_tool_config)
             logger.info(
                 "tool config loaded (initial) from %s: %s",
-                CODEX_CONFIG_TOML,
+                OPENAI_CONFIG_TOML,
                 dict(self._tool_config),
             )
         except Exception as exc:
@@ -2798,7 +2880,7 @@ class AgentExecutor(A2AAgentExecutor):
             await asyncio.sleep(10)
 
     async def tool_config_watcher(self) -> None:
-        """Watch CODEX_CONFIG_TOML for changes and hot-reload the [tools] table (#561).
+        """Watch OPENAI_CONFIG_TOML for changes and hot-reload the [tools] table (#561).
 
         Mirrors the mcp_config_watcher / agent_md_watcher pattern: load once on
         startup into ``self._tool_config`` (used by ``_build_tools`` via
@@ -2815,9 +2897,9 @@ class AgentExecutor(A2AAgentExecutor):
         # Skipped when perform_initial_loads already ran (#1095).
         if not self._initial_tool_config_loaded:
             self._tool_config = await asyncio.to_thread(_load_tool_config)
-            logger.info("tool config loaded from %s: %s", CODEX_CONFIG_TOML, dict(self._tool_config))
+            logger.info("tool config loaded from %s: %s", OPENAI_CONFIG_TOML, dict(self._tool_config))
 
-        watch_dir = os.path.dirname(os.path.abspath(CODEX_CONFIG_TOML))
+        watch_dir = os.path.dirname(os.path.abspath(OPENAI_CONFIG_TOML))
         while True:
             if not os.path.isdir(watch_dir):
                 logger.info("tool config directory not found — retrying in 10s.")
@@ -2827,9 +2909,9 @@ class AgentExecutor(A2AAgentExecutor):
                 if backend_watcher_events_total is not None:
                     backend_watcher_events_total.labels(**_LABELS, watcher="tool_config").inc()
                 for _, path in changes:
-                    if os.path.abspath(path) == os.path.abspath(CODEX_CONFIG_TOML):
+                    if os.path.abspath(path) == os.path.abspath(OPENAI_CONFIG_TOML):
                         self._tool_config = await asyncio.to_thread(_load_tool_config)
-                        logger.info("tool config reloaded from %s: %s", CODEX_CONFIG_TOML, dict(self._tool_config))
+                        logger.info("tool config reloaded from %s: %s", OPENAI_CONFIG_TOML, dict(self._tool_config))
                         break
             logger.warning("tool config directory watcher exited — retrying in 10s.")
             if backend_file_watcher_restarts_total is not None:
@@ -3013,7 +3095,7 @@ class AgentExecutor(A2AAgentExecutor):
             c for c in str(context.context_id or metadata.get("session_id") or "").strip()[:256] if c >= " "
         )
         # Per-caller session_id binding parity with claude (#710) and
-        # gemini (#733). The same risk applies to codex: raw session_id
+        # gemini (#733). The same risk applies to openai: raw session_id
         # is caller-supplied and acts as a bearer secret when left
         # unbound. The shared helper is backward compatible (no-op when
         # SESSION_ID_SECRET is unset), so this merely closes the
@@ -3033,7 +3115,7 @@ class AgentExecutor(A2AAgentExecutor):
         # Probe-list rotation (#1042). Same pattern as claude executor:
         # candidates[0] is the current-secret derivation; any subsequent
         # candidate corresponds to SESSION_ID_SECRET_PREV. If existing
-        # rows in CODEX_SESSION_DB are keyed under the previous derivation
+        # rows in OPENAI_SESSION_DB are keyed under the previous derivation
         # we route this request to the old id so resume works mid-window.
         _sid_candidates = _derive_session_id_candidates(_raw_sid, caller_identity=_caller_id)
         session_id = _sid_candidates[0]
@@ -3143,7 +3225,7 @@ class AgentExecutor(A2AAgentExecutor):
         _otel_span = None
         try:
             with _start_span(
-                "codex.execute",
+                "openai.execute",
                 kind="server",
                 parent_context=_otel_parent,
                 attributes={

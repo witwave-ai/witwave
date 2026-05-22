@@ -9,7 +9,6 @@ from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from datetime import time as dtime
 from pathlib import Path
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from bus import Message, MessageBus
 from croniter import croniter
@@ -40,6 +39,7 @@ from utils import (
     parse_frontmatter_raw,
     run_awatch_loop,
 )
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 logger = logging.getLogger(__name__)
 

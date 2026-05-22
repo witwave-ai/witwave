@@ -95,7 +95,7 @@ See `events.schema.json` for the full JSON Schema.
 
 ## Per-session backend stream (phase 4)
 
-Each backend (`claude`, `codex`, `gemini`) additionally serves `GET /api/sessions/<session_id>/stream` for real-time
+Each backend (`claude`, `openai`, `gemini`) additionally serves `GET /api/sessions/<session_id>/stream` for real-time
 drill-down into a single session. Wire format is identical to the harness event stream (SSE, same envelope) but the
 published types are limited to `conversation.chunk`, `conversation.turn`, `tool.use`, `trace.span`, and the
 `stream.overrun` terminal envelope.

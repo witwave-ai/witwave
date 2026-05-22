@@ -8,7 +8,7 @@ import type { Agent } from "../../src/types/team";
 
 const backends: Agent[] = [
   { id: "iris-claude", role: "backend", url: "http://iris-claude:8000" },
-  { id: "iris-codex", role: "backend", url: "http://iris-codex:8000" },
+  { id: "iris-openai", role: "backend", url: "http://iris-openai:8000" },
 ];
 
 function okJson(data: unknown): Response {

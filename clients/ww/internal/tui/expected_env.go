@@ -29,11 +29,20 @@ var defaultExpectedEnvVars = map[string][]string{
 		"AWS_SESSION_TOKEN",
 		"AWS_REGION",
 	},
-	"codex": {
+	"openai": {
 		"OPENAI_API_KEY",
 		"OPENAI_ORG",
 		"OPENAI_PROJECT",
 		// Azure OpenAI path.
+		"AZURE_OPENAI_API_KEY",
+		"AZURE_OPENAI_ENDPOINT",
+		"AZURE_OPENAI_API_VERSION",
+	},
+	// Legacy alias for the pre-rename OpenAI Agents SDK backend.
+	"codex": {
+		"OPENAI_API_KEY",
+		"OPENAI_ORG",
+		"OPENAI_PROJECT",
 		"AZURE_OPENAI_API_KEY",
 		"AZURE_OPENAI_ENDPOINT",
 		"AZURE_OPENAI_API_VERSION",

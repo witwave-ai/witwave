@@ -27,7 +27,7 @@ override. An empty list (the default) disables consensus — the prompt is dispa
 consensus:
   - backend: "claude" # exact backend ID
     model: "claude-opus-4-7" # optional model override
-  - backend: "codex*" # glob pattern — matches all codex backends
+  - backend: "openai*" # glob pattern — matches all openai backends
   - backend: "claude"
     model: "claude-haiku-4-5" # same backend, different model = two parallel calls
 ```

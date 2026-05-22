@@ -11,7 +11,7 @@ under-report freshness gaps when budget exhaustion is the actual outcome.
 Fix: gate the ``set(time.time())`` call with ``if not _budget_exceeded`` —
 parity with the codex fix from #1662.
 
-Mirrors backends/codex/test_success_timestamp_gating.py.
+Mirrors backends/openai/test_success_timestamp_gating.py.
 """
 
 from __future__ import annotations

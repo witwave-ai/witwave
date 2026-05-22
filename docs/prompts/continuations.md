@@ -59,7 +59,7 @@ Generate a final end-to-end report covering the review, build, and deployment st
 | `delay`                | No       | Pause before firing. Format: `30s`, `5m`, `1h`, `1h30m`. Default: no delay.                                                                                  |
 | `session`              | No       | Session ID override. Default: inherit upstream session.                                                                                                      |
 | `model`                | No       | Model override passed to the backend.                                                                                                                        |
-| `agent`                | No       | Backend ID override (e.g. `codex`); defaults to routing config.                                                                                              |
+| `agent`                | No       | Backend ID override (e.g. `openai`); defaults to routing config.                                                                                              |
 | `enabled`              | No       | `false` disables without deleting. Default: `true`.                                                                                                          |
 | `consensus`            | No       | List of `{backend, model?}` entries to fan out to; empty list (default) disables consensus. Supports glob patterns in `backend`.                             |
 | `max-tokens`           | No       | Token budget for this dispatch. Stop and return partial response when reached.                                                                               |

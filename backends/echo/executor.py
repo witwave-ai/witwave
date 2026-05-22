@@ -46,7 +46,7 @@ _CANNED_RESPONSE_TEMPLATE = (
     "You said: {prompt}\n\n"
     "This agent is running the echo backend, which returns canned responses "
     "so you can deploy and exercise an agent without any API keys. To swap "
-    "in a real backend (claude, codex, or gemini), see `ww agent backend set --help`."
+    "in a real backend (claude, openai, or gemini), see `ww agent backend set --help`."
 )
 
 _EMPTY_PROMPT_RESPONSE = "echo backend — received an empty prompt. Send text and I'll echo it back."

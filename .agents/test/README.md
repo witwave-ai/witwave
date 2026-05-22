@@ -10,7 +10,7 @@ config or runtime changes.**
 ## Secrets
 
 Shared test-team credentials are mirrored into `team.sops.env` as a SOPS-encrypted dotenv file. It currently carries the
-Claude OAuth, gitSync, and OpenAI keys used by the test bootstrap and future Codex parity runs.
+Claude OAuth, gitSync, and OpenAI keys used by the test bootstrap and future OpenAI parity runs.
 
 ```bash
 mise exec -- sops -d .agents/test/team.sops.env
@@ -26,7 +26,7 @@ Bob is the primary smoke-test agent. He exercises the broadest active test surfa
 continuations, webhooks, routing defaults, model overrides, token-budget handling, fan-in continuations, and parked
 multi-backend fixtures.
 
-Bob is Claude-first in the default CLI deployment. His Codex and Gemini config directories remain in the repo as parked
+Bob is Claude-first in the default CLI deployment. His OpenAI and Gemini config directories remain in the repo as parked
 fixtures, but those backends are not deployed until API budget/keys are available and the active smoke plan is updated.
 Bob is bound to the `witwave-test` workspace in the default deployment.
 
@@ -37,10 +37,10 @@ state, conversation logs, backend storage, heartbeat behavior, and continuation 
 
 Fred is Claude-only in the default test deployment and also binds to the `witwave-test` workspace.
 
-### Jack - Codex parity scaffold
+### Jack - OpenAI parity scaffold
 
-Jack is a Codex-only filesystem scaffold for future backend parity runs. Deploy him with
-`ww agent create jack --backend codex` when single-backend Codex parity matters.
+Jack is a OpenAI-only filesystem scaffold for future backend parity runs. Deploy him with
+`ww agent create jack --backend openai` when single-backend OpenAI parity matters.
 
 ### Luke - Gemini parity scaffold
 
@@ -61,7 +61,7 @@ Luke is a Gemini-only filesystem scaffold for future backend parity runs. Deploy
              |
              | parked repo fixtures, not deployed by default
              v
-       Bob .codex / .gemini config
+       Bob .openai / .gemini config
 
   Jack and Luke are filesystem scaffolds until explicitly created with ww.
 ```
@@ -93,7 +93,7 @@ Backend directories only carry backend runtime config:
 | Directory  | Purpose                                                         |
 | ---------- | --------------------------------------------------------------- |
 | `.claude/` | Claude behavior/settings/MCP config for agents that run Claude. |
-| `.codex/`  | Codex behavior/config for Codex parity runs.                    |
+| `.openai/`  | OpenAI behavior/config for OpenAI parity runs.                    |
 | `.gemini/` | Gemini behavior config for Gemini fixtures.                     |
 
 Do not add backend-specific `agent-card.md` files here unless a test explicitly needs direct backend-sidecar discovery.
@@ -102,7 +102,7 @@ The default smoke deployment treats those as unnecessary drift.
 Memory behavior lives in the primary backend identity files: `CLAUDE.md`, `AGENTS.md`, and `GEMINI.md`. The test team
 uses the same file-backed contract as the self team: each agent has a private namespace at
 `/workspaces/witwave-test/memory/agents/<name>/`, shared team memory lives at the memory root, memory files use typed
-frontmatter, and `MEMORY.md` is only an index. Claude and Codex parity checks exercise that full namespace/index shape.
+frontmatter, and `MEMORY.md` is only an index. Claude and OpenAI parity checks exercise that full namespace/index shape.
 Gemini declares the same contract but its parity test remains disabled until the backend exposes filesystem/tool-call
 support; same-session recall is not accepted as memory parity.
 
@@ -124,11 +124,11 @@ The parked fixtures exist so the active smoke team can grow deliberately rather 
 
 | Surface                  | Current state                                                   | Promotion condition                                             |
 | ------------------------ | --------------------------------------------------------------- | --------------------------------------------------------------- |
-| Bob Codex backend        | Config present, backend not deployed by default.                | OpenAI budget/key available and Codex smoke rows re-enabled.    |
+| Bob OpenAI backend        | Config present, backend not deployed by default.                | OpenAI budget/key available and OpenAI smoke rows re-enabled.    |
 | Bob Gemini backend       | Config present, backend not deployed by default.                | Gemini key available and Gemini smoke rows added or re-enabled. |
-| Jack Codex-only agent    | Filesystem scaffold, deployable through `ww`.                   | Deploy when single-backend Codex parity matters.                |
+| Jack OpenAI-only agent    | Filesystem scaffold, deployable through `ww`.                   | Deploy when single-backend OpenAI parity matters.                |
 | Luke Gemini-only agent   | Filesystem scaffold, deployable through `ww`.                   | Deploy when single-backend Gemini parity matters.               |
-| Consensus smoke fixtures | Prompt files present but disabled because they depend on Codex. | Re-enable after Codex is active in the test team.               |
+| Consensus smoke fixtures | Prompt files present but disabled because they depend on OpenAI. | Re-enable after OpenAI is active in the test team.               |
 
 ## How the smoke loop closes
 

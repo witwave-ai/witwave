@@ -1,6 +1,6 @@
 """Shared OpenTelemetry bootstrap + helper layer (#469).
 
-Used by harness and the LLM backends (claude, codex, gemini). The ``echo``
+Used by harness and the LLM backends (claude, openai, gemini). The ``echo``
 backend does not import this module — tracing is out of scope for the
 zero-dependency stub.
 The module is entirely optional: when ``OTEL_ENABLED`` is falsy,

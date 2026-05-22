@@ -47,8 +47,8 @@ def _metric_labels() -> dict:
     agent_name = os.environ.get("AGENT_NAME", "local-agent")
     return {
         "agent": os.environ.get("AGENT_OWNER", agent_name),
-        "agent_id": os.environ.get("AGENT_ID", "codex"),
-        "backend": "codex",
+        "agent_id": os.environ.get("AGENT_ID", "openai"),
+        "backend": "openai",
     }
 
 
@@ -58,9 +58,9 @@ def _observe_lock_wait(op: str, wait_seconds: float) -> None:
     Mirrors the helpers in backends/claude/sqlite_task_store.py and
     backends/gemini/sqlite_task_store.py so cross-backend dashboards
     that union backend_sqlite_task_store_lock_wait_seconds on
-    (agent, agent_id, backend) are no longer flatlined for codex.
+    (agent, agent_id, backend) are no longer flatlined for openai.
 
-    Codex uses per-thread connections (#726) without a user-space
+    OpenAI uses per-thread connections (#726) without a user-space
     asyncio.Lock, so the recorded wait is the time between asking the
     threadpool to run the op and the worker actually starting the SQL —
     which captures both threadpool queuing and any SQLite busy_timeout

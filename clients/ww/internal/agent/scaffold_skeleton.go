@@ -120,13 +120,15 @@ func agentRepoRoot(name, group string) string {
 
 // behaviorFileName returns the backend-specific behavioural-instructions
 // filename, mirroring how the existing test agents are laid out:
-// CLAUDE.md for claude, AGENTS.md for codex, GEMINI.md for gemini. The
+// CLAUDE.md for claude, AGENTS.md for openai/codex, GEMINI.md for gemini. The
 // `ok` return is false for backends that don't carry such a file
 // (today: only echo).
 func behaviorFileName(backend string) (string, bool) {
 	switch backend {
 	case BackendClaude:
 		return "CLAUDE.md", true
+	case BackendOpenAI:
+		return "AGENTS.md", true
 	case BackendCodex:
 		return "AGENTS.md", true
 	case BackendGemini:

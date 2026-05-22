@@ -13,7 +13,7 @@ running byte count exceeds the cap, and returns either the fully-
 buffered body or a structured failure reason.
 
 Used by every backend that hosts an ``/mcp`` endpoint
-(``backends/claude``, ``backends/codex``, ``backends/gemini``) so the
+(``backends/claude``, ``backends/openai``, ``backends/gemini``) so the
 defense lives in one place. Pair the streaming check with a fast-path
 ``Content-Length`` rejection at the call site for the cheap-reject
 case.

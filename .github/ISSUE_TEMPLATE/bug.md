@@ -15,7 +15,7 @@ about: A defect or unexpected behavior in a component
 
 **Skill:** <skill name> v<skill version>
 
-**Component:** harness | claude | codex | gemini | ui | operator | charts | _(leave blank if cross-cutting or other)_
+**Component:** harness | claude | openai | gemini | ui | operator | charts | _(leave blank if cross-cutting or other)_
 
 **Confidence:** high | medium | low — <one sentence justification>
 

@@ -37,7 +37,7 @@
      backend, not a third-party LLM, so it deliberately doesn't claim a
      brand identity. */
   --witwave-brand-claude: #da7756;
-  --witwave-brand-codex: #74aa9c;
+  --witwave-brand-openai: #74aa9c;
   --witwave-brand-gemini: #8e44ec;
   --witwave-brand-echo: #94a3b8;
 }
@@ -65,7 +65,7 @@
   --witwave-mono: "SF Mono", "Fira Code", "Menlo", monospace;
 
   --witwave-brand-claude: #b85a3b;
-  --witwave-brand-codex: #4f8a7b;
+  --witwave-brand-openai: #4f8a7b;
   --witwave-brand-gemini: #6f2fc9;
   --witwave-brand-echo: #64748b;
 }
@@ -91,7 +91,7 @@
     --witwave-red: #b91c1c;
 
     --witwave-brand-claude: #b85a3b;
-    --witwave-brand-codex: #4f8a7b;
+    --witwave-brand-openai: #4f8a7b;
     --witwave-brand-gemini: #6f2fc9;
     --witwave-brand-echo: #64748b;
   }

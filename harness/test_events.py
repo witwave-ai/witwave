@@ -414,7 +414,7 @@ class EventSchemaTests(unittest.TestCase):
                     "span_name": "mcp.handler",
                     "duration_ms": 3,
                     "status": "error",
-                    "service": "codex-backend",
+                    "service": "openai-backend",
                 },
             )
         )

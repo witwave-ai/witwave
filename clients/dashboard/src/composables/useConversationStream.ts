@@ -117,7 +117,7 @@ function resolveToken(explicit?: string): string | undefined {
   return typeof tok === "string" && tok.length > 0 ? tok : undefined;
 }
 
-// Per-session stream URL. Each backend (claude/codex/gemini) exposes
+// Per-session stream URL. Each backend (claude/openai/gemini) exposes
 // `/api/sessions/<session_id>/stream` mounted inside the
 // `/api/agents/<agent>/` proxy, so the dashboard-facing path is:
 //   /api/agents/<agent>/api/sessions/<session_id>/stream

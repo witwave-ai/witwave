@@ -196,7 +196,7 @@
       "required": ["backend", "session_id_hash", "tool", "decision"],
       "additionalProperties": true,
       "properties": {
-        "backend": { "type": "string", "enum": ["claude", "codex", "gemini", "echo"] },
+        "backend": { "type": "string", "enum": ["claude", "openai", "codex", "gemini", "echo"] },
         "session_id_hash": { "type": "string", "minLength": 1 },
         "tool": { "type": "string" },
         "decision": { "type": "string", "enum": ["allow", "deny", "warn"] },
@@ -229,7 +229,7 @@
       "required": ["backend", "event"],
       "additionalProperties": true,
       "properties": {
-        "backend": { "type": "string", "enum": ["claude", "codex", "gemini", "echo"] },
+        "backend": { "type": "string", "enum": ["claude", "openai", "codex", "gemini", "echo"] },
         "event": { "type": "string", "enum": ["started", "stopped", "config_reloaded", "credential_rotated"] },
         "detail": { "type": "string" }
       }

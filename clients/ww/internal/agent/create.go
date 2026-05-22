@@ -62,7 +62,7 @@ type CreateOptions struct {
 	// --auth-secret flag values, one per backend the user wants to
 	// wire credentials for. Backends not referenced here create
 	// without a credentials field (fine for echo, a footgun for
-	// claude/codex/gemini — the operator will still start the pod,
+	// claude/openai/gemini — the operator will still start the pod,
 	// but the backend will error on first request with missing-key
 	// diagnostics).
 	BackendAuth []BackendAuthResolver

@@ -191,7 +191,7 @@ async def health(request: Request) -> JSONResponse:
     # state is surfaced informationally via `boot_degraded`. Neither flips
     # the status code. For readiness gating (i.e. removing a pod from
     # Service endpoints) point K8s readinessProbe at /health/ready
-    # instead. This mirrors codex/main.py:136 and gemini/main.py:136 and
+    # instead. This mirrors openai/main.py:136 and gemini/main.py:136 and
     # closes the unification gap left by `5e5d5a9b` — claude's previous
     # implementation returned 503 while `_ready=False`, which under slow
     # startup (exceeding kubelet's initialDelaySeconds) would

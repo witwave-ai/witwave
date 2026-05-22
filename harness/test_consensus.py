@@ -199,11 +199,11 @@ def test_parse_consensus_multiple_entries_preserves_order():
     entries = parse_consensus(
         [
             {"backend": "claude"},
-            {"backend": "codex*"},
+            {"backend": "openai*"},
             {"backend": "claude", "model": "claude-haiku-4-5"},
         ]
     )
-    assert [e.backend for e in entries] == ["claude", "codex*", "claude"]
+    assert [e.backend for e in entries] == ["claude", "openai*", "claude"]
     assert [e.model for e in entries] == [None, None, "claude-haiku-4-5"]
 
 
@@ -215,10 +215,10 @@ def test_parse_consensus_drops_entries_without_backend():
             {"backend": "claude"},
             {"model": "no-backend-key"},  # dropped
             {"backend": ""},  # dropped (falsy backend)
-            {"backend": "codex"},
+            {"backend": "openai"},
         ]
     )
-    assert [e.backend for e in entries] == ["claude", "codex"]
+    assert [e.backend for e in entries] == ["claude", "openai"]
 
 
 def test_parse_consensus_coerces_non_string_backend_to_string():
@@ -240,10 +240,10 @@ def test_parse_consensus_drops_non_dict_entries():
             "claude",  # bare string — not legal
             {"backend": "claude"},
             42,  # bare int — not legal
-            {"backend": "codex"},
+            {"backend": "openai"},
         ]
     )
-    assert [e.backend for e in entries] == ["claude", "codex"]
+    assert [e.backend for e in entries] == ["claude", "openai"]
 
 
 if __name__ == "__main__":  # pragma: no cover

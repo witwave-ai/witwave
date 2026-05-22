@@ -441,7 +441,7 @@ def _emit_hook_decision_event_stream(event: HookDecisionEvent) -> None:
 
     session_id is hashed to a SHA-256 prefix so dashboards can group by
     session without ever seeing the HMAC-bound raw id. agent field on the
-    HookDecisionEvent is the backend name (claude/codex/gemini); the
+    HookDecisionEvent is the backend name (claude/openai/gemini); the
     envelope's agent_id is the named Witwave agent (iris/nova/…) taken from
     AGENT_NAME.
     """
@@ -453,13 +453,13 @@ def _emit_hook_decision_event_stream(event: HookDecisionEvent) -> None:
         # Drop events with out-of-contract agent/decision values
         # (#1149) rather than silently substituting "claude"/"allow".
         # Coercion misreported dashboards: a `warn`-mode test rule
-        # landing on `codex` was rewritten as a claude `allow`
+        # landing on `openai` was rewritten as a claude `allow`
         # envelope, completely erasing the operator's real policy
         # signal.  Dropping the event is strictly safer — the
         # backend's own OTel span event still captures the decision.
-        if event.agent not in ("claude", "codex", "gemini"):
+        if event.agent not in ("claude", "openai", "codex", "gemini"):
             logger.warning(
-                "hook.decision SSE drop: unknown agent %r (expected one of claude/codex/gemini) (#1149)",
+                "hook.decision SSE drop: unknown agent %r (expected one of claude/openai/codex/gemini) (#1149)",
                 event.agent,
             )
             return

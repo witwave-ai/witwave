@@ -36,7 +36,7 @@ required.
 mise exec -- sops -d .agents/self/team.sops.env
 mise exec -- sops -d .agents/self/piper/agent.sops.env
 mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/piper/agent.sops.env -- \
-  sh -lc 'test -n "$CLAUDE_CODE_OAUTH_TOKEN" && test -n "$GITHUB_TOKEN"'
+  sh -lc 'test -n "$CLAUDE_CODE_OAUTH_TOKEN" && test -n "$OPENAI_API_KEY" && test -n "$GITHUB_TOKEN"'
 ```
 
 ## The team
@@ -139,14 +139,14 @@ feed Kira's docs queue. Piper has **admin role on the repo and moderates the Dis
 `minimizeComment` and locks abusive threads via `lockLockable` without human-in-the-loop. Hide and lock are reversible;
 deletion stays off the autonomous menu by design. (`.agents/self/piper/`)
 
-### Mira — platform reliability observer (scaffolded)
+### Mira — platform reliability observer
 
-The team's next operational peer. Mira watches the substrate that lets the rest of the team keep working: operator
-health, self-agent readiness, pod restarts, runtime storage, PVCs, release workflows, `ww update` availability,
-one-agent-at-a-time rollout safety, and resource/anomaly signals. Her default posture is read-only: inspect, summarize,
-record compact platform snapshots to memory, compare them historically once enough data exists, and send problematic
-findings to Zora as distilled anomaly reports. Any systemic, repeated, or fix-needed issue is reported to Zora rather
-than left only in Mira's private history. Zora then decides who should fix the issue.
+Mira watches the substrate that lets the rest of the team keep working: operator health, self-agent readiness, pod
+restarts, runtime storage, PVCs, release workflows, `ww update` availability, one-agent-at-a-time rollout safety, and
+resource/anomaly signals. Her default posture is read-only: inspect, summarize, record compact platform snapshots to
+memory, compare them historically once enough data exists, and send problematic findings to Zora as distilled anomaly
+reports. Any systemic, repeated, or fix-needed issue is reported to Zora rather than left only in Mira's private
+history. Zora then decides who should fix the issue.
 
 Mira's first observation priority is pod/container restart behavior: capture restart counts every tick, compare deltas
 over time, and triage likely causes from Kubernetes status, events, termination state, and previous/current logs.
@@ -154,7 +154,13 @@ over time, and triage likely causes from Kubernetes status, events, termination 
 Mira intentionally consolidates the earlier "devops" direction into one clearer first role: **platform reliability
 observation**. Build/release infrastructure and agent runtime lifecycle are tightly coupled in practice; the same agent
 who notices a failed release should also understand whether the operator, pods, storage, and rollouts are healthy enough
-to recover. Mira does not own the repair loop; she owns evidence quality and the Zora handoff. (`.agents/self/mira/`)
+to recover. Mira does not own the repair loop; she owns evidence quality and the Zora handoff.
+
+Mira is the first self-team agent configured to run actively on OpenAI rather than Claude. Her active backend routes
+through `openai` with model `gpt-5.5` and `OPENAI_REASONING_EFFORT=xhigh`; her loaded OpenAI identity lives in
+`.agents/self/mira/.openai/AGENTS.md`, and her OpenAI skill mirror lives in `.agents/self/mira/.openai/skills/`. Her
+`.claude/` folder remains in the repo as a parked fallback so the team can switch back later while keeping the two
+identity and skill surfaces semantically aligned. (`.agents/self/mira/`)
 
 ## Topology
 
@@ -282,7 +288,9 @@ the team has months of state to reason over and the platform has real users with
 
 ## Reading further
 
-- Per-agent identity + skills: `.agents/self/<name>/.claude/CLAUDE.md`
+- Per-agent identity + skills: `.agents/self/<name>/.claude/CLAUDE.md` and `.agents/self/<name>/.claude/skills/` for
+  Claude-backed agents; `.agents/self/<name>/.openai/AGENTS.md` and `.agents/self/<name>/.openai/skills/` for OpenAI-backed
+  agents when a skill mirror exists.
 - Per-agent public capability surface: `.agents/self/<name>/.witwave/agent-card.md`
 - Bootstrap (deploying the team to a cluster): `.agents/self/bootstrap.md`
 - Operational runbooks: `docs/runbooks/`

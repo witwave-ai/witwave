@@ -1,6 +1,6 @@
 """Regression coverage for the gemini executor's MAX_SESSIONS=0 guard (#1718).
 
-Mirrors backends/codex/test_max_sessions_zero_guard.py: clamp the
+Mirrors backends/openai/test_max_sessions_zero_guard.py: clamp the
 MAX_SESSIONS env parse to >= 1 and gate the LRU-utilization metric
 division on MAX_SESSIONS > 0.
 """

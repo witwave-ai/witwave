@@ -1,4 +1,4 @@
-"""Regression coverage for the codex executor's MCP_CONFIG_PATH allow-list (#1731).
+"""Regression coverage for the openai executor's MCP_CONFIG_PATH allow-list (#1731).
 
 Risk: ``_load_mcp_config()`` opened ``MCP_CONFIG_PATH`` with no realpath /
 prefix check. A hostile env override (``MCP_CONFIG_PATH=/etc/passwd`` or a
@@ -10,7 +10,7 @@ Fix mirrors backends/gemini/executor.py (#1610): declare a module-level
 ``_MCP_CONFIG_PATH_ALLOWED_PREFIX`` (default ``/home/agent/``) and refuse
 with ``{}`` + WARN when the resolved path is outside the prefix.
 
-We follow the codex test_max_sessions_zero_guard.py / test_prompt_size_cap.py
+We follow the openai test_max_sessions_zero_guard.py / test_prompt_size_cap.py
 style: pin the source shape with regex (so the prefix gate can't silently
 regress) and re-evaluate the equivalent guard in isolation rather than
 importing the full executor module — its SDK chain is too heavy.

@@ -166,11 +166,11 @@ func TestParseBackendPersist(t *testing.T) {
 	})
 
 	t.Run("multiple distinct names accumulate", func(t *testing.T) {
-		got, err := ParseBackendPersist([]string{"claude=20Gi", "codex=5Gi@slow-hdd"})
+		got, err := ParseBackendPersist([]string{"claude=20Gi", "openai=5Gi@slow-hdd"})
 		if err != nil {
 			t.Fatalf("err = %v", err)
 		}
-		if len(got) != 2 || got["claude"].Size != "20Gi" || got["codex"].StorageClassName != "slow-hdd" {
+		if len(got) != 2 || got["claude"].Size != "20Gi" || got["openai"].StorageClassName != "slow-hdd" {
 			t.Errorf("got = %+v", got)
 		}
 	})
@@ -240,7 +240,7 @@ func TestResolvePersistDefaults(t *testing.T) {
 		if mounts := got["claude"].Mounts; len(mounts) != 6 {
 			t.Errorf("claude mounts = %d, want 6", len(mounts))
 		}
-		for _, typ := range []string{"claude", "codex", "gemini"} {
+		for _, typ := range []string{"claude", "openai", "gemini"} {
 			if !hasMount(got[typ].Mounts, "logs", "/home/agent/logs") {
 				t.Errorf("%s preset missing logs mount: %+v", typ, got[typ].Mounts)
 			}

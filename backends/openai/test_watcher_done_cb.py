@@ -1,7 +1,7 @@
-"""Regression coverage for the codex MCP watcher done-callback (#1630).
+"""Regression coverage for the openai MCP watcher done-callback (#1630).
 
 Bug: when an MCP watcher coroutine returned normally (no exception, not
-cancelled) the done-callback in ``backends/codex/main.py`` only emitted a
+cancelled) the done-callback in ``backends/openai/main.py`` only emitted a
 WARNING log. ``_guarded()`` does not restart on a normal return, so the
 pod would continue serving traffic with a missing background task and
 nothing in the readiness signal would reflect that loss.
@@ -13,7 +13,7 @@ endpoints stop sending traffic to a degraded pod.
 This test extracts the ``_make_watcher_done_cb`` factory definition out
 of ``main.py`` via source slicing and ``exec()`` it into a constructed
 namespace that mimics the module globals it closes over (``logger`` and
-``_ready``). We avoid importing ``backends.codex.main`` directly because
+``_ready``). We avoid importing ``backends.openai.main`` directly because
 that module pulls in the OpenAI Agents SDK, a2a, prometheus_client, and
 several other heavy dependencies that are unrelated to this fix — the
 bug lives in a few lines of control flow that are trivially unit-testable
@@ -84,7 +84,7 @@ class _CompletedTask:
         return self._exc
 
 
-class CodexWatcherDoneCallbackTests(unittest.TestCase):
+class OpenAIWatcherDoneCallbackTests(unittest.TestCase):
     """Direct tests for the #1630 readiness-drop branch."""
 
     def _fresh_namespace(self) -> dict:
@@ -93,7 +93,7 @@ class CodexWatcherDoneCallbackTests(unittest.TestCase):
         # flips on the normal-exit branch.
         return {
             "asyncio": asyncio,
-            "logger": logging.getLogger("codex.test_watcher_done_cb"),
+            "logger": logging.getLogger("openai.test_watcher_done_cb"),
             "_ready": True,
         }
 

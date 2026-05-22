@@ -80,8 +80,11 @@ jobs:
           - image: claude
             file: backends/claude/Dockerfile
             context: .
+          - image: openai
+            file: backends/openai/Dockerfile
+            context: .
           - image: codex
-            file: backends/codex/Dockerfile
+            file: backends/openai/Dockerfile
             context: .
           - image: gemini
             file: backends/gemini/Dockerfile
@@ -116,7 +119,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build local backend-base image
-        if: ${{ contains(fromJSON('["claude","codex","gemini"]'), matrix.image) }}
+        if: ${{ contains(fromJSON('["claude","openai","codex","gemini"]'), matrix.image) }}
         run: |
           set -euo pipefail
           docker build \
@@ -128,7 +131,7 @@ jobs:
             .
 
       - name: Build backend image from local backend-base (no push)
-        if: ${{ contains(fromJSON('["claude","codex","gemini"]'), matrix.image) }}
+        if: ${{ contains(fromJSON('["claude","openai","codex","gemini"]'), matrix.image) }}
         run: |
           set -euo pipefail
           docker build \
@@ -139,7 +142,7 @@ jobs:
             "${{ matrix.context }}"
 
       - name: Build ${{ matrix.image }} image (no push)
-        if: ${{ !contains(fromJSON('["claude","codex","gemini"]'), matrix.image) }}
+        if: ${{ !contains(fromJSON('["claude","openai","codex","gemini"]'), matrix.image) }}
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}

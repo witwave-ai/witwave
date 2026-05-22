@@ -362,7 +362,7 @@ class HealthReadinessSplitTests(unittest.TestCase):
 
         This test pinned the pre-unification 503 behaviour; it was the
         last drift point in claude's /health surface relative to
-        codex/main.py:136 and gemini/main.py:136.
+        openai/main.py:136 and gemini/main.py:136.
         """
         import json
 

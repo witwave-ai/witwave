@@ -17,7 +17,7 @@ func TestParseBackendAuth_ThreeFlagsComposed(t *testing.T) {
 	t.Parallel()
 	got, err := ParseBackendAuth(
 		[]string{"claude=oauth"},
-		[]string{"codex=OPENAI_API_KEY"},
+		[]string{"openai=OPENAI_API_KEY"},
 		[]string{"gemini=my-gemini-secret"},
 		nil,
 	)
@@ -30,8 +30,8 @@ func TestParseBackendAuth_ThreeFlagsComposed(t *testing.T) {
 	if got[0].Backend != "claude" || got[0].Mode != BackendAuthProfile || got[0].Profile != "oauth" {
 		t.Errorf("claude resolver = %+v; want profile=oauth", got[0])
 	}
-	if got[1].Backend != "codex" || got[1].Mode != BackendAuthFromEnv || got[1].EnvVars[0] != "OPENAI_API_KEY" {
-		t.Errorf("codex resolver = %+v; want from-env OPENAI_API_KEY", got[1])
+	if got[1].Backend != "openai" || got[1].Mode != BackendAuthFromEnv || got[1].EnvVars[0] != "OPENAI_API_KEY" {
+		t.Errorf("openai resolver = %+v; want from-env OPENAI_API_KEY", got[1])
 	}
 	if got[2].Backend != "gemini" || got[2].Mode != BackendAuthExistingSecret || got[2].ExistingSecret != "my-gemini-secret" {
 		t.Errorf("gemini resolver = %+v; want existing-secret my-gemini-secret", got[2])
@@ -89,7 +89,7 @@ func TestParseBackendAuth_AuthSet_AccumulatesPerBackend(t *testing.T) {
 		[]string{
 			"claude:ANTHROPIC_API_KEY=sk-ant-xxx",
 			"claude:ALT_TOKEN=ghp_yyy",
-			"codex:OPENAI_API_KEY=sk-xxx",
+			"openai:OPENAI_API_KEY=sk-xxx",
 		},
 	)
 	if err != nil {
@@ -109,10 +109,10 @@ func TestParseBackendAuth_AuthSet_AccumulatesPerBackend(t *testing.T) {
 		r.Inline["ALT_TOKEN"] != "ghp_yyy" {
 		t.Errorf("claude resolver = %+v; want inline with both keys", r)
 	}
-	if r, ok := byBackend["codex"]; !ok ||
+	if r, ok := byBackend["openai"]; !ok ||
 		r.Mode != BackendAuthInline ||
 		r.Inline["OPENAI_API_KEY"] != "sk-xxx" {
-		t.Errorf("codex resolver = %+v; want inline OPENAI_API_KEY", r)
+		t.Errorf("openai resolver = %+v; want inline OPENAI_API_KEY", r)
 	}
 }
 

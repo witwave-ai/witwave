@@ -58,9 +58,9 @@ func TestBuildTeamStatusRowsAggregatesPerAgent(t *testing.T) {
 	tok1000 := 1000
 	tok2500 := 2500
 	agents := []agent.AgentSummary{
-		{Namespace: "witwave", Name: "zora", Phase: "Ready", Ready: 1, Backends: []string{"claude", "codex"}},
-		{Namespace: "witwave", Name: "iris", Phase: "Ready", Ready: 1, Backends: []string{"codex"}},
-		{Namespace: "witwave", Name: "piper", Phase: "Ready", Ready: 1, Backends: []string{"claude", "codex"}},
+		{Namespace: "witwave", Name: "zora", Phase: "Ready", Ready: 1, Backends: []string{"claude", "openai"}},
+		{Namespace: "witwave", Name: "iris", Phase: "Ready", Ready: 1, Backends: []string{"openai"}},
+		{Namespace: "witwave", Name: "piper", Phase: "Ready", Ready: 1, Backends: []string{"claude", "openai"}},
 		{Namespace: "witwave", Name: "fred", Phase: "Ready", Ready: 1, Backends: []string{"echo"}},
 		{Namespace: "witwave", Name: "nova", Phase: "Reconciling", Ready: 0, Backends: []string{"claude"}},
 	}
@@ -134,7 +134,7 @@ func TestRenderTeamStatusTable(t *testing.T) {
 			Namespace: "witwave",
 			Agent:     "zora",
 			State:     "RECENT",
-			Backends:  []string{"claude", "codex"},
+			Backends:  []string{"claude", "openai"},
 			LastTurn:  "2m ago",
 			Sessions:  2,
 			Turns:     3,
@@ -150,7 +150,7 @@ func TestRenderTeamStatusTable(t *testing.T) {
 		"AGENT",
 		"witwave",
 		"zora",
-		"claude,codex",
+		"claude,openai",
 		"3.5k",
 		"[-----#-#]",
 	} {
@@ -301,7 +301,7 @@ func TestFormatTeamStatusBackends(t *testing.T) {
 		{nil, "-"},
 		{[]string{}, "-"},
 		{[]string{"claude"}, "claude"},
-		{[]string{"claude", "codex"}, "claude,codex"},
+		{[]string{"claude", "openai"}, "claude,openai"},
 	}
 	for _, tc := range tests {
 		got := formatTeamStatusBackends(tc.in)

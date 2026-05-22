@@ -1,6 +1,6 @@
 """Per-session SSE broadcaster for backend drill-down streams (#1110 phase 4).
 
-Each backend (`claude`, `codex`, `gemini`) exposes
+Each backend (`claude`, `openai`, `gemini`) exposes
 ``GET /api/sessions/<session_id>/stream``; this module provides the
 fan-out plumbing that feeds that endpoint.  The wire contract is the
 same SSE envelope used by ``GET /events/stream`` on the harness — the

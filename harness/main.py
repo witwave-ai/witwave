@@ -253,7 +253,7 @@ def _check_adhoc_auth(request: Request) -> bool:
 async def hook_decision_event_handler(request: Request) -> JSONResponse:
     """Receive a backend-originated hook.decision event (#641).
 
-    Backends (claude today, codex/gemini in a follow-up) POST
+    Backends (claude today, openai/gemini in a follow-up) POST
     the structured :class:`HookDecisionEvent` shape here whenever a
     PreToolUse hook finalises a decision.  The handler authenticates the
     caller with a bearer token, parses the body into the dataclass, and
@@ -1800,7 +1800,7 @@ async def main():
     # the Jaeger v1 query shape the dashboard's Traces view already
     # understands (/api/traces[?limit=N&service=…], /api/traces/<id>).
     # Aggregates spans from the harness's own ring buffer AND from every
-    # configured sibling backend (claude/codex/gemini) by fetching their
+    # configured sibling backend (claude/openai/gemini) by fetching their
     # /api/traces endpoints. Backends run in the same pod, so the fan-out
     # is localhost-only and fast.
     async def _fetch_remote_traces(url: str) -> list[dict]:

@@ -55,7 +55,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-AGENT_NAME = os.environ.get("AGENT_NAME", "codex")
+AGENT_NAME = os.environ.get("AGENT_NAME", "openai")
 AGENT_HOST = os.environ.get("AGENT_HOST", "0.0.0.0")
 BACKEND_PORT = int(os.environ.get("BACKEND_PORT", "8000"))
 AGENT_URL = os.environ.get("AGENT_URL", f"http://localhost:{BACKEND_PORT}/")
@@ -64,8 +64,8 @@ CONVERSATION_LOG = os.environ.get("CONVERSATION_LOG", "/home/agent/logs/conversa
 TRACE_LOG = os.environ.get("TRACE_LOG", "/home/agent/logs/tool-activity.jsonl")
 AGENT_OWNER = os.environ.get("AGENT_OWNER") or AGENT_NAME
 # #1340: fall back to HOSTNAME for uniqueness (see claude comment).
-AGENT_ID = os.environ.get("AGENT_ID") or os.environ.get("HOSTNAME") or "codex"
-_BACKEND_ID = "codex"
+AGENT_ID = os.environ.get("AGENT_ID") or os.environ.get("HOSTNAME") or "openai"
+_BACKEND_ID = "openai"
 metrics_enabled = parse_bool_env("METRICS_ENABLED")
 WORKER_MAX_RESTARTS = int(os.environ.get("WORKER_MAX_RESTARTS", "5"))
 CONVERSATIONS_AUTH_TOKEN = os.environ.get("CONVERSATIONS_AUTH_TOKEN", "")
@@ -76,11 +76,13 @@ start_time: datetime = datetime.now(timezone.utc)
 
 
 def load_agent_description() -> str:
-    try:
-        with open("/home/agent/.codex/agent-card.md") as f:
-            return f.read()
-    except OSError:
-        return os.environ.get("AGENT_DESCRIPTION", "A Codex backend agent.")
+    for path in ("/home/agent/.openai/agent-card.md", "/home/agent/.codex/agent-card.md"):
+        try:
+            with open(path) as f:
+                return f.read()
+        except OSError:
+            continue
+    return os.environ.get("AGENT_DESCRIPTION", "An OpenAI backend agent.")
 
 
 def build_agent_card() -> AgentCard:
@@ -100,8 +102,8 @@ def build_agent_card() -> AgentCard:
             AgentSkill(
                 id="general",
                 name="General",
-                description="General-purpose task execution via Codex.",
-                tags=["general", "codex"],
+                description="General-purpose task execution via OpenAI.",
+                tags=["general", "openai"],
             )
         ],
     )
@@ -127,7 +129,7 @@ async def health(request: Request) -> JSONResponse:
     # readiness gating (i.e. removing a degraded pod from Service
     # endpoints) point K8s readinessProbe at /health/ready instead. Mirror
     # of the cycle-1 claude #1608 fix — README docs /health/ready as a
-    # universal route but only claude implemented it; codex had the
+    # universal route but only claude implemented it; openai had the
     # readiness flag flip path in #1630 but no route to surface it.
     if backend_health_checks_total is not None:
         backend_health_checks_total.labels(
@@ -153,7 +155,7 @@ async def health_ready(request: Request) -> JSONResponse:
     # returns 503 when ``_ready`` is False (process still starting OR an
     # MCP watcher exited normally per #1630, dropping readiness so the
     # pod is removed from Service endpoints without restarting). 200 only
-    # when fully ready. Mirror of the cycle-1 claude #1608 fix; codex had
+    # when fully ready. Mirror of the cycle-1 claude #1608 fix; openai had
     # the readiness-drop branch (#1630) but no route to surface it, so
     # K8s readinessProbe could never observe the degraded state.
     if backend_health_checks_total is not None:
@@ -347,7 +349,7 @@ async def main():
     from otel import init_otel_if_enabled
 
     init_otel_if_enabled(
-        service_name=os.environ.get("OTEL_SERVICE_NAME") or f"codex-{os.environ.get('AGENT_OWNER', 'unknown')}"
+        service_name=os.environ.get("OTEL_SERVICE_NAME") or f"openai-{os.environ.get('AGENT_OWNER', 'unknown')}"
     )
 
     agent_card = build_agent_card()
@@ -611,7 +613,7 @@ async def main():
             if tool_name != "ask_agent":
                 # #1282: tool-level failures use result.isError=true with
                 # a content block, not a JSON-RPC error envelope. Keeps
-                # the MCP contract uniform across claude/codex/gemini.
+                # the MCP contract uniform across claude/openai/gemini.
                 return JSONResponse(
                     {
                         "jsonrpc": "2.0",
@@ -640,7 +642,7 @@ async def main():
                 logger=logger,
                 source="MCP tools/call",
             )
-            # Caller-bound session_id on codex /mcp (#935). Codex currently
+            # Caller-bound session_id on openai /mcp (#935). OpenAI currently
             # mints a fresh UUID per call (single-shot sessions — see the
             # cleanup in `finally` below), so there's no ambient resumption.
             # But without derive_session_id wiring, any future resumption
@@ -742,10 +744,10 @@ async def main():
                     # Import the already-resolved DB path from executor
                     # (#877): re-reading os.environ here drifts from the
                     # module-level constant captured at executor import
-                    # time, so if CODEX_SESSION_DB was mutated in between
+                    # time, so if OPENAI_SESSION_DB was mutated in between
                     # (tests, reload paths) the cleanup would run against
                     # a DIFFERENT path than the writes.
-                    from executor import CODEX_SESSION_DB as _db_path
+                    from executor import OPENAI_SESSION_DB as _db_path
 
                     if _db_path and _db_path != ":memory:":
                         try:
@@ -943,7 +945,7 @@ async def main():
     except Exception as exc:
         logger.error("perform_initial_loads failed: %r — watchers will retry", exc)
 
-    # #1502: the previous comment claimed "none for codex" but
+    # #1502: the previous comment claimed "none for openai" but
     # _mcp_watchers() returns four watchers (AGENTS.md, mcp.json,
     # config.toml, api_key_file). Start each as a guarded task and
     # install a done_callback that distinguishes normal cancellation

@@ -627,7 +627,7 @@ spec:
           # - /health/start: startup — 503 while initializing, 200 once _ready
           # - /health: liveness — 200 once process is up, even mid-init
           # - /health/ready: readiness — 503 while init or degraded
-          # All three backends (claude, codex, gemini) expose /health/start
+          # All three backends (claude, openai, gemini) expose /health/start
           # post-#1686, /health/ready post-#1672. Targeting startupProbe at
           # /health/start (rather than /health/ready) keeps the liveness
           # vs readiness vs startup distinctions documented in

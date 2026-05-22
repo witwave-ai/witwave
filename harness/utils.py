@@ -53,7 +53,7 @@ def parse_consensus(value) -> list[ConsensusEntry]:
         - backend: "*"                               # all backends, default model
         - backend: "claude"
           model: "claude-opus-4-7"
-        - backend: "codex*"                          # glob — matches codex, codex-fast, etc.
+        - backend: "openai*"                          # glob — matches openai, openai-fast, etc.
     """
     if not isinstance(value, list):
         return []

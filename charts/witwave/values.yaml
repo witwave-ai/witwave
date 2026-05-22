@@ -934,7 +934,7 @@ sharedStorage:
 #   agents[].backends[].resources                 → overrides backend default
 #   defaults.resources.backends.<backend-name>    → per-backend-type default,
 #                                                    keyed by backend.name
-#                                                    (claude / codex / gemini)
+#                                                    (claude / openai / codex / gemini)
 #   defaults.resources.backend                    → shared fallback for any
 #                                                    backend name not listed
 #                                                    under .backends above
@@ -975,6 +975,14 @@ defaults:
         limits:
           cpu: "1"
           memory: 1Gi
+      openai:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      # Legacy alias for the pre-rename OpenAI Agents SDK backend.
       codex:
         requests:
           cpu: 250m
@@ -1065,7 +1073,7 @@ backends:
 # Service in the release namespace, listening on port 8000 with
 # FastMCP's streamable-http transport. Agent backends reach them by URL
 # (http://<release>-mcp-<name>:8000) configured in each backend's
-# `.claude/mcp.json` / `.codex/mcp.json` / `.gemini/mcp.json`. This
+# `.claude/mcp.json` / `.openai/mcp.json` / `.gemini/mcp.json`. This
 # matches the architectural intent in AGENTS.md that MCP components are
 # independently deployable and shared across agents.
 #
@@ -1492,7 +1500,8 @@ agents:
         # #              SESSION_STORE_DIR (session JSON directory; default /home/agent/.gemini/memory/sessions)
         # #              MAX_SESSIONS (LRU cache size; default 10000)
         # #   claude: LOG_PROMPT_MAX_BYTES (max bytes of prompt logged at INFO; default 200; 0 = suppress)
-        # #   codex:  CODEX_MODEL (model override; default gpt-5.1-codex)
+        # #   openai: OPENAI_MODEL (model override; default gpt-5.5; CODEX_MODEL is a legacy alias)
+        # #           OPENAI_REASONING_EFFORT (minimal/low/medium/high/xhigh)
         # env:
         #   - name: GEMINI_MAX_HISTORY_TURNS
         #     value: "100"
@@ -1505,7 +1514,7 @@ agents:
         # #   # OR inline (dev only) — MUST also set acknowledgeInsecureInline=true.
         # #   # `secrets:` is a free-form map of env-var-name → value. The backend
         # #   # reads whichever env vars it needs (CLAUDE_CODE_OAUTH_TOKEN for
-        # #   # claude, OPENAI_API_KEY for codex, GEMINI_API_KEY for gemini).
+        # #   # claude, OPENAI_API_KEY for openai/codex, GEMINI_API_KEY for gemini).
         # #   secrets:
         # #     CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-xxxxxxxxxxxxxxxxxxxx"
         # #   acknowledgeInsecureInline: true
@@ -1539,7 +1548,7 @@ agents:
         #     - subPath: backups
         #       mountPath: /home/agent/.claude/backups
         #     - subPath: memory
-        #       mountPath: /home/agent/.claude/memory   # or .codex/memory / .gemini/memory for those backends
+        #       mountPath: /home/agent/.claude/memory   # or .openai/memory / .gemini/memory for those backends
         #     - subPath: logs
         #       mountPath: /home/agent/logs             # conversation.jsonl, tool-activity.jsonl
         #     - subPath: state

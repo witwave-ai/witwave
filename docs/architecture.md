@@ -23,7 +23,7 @@ Full file-by-file layout lives in [`AGENTS.md`](../AGENTS.md#project-structure) 
 
 At the top level, the repo is split into two buckets plus shared infrastructure:
 
-- **Platform infrastructure** — `harness/`, `backends/{claude,codex,gemini,echo}/`, `operator/`, `tools/` (MCP servers:
+- **Platform infrastructure** — `harness/`, `backends/{claude,openai,gemini,echo}/`, `operator/`, `tools/` (MCP servers:
   `kubernetes`, `helm`, `prometheus`), `charts/{witwave,witwave-operator}/`, `shared/`.
 - **Client surfaces** (under `clients/`) — `clients/dashboard/` (Vue 3 web UI), `clients/ww/` (Go CLI).
 - **Agent configs** (`.agents/`) — per-named-agent filesystem config that gets mounted into the platform containers.
@@ -48,7 +48,7 @@ Each named agent is a cluster of containers:
    inbound triggers, fires outbound webhooks, and dispatches continuations. Owns no LLM itself.
 2. **claude** (per agent) — a standalone A2A server backed by the Claude Agent SDK. Owns session state, memory, and
    conversation logging.
-3. **codex** (per agent) — a standalone A2A server backed by the OpenAI Agents SDK. Same interface as claude.
+3. **openai** (per agent) — a standalone A2A server backed by the OpenAI Agents SDK. Same interface as claude.
 4. **gemini** (per agent) — a standalone A2A server backed by the Google Gemini SDK. Same interface as claude.
 5. **echo** (optional, per agent) — a zero-dependency stub A2A server. Returns a canned response quoting the caller's
    prompt; requires no API keys. Ships as the hello-world default for `ww agent create` and doubles as the reference
@@ -84,7 +84,7 @@ External A2A caller
                │                │
                ▼                ▼
    ┌──────────────────┐  ┌──────────────────┐
-   │  claude       │  │  codex        │
+   │  claude       │  │  openai        │
    │  (Claude SDK)    │  │  (OpenAI SDK)    │
    │                  │  │                  │
    │  /.well-known/   │  │  /.well-known/   │
@@ -153,9 +153,9 @@ triggers, conversations, MCP) and monitoring scrapes. `shared/metrics_server.py`
 asyncio-task variant for containers that own the main event loop (harness, backends), and a daemon-thread variant for
 FastMCP-hosted containers (MCP tools) that don't.
 
-### Backend Components (claude, codex, gemini, echo)
+### Backend Components (claude, openai, gemini, echo)
 
-All four backends share identical A2A API surface; the three LLM-backed backends (claude, codex, gemini) also share
+All four backends share identical A2A API surface; the three LLM-backed backends (claude, openai, gemini) also share
 structure and differ only in their LLM SDK. The echo backend is deliberately stripped — it has no MCP, no conversation
 persistence, no hooks, no session binding — because its role is zero-dependency onboarding, not LLM work.
 
@@ -168,7 +168,7 @@ server).
 in the A2A request metadata. Writes `conversation.jsonl` to the mounted logs directory.
 
 **`metrics.py`** — Prometheus metric definitions with `backend_*` prefix. `claude` exposes a superset including tool
-call, context window, and MCP metrics; `codex` also exposes tool-call and context-window metrics; `gemini` exposes
+call, context window, and MCP metrics; `openai` also exposes tool-call and context-window metrics; `gemini` exposes
 context-window metrics. All four share the common `backend_*` baseline set; `echo` implements only that baseline and
 documents it as the reference definition of what a well-behaved backend must emit.
 
@@ -196,10 +196,10 @@ Agent identity and behavior are entirely file-based. No identity is baked into a
 | File        | Location                | Purpose                                                             |
 | ----------- | ----------------------- | ------------------------------------------------------------------- |
 | `CLAUDE.md` | `/home/agent/.claude/`  | Behavioral instructions injected into the Claude backend at startup |
-| `AGENTS.md` | `/home/agent/.codex/`   | Behavioral instructions injected into the Codex backend at startup  |
+| `AGENTS.md` | `/home/agent/.openai/`   | Behavioral instructions injected into the OpenAI backend at startup  |
 | `GEMINI.md` | `/home/agent/.gemini/`  | Behavioral instructions injected into the Gemini backend at startup |
 | `memory/`   | `<name>/claude/memory/` | Persistent markdown memory files for Claude backend                 |
-| `memory/`   | `<name>/codex/memory/`  | Persistent markdown memory files for Codex backend                  |
+| `memory/`   | `<name>/openai/memory/`  | Persistent markdown memory files for OpenAI backend                  |
 | `memory/`   | `<name>/gemini/memory/` | JSON session history for Gemini backend (`sessions/`)               |
 
 Backend-specific `agent-card.md` files may be mounted for direct backend-sidecar discovery, but the Kubernetes Service
@@ -239,13 +239,13 @@ for a named agent targets the harness container. The repo's self/test agent conf
 | `A2A_BACKEND_RETRY_BACKOFF`                 | `1.0`                               | Base backoff in seconds for retry delay (exponential with jitter)                                                                      |
 | `A2A_URL_<ID>`                              | _(unset)_                           | Per-backend URL override (e.g. `A2A_URL_IRIS_CLAUDE`)                                                                                  |
 
-**Backends (claude / codex / gemini):**
+**Backends (claude / openai / gemini):**
 
 | Variable                   | Default                       | Description                                                                                  |
 | -------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------- |
-| `AGENT_NAME`               | `claude` / `codex` / `gemini` | Backend instance name (e.g. `iris-claude`)                                                   |
+| `AGENT_NAME`               | `claude` / `openai` / `gemini` | Backend instance name (e.g. `iris-claude`)                                                   |
 | `AGENT_OWNER`              | _(same as `AGENT_NAME`)_      | Named agent this backend belongs to (e.g. `iris`); used in metric labels                     |
-| `AGENT_ID`                 | `claude` / `codex` / `gemini` | Backend slot identifier; used in metric labels                                               |
+| `AGENT_ID`                 | `claude` / `openai` / `gemini` | Backend slot identifier; used in metric labels                                               |
 | `AGENT_URL`                | `http://localhost:8000/`      | Public A2A endpoint URL reported in agent card                                               |
 | `BACKEND_PORT`             | `8000`                        | HTTP port the backend listens on (internal)                                                  |
 | `METRICS_ENABLED`          | _(unset)_                     | Enable Prometheus `/metrics`                                                                 |
@@ -318,7 +318,7 @@ Operator-created agents follow the `ww` port convention unless a CR explicitly o
 
 Each named agent runs in its own pod with its own localhost, so these ports can be reused across agents. Local smoke
 docs may still forward stable laptop ports to the harness Service, for example `localhost:8099 -> svc/bob:8000`, but
-that is a client-side convenience rather than an in-cluster port assignment. Bob's Codex/Gemini directories remain
+that is a client-side convenience rather than an in-cluster port assignment. Bob's OpenAI/Gemini directories remain
 parked fixtures so they can be re-enabled deliberately once credentials and budget are available.
 
 ---
@@ -476,7 +476,7 @@ backend:
       url: http://localhost:8010
       model: claude-opus-4-7
 
-    - id: codex
+    - id: openai
       url: http://localhost:8011
       model: gpt-5.5
 

@@ -14,7 +14,7 @@ import (
 //   - mount path inside the pod      (→ /home/agent/.<name>/)
 //   - agent id in backend.yaml       (→ routing entries reference this)
 //
-// Types (echo / claude / codex / gemini) determine which image the
+// Types (echo / claude / openai / gemini) determine which image the
 // operator pulls and which behavioural-instructions file the scaffold
 // seeds (CLAUDE.md / AGENTS.md / GEMINI.md). A single type can appear
 // on an agent under multiple names — that's the "two echo backends"

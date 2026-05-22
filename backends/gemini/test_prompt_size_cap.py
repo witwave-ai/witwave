@@ -47,7 +47,7 @@ def _counter_value(counter, labels: dict) -> float:
     across versions; combined with the displace-and-restore in setUp/tearDown
     below it lets this test see the real prometheus_client even when sibling
     tests have cached the stub in `sys.modules`. Mirrors codex's
-    `backends/codex/test_prompt_size_cap.py` (#1507dd75).
+    `backends/openai/test_prompt_size_cap.py` (#1507dd75).
     """
     for metric in counter.collect():
         for sample in metric.samples:

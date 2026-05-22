@@ -13,7 +13,7 @@ export interface AgentCard {
   protocolVersion?: string;
   skills?: unknown[];
   capabilities?: Record<string, unknown>;
-  // Optional executor family surfaced by the harness (e.g. "claude", "codex",
+  // Optional executor family surfaced by the harness (e.g. "claude", "openai",
   // "gemini", "echo"). When present, this is the authoritative source for
   // backend classification; backendType() falls back to id-suffix / substring
   // inference only when the field is absent.
@@ -50,16 +50,17 @@ export interface TeamMember {
 
 export type TeamResponse = TeamMember[];
 
-export type BackendType = "claude" | "codex" | "gemini" | "echo" | "unknown";
+export type BackendType = "claude" | "openai" | "codex" | "gemini" | "echo" | "unknown";
 
 // Known families. Keep in sync with BackendType above.
-const KNOWN_FAMILIES: ReadonlySet<BackendType> = new Set(["claude", "codex", "gemini", "echo"]);
+const KNOWN_FAMILIES: ReadonlySet<BackendType> = new Set(["claude", "openai", "codex", "gemini", "echo"]);
 
 // Structured id-suffix mapping. Matches the canonical backend container names
-// (e.g. "iris-claude", "nova-codex", "kira-gemini", "iris-echo") without
+// (e.g. "iris-claude", "nova-openai", "kira-gemini", "iris-echo") without
 // relying on free-form substring matches anywhere in the id.
 const BACKEND_ID_SUFFIXES: ReadonlyArray<readonly [string, BackendType]> = [
   ["-claude", "claude"],
+  ["-openai", "openai"],
   ["-codex", "codex"],
   ["-gemini", "gemini"],
   ["-echo", "echo"],
@@ -83,7 +84,8 @@ function fallbackFromId(id: string): BackendType {
   // that doesn't follow the canonical suffix scheme. Order is stable to keep
   // existing ids classifying the same way.
   if (s.includes("claude")) return "claude";
-  if (s.includes("codex") || s.includes("openai") || s.includes("gpt")) return "codex";
+  if (s.includes("openai") || s.includes("gpt")) return "openai";
+  if (s.includes("codex")) return "codex";
   if (s.includes("gemini") || s.includes("google")) return "gemini";
   if (s.includes("echo")) return "echo";
   return "unknown";

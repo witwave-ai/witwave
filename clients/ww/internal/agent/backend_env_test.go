@@ -10,7 +10,7 @@ func TestParseBackendEnvs_HappyPath(t *testing.T) {
 	got, err := ParseBackendEnvs([]string{
 		"claude:TASK_TIMEOUT_SECONDS=2700",
 		"claude:LOG_LEVEL=debug",
-		"codex:LOG_LEVEL=info",
+		"openai:LOG_LEVEL=info",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -24,8 +24,8 @@ func TestParseBackendEnvs_HappyPath(t *testing.T) {
 	if got["claude"]["LOG_LEVEL"] != "debug" {
 		t.Errorf("claude LOG_LEVEL = %q, want debug", got["claude"]["LOG_LEVEL"])
 	}
-	if got["codex"]["LOG_LEVEL"] != "info" {
-		t.Errorf("codex LOG_LEVEL = %q, want info", got["codex"]["LOG_LEVEL"])
+	if got["openai"]["LOG_LEVEL"] != "info" {
+		t.Errorf("openai LOG_LEVEL = %q, want info", got["openai"]["LOG_LEVEL"])
 	}
 }
 
@@ -84,7 +84,7 @@ func TestApplyBackendEnvs_StampsOnMatchingSpec(t *testing.T) {
 	t.Parallel()
 	specs := []BackendSpec{
 		{Name: "claude", Type: "claude", Port: 8001},
-		{Name: "codex", Type: "codex", Port: 8002},
+		{Name: "openai", Type: "openai", Port: 8002},
 	}
 	envs := map[string]map[string]string{
 		"claude": {"TASK_TIMEOUT_SECONDS": "2700"},
@@ -97,7 +97,7 @@ func TestApplyBackendEnvs_StampsOnMatchingSpec(t *testing.T) {
 		t.Errorf("claude env TASK_TIMEOUT_SECONDS = %q, want 2700", got)
 	}
 	if out[1].Env != nil {
-		t.Errorf("codex spec.Env should be nil (no entry in map), got %v", out[1].Env)
+		t.Errorf("openai spec.Env should be nil (no entry in map), got %v", out[1].Env)
 	}
 }
 

@@ -26,7 +26,7 @@ pins that ordering so the regression pattern can't be re-introduced via
 either reshuffle (counter-before-publish) or by re-adding a per-chunk
 delivery surface that gets counted *before* its attempt.
 
-The matching codex shape lives at ``backends/codex/executor.py`` —
+The matching openai shape lives at ``backends/openai/executor.py`` —
 codex orders publish_chunk → _chunks_emitted += 1 → metric.inc() the
 same way. (No codex test pins this today; the gemini test is the
 canonical pin.) Claude diverges intentionally — see the comment in

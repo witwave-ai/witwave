@@ -164,7 +164,7 @@ You said: ping from the walkthrough
 
 This agent is running the echo backend, which returns canned responses
 so you can deploy and exercise an agent without any API keys. To swap
-in a real backend (claude, codex, or gemini), see `ww agent backend set --help`.
+in a real backend (claude, openai, or gemini), see `ww agent backend set --help`.
 ```
 
 `ww agent send` hits the agent's harness via the Kubernetes apiserver's built-in Service proxy — no port-forwarding, no
@@ -175,7 +175,7 @@ external LoadBalancer. Works against any ClusterIP service.
 ## 3. Multi-backend agents
 
 Echo is fine for hello-world, but the framework's headline feature is running **multiple backends on one agent** — e.g.
-claude + codex reaching consensus, or two echo instances to prove the dispatch path handles N-way routing before you
+claude + openai reaching consensus, or two echo instances to prove the dispatch path handles N-way routing before you
 wire real LLMs.
 
 Two shapes for the repeatable `--backend` flag:
@@ -262,9 +262,9 @@ ww agent create research \
 ww agent create consensus \
     --namespace witwave \
     --backend claude \
-    --backend codex \
+    --backend openai \
     --auth claude=oauth \
-    --auth codex=openai
+    --auth openai=openai
 ```
 
 Four credential flags, all scoped per backend. The first three are repeatable across DIFFERENT backends; `--auth-set` is

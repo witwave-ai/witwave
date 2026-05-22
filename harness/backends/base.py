@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class AgentBackend(Protocol):
-    """Common interface for all agent backends (Claude, Codex, etc.)."""
+    """Common interface for all agent backends (Claude, OpenAI, etc.)."""
 
     id: str
     """Unique identifier for this backend instance, matching backends.yaml."""

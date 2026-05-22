@@ -12,7 +12,7 @@ positive integer, and emits a warning log when the value is missing a
 valid positive integer. Invalid or non-positive inputs are dropped
 (returned as ``None``) so callers can fall back to their own defaults.
 
-claude and codex carry analogous parsing blocks; adopting this
+claude and openai carry analogous parsing blocks; adopting this
 helper there is a follow-up and deliberately out of scope for #537.
 """
 
@@ -32,7 +32,7 @@ __all__ = ["parse_max_tokens", "sanitize_model_label"]
 # Accept only simple model identifiers (alnum / dot / dash / underscore, length
 # <= 64) and collapse anything else to the literal "unknown". Originally landed
 # in ``backends/gemini/executor.py`` via #487; hoisted here so claude (#601) and
-# codex can share a single well-reviewed definition.
+# openai can share a single well-reviewed definition.
 _MODEL_LABEL_RE = re.compile(r"^[a-zA-Z0-9._\-]{1,64}$")
 
 

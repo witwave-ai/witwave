@@ -229,7 +229,7 @@ def _validate_webhook_failed(p: dict) -> str | None:
     return None
 
 
-_HOOK_BACKENDS = {"claude", "codex", "gemini"}
+_HOOK_BACKENDS = {"claude", "openai", "codex", "gemini"}
 _HOOK_DECISIONS = {"allow", "deny", "warn"}
 
 

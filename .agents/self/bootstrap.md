@@ -16,7 +16,6 @@ is running:
   paths.
 - Nine **WitwaveAgent**s (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`) with
   `Spec.WorkspaceRefs` pointing at `witwave-self` so they share the workspace.
-
   - **iris** owns source-tree initialization + release captaincy + git plumbing for the team.
   - **kira** owns documentation hygiene + research.
   - **nova** owns code-internal hygiene (formatting, comment-vs-code verification, comment authoring).
@@ -91,13 +90,14 @@ Verify the local decrypt path without printing values:
 mise exec -- scripts/sops-exec-env.py \
   .agents/self/team.sops.env \
   .agents/self/iris/agent.sops.env \
-  -- sh -lc 'test -n "$CLAUDE_CODE_OAUTH_TOKEN" && test -n "$GITHUB_TOKEN" && test -n "$GITSYNC_USERNAME"'
+  -- sh -lc 'test -n "$CLAUDE_CODE_OAUTH_TOKEN" && test -n "$OPENAI_API_KEY" && test -n "$GITHUB_TOKEN" && test -n "$GITSYNC_USERNAME"'
 ```
 
 The agent-create commands lift those decrypted shell variables into each agent's containers at the in-container env-var
-names each consumer expects: `CLAUDE_CODE_OAUTH_TOKEN` lands on the claude container as-is; `GITHUB_TOKEN` and
-`GITHUB_USER` land inside that agent's claude container; and `GITSYNC_USERNAME` / `GITSYNC_PASSWORD` are minted into a
-per-agent `<name>-gitsync` Secret and `envFrom`-wired to the gitSync sidecar.
+names each consumer expects: `CLAUDE_CODE_OAUTH_TOKEN` lands on Claude containers as-is; `OPENAI_API_KEY` lands on OpenAI
+containers as-is; `GITHUB_TOKEN` and `GITHUB_USER` land inside that agent's active backend container; and
+`GITSYNC_USERNAME` / `GITSYNC_PASSWORD` are minted into a per-agent `<name>-gitsync` Secret and `envFrom`-wired to the
+gitSync sidecar.
 
 For this bootstrap the repo (`witwave-ai/witwave`) is public and the sidecar would clone anonymously without any creds —
 the `--gitsync-secret-from-env` wiring is shown so the pattern carries over verbatim when iris later points at a private
@@ -441,17 +441,25 @@ mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/mi
   --namespace witwave-self \
   --workspace witwave-self \
   --with-persistence \
-  --backend claude \
+  --backend openai \
   --harness-env TASK_TIMEOUT_SECONDS=7200 \
   --harness-env CONVERSATIONS_AUTH_DISABLED=true \
-  --backend-env claude:TASK_TIMEOUT_SECONDS=7200 \
-  --backend-env claude:CONVERSATIONS_AUTH_DISABLED=true \
-  --backend-secret-from-env claude=CLAUDE_CODE_OAUTH_TOKEN \
-  --backend-secret-from-env claude=GITHUB_TOKEN \
-  --backend-secret-from-env claude=GITHUB_USER \
+  --backend-env openai:TASK_TIMEOUT_SECONDS=7200 \
+  --backend-env openai:CONVERSATIONS_AUTH_DISABLED=true \
+  --backend-env openai:OPENAI_MODEL=gpt-5.5 \
+  --backend-env openai:OPENAI_REASONING_EFFORT=xhigh \
+  --backend-secret-from-env openai=OPENAI_API_KEY \
+  --backend-secret-from-env openai=GITHUB_TOKEN \
+  --backend-secret-from-env openai=GITHUB_USER \
   --gitsync-bundle https://github.com/witwave-ai/witwave.git@main:.agents/self/mira \
   --gitsync-secret-from-env GITSYNC_USERNAME:GITSYNC_PASSWORD
 ```
+
+Mira is intentionally OpenAI-only in this bootstrap. Her `.witwave/backend.yaml` routes every concern to `openai` with
+model `gpt-5.5`, her primary loaded identity document is `.openai/AGENTS.md`, and her OpenAI skill mirror lives under
+`.openai/skills/`. Keep her `.claude/` folder parked in the repo so she can switch back to Claude later without
+rebuilding her identity from scratch; when one surface changes, keep the other semantically aligned. Her OpenAI backend
+also sets `OPENAI_REASONING_EFFORT=xhigh` for the requested extra-high reasoning posture.
 
 After Mira is deployed, run her `platform-health` skill once manually before relying on the hourly heartbeat. The first
 run should report whether the deployed container actually has the read-only tools it needs (`ww`, `kubectl`, `gh`),
@@ -528,8 +536,9 @@ zora's heartbeat fires every 30 minutes; her next tick will discover the team an
 
 Tear down in reverse order: agents, workspace, operator, namespaces. Each command is destructive.
 
-Delete each agent (cascades the pod, Service, per-backend PVC `<name>-claude-data`, and the ww-managed `<name>-claude`
-Secret; `--delete-git-secret` also reaps the per-agent `<name>-gitsync` Secret minted by `--gitsync-secret-from-env`):
+Delete each agent (cascades the pod, Service, per-backend PVC `<name>-<backend>-data`, and the ww-managed
+`<name>-<backend>` Secret; `--delete-git-secret` also reaps the per-agent `<name>-gitsync` Secret minted by
+`--gitsync-secret-from-env`):
 
 ```bash
 ww agent delete milo \

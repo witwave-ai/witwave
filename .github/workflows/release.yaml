@@ -10,7 +10,7 @@ name: Release — Container Images
 # Multi-platform structure: each (image, platform) builds on its NATIVE
 # runner — linux/amd64 on `ubuntu-latest`, linux/arm64 on `ubuntu-24.04-arm`.
 # The previous shape used `docker/setup-qemu-action` to cross-build arm64
-# under emulation on amd64 runners, which made the claude/codex/gemini
+# under emulation on amd64 runners, which made the claude/openai/gemini
 # images take 35-50 minutes each (the `go install` of the seven Go tools
 # baked into the image is especially miserable under QEMU). Native arm64
 # brings those down to 10-15 minutes. Per-arch images push by digest
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/wait-for-sibling-ci
 
-  # Backend base image — shared base for claude/codex/gemini plus analyzer/tooling
+  # Backend base image — shared base for claude/openai/gemini plus analyzer/tooling
   # surface. Backend image builds depend on `merge-backend-base` and receive
   # BACKEND_BASE_IMAGE pointing at the same stripped release version, so a release
   # tag like v0.26.2 builds backends from backend-base:0.26.2 rather than latest.
@@ -213,6 +213,9 @@ jobs:
         image:
           - harness
           - claude
+          - openai
+          # Compatibility alias while existing agents migrate from the old
+          # Codex-named OpenAI Agents SDK backend.
           - codex
           - gemini
           - echo
@@ -225,7 +228,8 @@ jobs:
         include:
           - { image: harness,        file: harness/Dockerfile,           context: .                }
           - { image: claude,         file: backends/claude/Dockerfile,   context: .                }
-          - { image: codex,          file: backends/codex/Dockerfile,    context: .                }
+          - { image: openai,         file: backends/openai/Dockerfile,   context: .                }
+          - { image: codex,          file: backends/openai/Dockerfile,   context: .                }
           - { image: gemini,         file: backends/gemini/Dockerfile,   context: .                }
           - { image: echo,           file: backends/echo/Dockerfile,     context: .                }
           - { image: operator,       file: operator/Dockerfile,          context: operator         }
@@ -323,6 +327,9 @@ jobs:
         image:
           - harness
           - claude
+          - openai
+          # Compatibility alias while existing agents migrate from the old
+          # Codex-named OpenAI Agents SDK backend.
           - codex
           - gemini
           - echo

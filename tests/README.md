@@ -5,7 +5,7 @@ End-to-end smoke tests for the witwave autonomous agent platform, exercised agai
 
 ## Running
 
-The tests are markdown specs designed to be executed by an agent (Claude Code, Codex, or a human) that reads each file
+The tests are markdown specs designed to be executed by an agent (Claude Code, OpenAI, or a human) that reads each file
 in order and follows the instructions. There is no central test runner; each spec is self-contained.
 
 ```text
@@ -128,6 +128,6 @@ After the table, include:
 | 023   | webhook headers                                       |
 | 024   | webhook extract                                       |
 | 025.a | Claude memory                                         |
-| 025.b | Codex memory                                          |
+| 025.b | OpenAI memory                                          |
 | 025.c | Gemini memory                                         |
 | 900   | cleanup                                               |

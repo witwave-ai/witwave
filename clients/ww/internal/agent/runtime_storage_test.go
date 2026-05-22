@@ -38,8 +38,8 @@ func TestApplyBackendTaskStoreDefaultsOnlyWhenStateMounted(t *testing.T) {
 			}},
 		},
 		{
-			Name: "codex",
-			Type: "codex",
+			Name: "openai",
+			Type: "openai",
 			Storage: &BackendStorageSpec{Mounts: []BackendStorageMount{
 				{SubPath: "logs", MountPath: "/home/agent/logs"},
 			}},
@@ -50,7 +50,7 @@ func TestApplyBackendTaskStoreDefaultsOnlyWhenStateMounted(t *testing.T) {
 		t.Errorf("claude TASK_STORE_PATH = %q, want %q", got[0].Env["TASK_STORE_PATH"], RuntimeTaskStorePath)
 	}
 	if got[1].Env != nil {
-		t.Errorf("codex env = %+v, want nil without state mount", got[1].Env)
+		t.Errorf("openai env = %+v, want nil without state mount", got[1].Env)
 	}
 }
 

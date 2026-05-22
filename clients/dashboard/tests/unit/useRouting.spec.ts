@@ -60,7 +60,7 @@ describe("useRouting", () => {
   it("prefers routing.<kind>.agent over the top-level default", async () => {
     mockedApiGet.mockResolvedValueOnce(
       fullRouting({
-        a2a: { agent: "iris-codex", model: "gpt-5" },
+        a2a: { agent: "iris-openai", model: "gpt-5" },
         default_name: "iris-claude",
       } as never),
     );
@@ -71,7 +71,7 @@ describe("useRouting", () => {
     });
     await flushPromises();
     await nextTick();
-    expect(resolver!.defaultBackendFor("a2a")).toBe("iris-codex");
+    expect(resolver!.defaultBackendFor("a2a")).toBe("iris-openai");
     scope.stop();
   });
 

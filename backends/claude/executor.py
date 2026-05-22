@@ -1487,7 +1487,7 @@ _sessions_lock: asyncio.Lock | None = None
 def _get_sessions_lock() -> asyncio.Lock:
     """Return the process-wide ``_sessions_lock``, creating it lazily (#1195).
 
-    Parity with the codex backend (``backends/codex/executor.py``): any
+    Parity with the openai backend (``backends/openai/executor.py``): any
     evict/unlink/insert mutation of the shared sessions OrderedDict must
     serialise through this lock so concurrent A2A and /mcp paths cannot
     interleave ``popitem(last=False)`` with post-await reinserts.

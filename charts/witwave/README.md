@@ -1,6 +1,6 @@
 # witwave
 
-Helm chart for the witwave platform — witwave harness and backends (claude, codex, gemini, echo), MCP tool servers, and
+Helm chart for the witwave platform — witwave harness and backends (claude, openai, gemini, echo), MCP tool servers, and
 optional dashboard. Deploys one pod per named agent with the harness + backends + git-sync sidecars colocated; MCP tools
 run as shared cluster-wide Deployments. Released to GHCR on every tag alongside `witwave-operator`.
 
@@ -40,7 +40,7 @@ Create backend secrets for each agent. The required keys depend on which backend
 READMEs for details:
 
 - [claude secrets](../../backends/claude/README.md#secrets) — `ANTHROPIC_API_KEY`
-- [codex secrets](../../backends/codex/README.md#secrets) — `OPENAI_API_KEY`
+- [openai secrets](../../backends/openai/README.md#secrets) — `OPENAI_API_KEY`
 - [gemini secrets](../../backends/gemini/README.md#secrets) — `GEMINI_API_KEY`
 - [echo](../../backends/echo/README.md) — no secrets required (stub backend, no LLM)
 
@@ -321,7 +321,7 @@ mcpTools:
     serviceAccountName: mcp-helm # BYO SA with helm-release RBAC
 ```
 
-In each agent's `.claude/mcp.json` / `.codex/mcp.json` / `.gemini/mcp.json`, reference the tools by URL:
+In each agent's `.claude/mcp.json` / `.openai/mcp.json` / `.gemini/mcp.json`, reference the tools by URL:
 
 ```json
 {

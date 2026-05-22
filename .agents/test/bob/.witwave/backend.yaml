@@ -4,7 +4,7 @@ backend:
       url: http://localhost:8001
       model: claude-opus-4-7
 
-    # Codex and Gemini are intentionally omitted from the active Bob smoke
+    # OpenAI and Gemini are intentionally omitted from the active Bob smoke
     # deployment. Keep their backend config directories as parked fixtures,
     # and add them back through `ww agent backend add` or a fresh multi-backend
     # `ww agent create` only when credentials and budget are available.

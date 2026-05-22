@@ -115,12 +115,12 @@ def test_invalid_cron_falls_back_to_default():
 
 
 def test_model_and_agent_passthrough():
-    _write_heartbeat("---\nschedule: '*/5 * * * *'\nmodel: gpt-4\nagent: codex\n---\nbody")
+    _write_heartbeat("---\nschedule: '*/5 * * * *'\nmodel: gpt-4\nagent: openai\n---\nbody")
     result = heartbeat.load_heartbeat()
     assert result is not None
     schedule, content, model, backend_id, consensus, max_tokens = result
     assert model == "gpt-4"
-    assert backend_id == "codex"
+    assert backend_id == "openai"
 
 
 # ----- max-tokens -----

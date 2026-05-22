@@ -258,7 +258,7 @@ func backendUsesThreeProbes(b witwavev1alpha1.BackendSpec) bool {
 //
 //	ghcr.io/witwave-ai/images/echo       → echo
 //	ghcr.io/witwave-ai/images/claude     → claude
-//	ghcr.io/witwave-ai/images/codex      → codex
+//	ghcr.io/witwave-ai/images/openai      → openai
 //
 // Empty string when the repository is empty (which the CRD's required
 // validation prevents, but defense-in-depth).

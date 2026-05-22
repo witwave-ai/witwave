@@ -1,4 +1,4 @@
-"""Regression coverage for the codex executor's per-response token-budget
+"""Regression coverage for the openai executor's per-response token-budget
 check (#1600).
 
 Bug: the budget candidate was
@@ -45,7 +45,7 @@ def _candidate_from_usage(usage):
     return getattr(usage, "total_tokens", None)
 
 
-class CodexBudgetCandidateTests(unittest.TestCase):
+class OpenAIBudgetCandidateTests(unittest.TestCase):
     """Direct-predicate tests for the #1600 fix."""
 
     def test_output_tokens_only_does_not_engage_budget(self):
@@ -73,7 +73,7 @@ class CodexBudgetCandidateTests(unittest.TestCase):
         self.assertIsNone(_candidate_from_usage(usage))
 
 
-class CodexBudgetSourceShapeTests(unittest.TestCase):
+class OpenAIBudgetSourceShapeTests(unittest.TestCase):
     """Pin the source shape so a future edit can't reintroduce the
     ``or output_tokens`` fallback without tripping CI.
     """

@@ -2,7 +2,7 @@
 
 Mirrors the cycle-1 claude #1608 fix shape. README documents
 ``/health/ready`` as a universal route across all three backends but
-codex shipped only the readiness flag flip path (#1630) without a
+openai shipped only the readiness flag flip path (#1630) without a
 route to surface it — so K8s readinessProbe could never observe the
 degraded state. #1672 adds the route.
 
@@ -34,14 +34,14 @@ _REPO_ROOT = _HERE.parent.parent
 sys.path.insert(0, str(_HERE))
 sys.path.insert(0, str(_REPO_ROOT / "shared"))
 
-os.environ.setdefault("AGENT_NAME", "codex-test")
+os.environ.setdefault("AGENT_NAME", "openai-test")
 os.environ.setdefault("AGENT_OWNER", "test")
-os.environ.setdefault("AGENT_ID", "codex")
+os.environ.setdefault("AGENT_ID", "openai")
 
 # Redirect log paths off /home/agent so log helpers don't ENOENT-spam.
 import tempfile as _tempfile
 
-_log_tmp_dir = _tempfile.mkdtemp(prefix="codex-test-")
+_log_tmp_dir = _tempfile.mkdtemp(prefix="openai-test-")
 os.environ.setdefault("CONVERSATION_LOG", os.path.join(_log_tmp_dir, "conversation.jsonl"))
 os.environ.setdefault("TRACE_LOG", os.path.join(_log_tmp_dir, "tool-activity.jsonl"))
 
@@ -208,7 +208,7 @@ if "yaml" not in sys.modules:
 
 
 # ---------------------------------------------------------------------------
-# Stub backends/codex siblings that main.py imports but we don't need to
+# Stub backends/openai siblings that main.py imports but we don't need to
 # exercise (executor, conversations, sqlite_task_store, session_binding,
 # validation, metrics).
 # ---------------------------------------------------------------------------

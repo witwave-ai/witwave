@@ -36,9 +36,9 @@ describe("useSelectionStore", () => {
   it("setActiveBackend only touches the backend id", () => {
     const store = useSelectionStore();
     store.selectAgent("iris");
-    store.setActiveBackend("iris-codex");
+    store.setActiveBackend("iris-openai");
     expect(store.selectedName).toBe("iris");
-    expect(store.activeBackendId).toBe("iris-codex");
+    expect(store.activeBackendId).toBe("iris-openai");
   });
 
   it("clear resets both fields", () => {

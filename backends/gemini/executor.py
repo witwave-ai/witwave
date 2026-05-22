@@ -414,7 +414,7 @@ def _compute_agent_md_revision(content: str) -> str:
 
     Used as the ``revision`` label on ``backend_agent_md_revision`` so
     operators can verify a hot-reload has propagated to running queries.
-    Mirrors backends/codex/executor.py::_compute_agent_md_revision (#1097).
+    Mirrors backends/openai/executor.py::_compute_agent_md_revision (#1097).
     """
     return hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()[:12]
 
@@ -3000,7 +3000,7 @@ class AgentExecutor(A2AAgentExecutor):
     def _stamp_agent_md_revision(self, current: str, previous: str | None) -> None:
         """Update backend_agent_md_revision for a (possibly) new revision (#1751).
 
-        Mirrors backends/codex/executor.py::AgentExecutor._stamp_agent_md_revision
+        Mirrors backends/openai/executor.py::AgentExecutor._stamp_agent_md_revision
         added in #1097: clear the prior revision's label set via .remove(...)
         so only the live revision reports value 1, then .set(1) on the new
         label set. All calls are best-effort — prometheus registry churn must
@@ -3815,7 +3815,7 @@ class AgentExecutor(A2AAgentExecutor):
         # Probe-list rotation (#1042). If SESSION_ID_SECRET_PREV is set we
         # compute both derivations and route resumption to whichever id
         # has an existing history JSON on disk. Parity with the
-        # corresponding blocks in backends/{claude,codex}/executor.py.
+        # corresponding blocks in backends/{claude,openai}/executor.py.
         _sid_candidates = _derive_session_id_candidates(_raw_sid, caller_identity=_caller_id)
         session_id = _sid_candidates[0]
         if len(_sid_candidates) > 1:

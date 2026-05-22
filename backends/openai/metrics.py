@@ -1,4 +1,4 @@
-"""Prometheus metrics for the codex backend agent."""
+"""Prometheus metrics for the openai backend agent."""
 
 import prometheus_client
 from env import parse_bool_env
@@ -8,9 +8,9 @@ _enabled = parse_bool_env("METRICS_ENABLED")
 # Deprecated-metrics emission gate (#940). Defaults ON so pre-migration
 # dashboards keep working; operators flip to "0"/"false" once they have
 # re-pointed panels and alerts at backend_hooks_denials_total. One release
-# after default flips to off, backend_codex_hooks_denials_total will be
-# removed outright. Print the resolved posture at import time so the
-# migration window is visible in kubectl logs.
+# after default flips to off, the backend-specific hook-denial aliases
+# will be removed outright. Print the resolved posture at import time so
+# the migration window is visible in kubectl logs.
 _EMIT_DEPRECATED_HOOK_METRICS = parse_bool_env("EMIT_DEPRECATED_HOOK_METRICS", default=True)
 
 # Service-level metrics
@@ -118,7 +118,7 @@ backend_file_watcher_restarts_total: prometheus_client.Counter | None = None
 # content; the gauge value is always 1 when set. On hot-reload the previous
 # revision's label set is removed so only the live revision reports 1.
 # Operators correlate this with the per-query span attribute
-# `codex.agent_md_revision` to verify an AGENTS.md rollout has propagated.
+# `openai.agent_md_revision` to verify an AGENTS.md rollout has propagated.
 backend_agent_md_revision: prometheus_client.Gauge | None = None
 
 # Context window metrics
@@ -142,12 +142,13 @@ backend_budget_exceeded_total: prometheus_client.Counter | None = None
 # Hooks / tool-audit (#586) — shell-only baseline scope.
 # Non-shell enforcement and the rest of the backend_hooks_* family stay deferred
 # until a tool-wrapping proxy design is validated against the Agents SDK.
+backend_openai_hooks_denials_total: prometheus_client.Counter | None = None
 backend_codex_hooks_denials_total: prometheus_client.Counter | None = None
 # Canonical cross-backend denial counter (#789). Shares the same label
 # schema as claude/gemini so cross-backend dashboards can union by
-# (agent, agent_id, backend). The legacy backend_codex_hooks_denials_total
-# stays in place to avoid breaking existing scrapers; both increment on
-# each deny.
+# (agent, agent_id, backend). Backend-specific aliases stay in place to
+# avoid breaking existing scrapers during the codex -> openai rename; all
+# aliases increment on each deny.
 backend_hooks_denials_total: prometheus_client.Counter | None = None
 backend_hooks_shed_total: prometheus_client.Counter | None = None
 # #1052: counts hook.decision emissions where _current_session_id
@@ -157,10 +158,10 @@ backend_hooks_shed_total: prometheus_client.Counter | None = None
 # session seed — worth a WARN + an alertable metric.
 backend_hook_session_missing_total: prometheus_client.Counter | None = None
 # Peer-parity hook metric family (#800) — matches the claude superset so
-# cross-backend dashboards don't drop the series. codex's hook path is
+# cross-backend dashboards don't drop the series. openai's hook path is
 # shell-baseline-only today (#586/#799 deferred) so warnings/config-*
 # stay at their registered zero value until non-shell enforcement lands,
-# but declaring them keeps PromQL join(on=backend) from excluding codex
+# but declaring them keeps PromQL join(on=backend) from excluding openai
 # silently.
 backend_hooks_warnings_total: prometheus_client.Counter | None = None
 backend_hooks_config_reloads_total: prometheus_client.Counter | None = None
@@ -182,7 +183,7 @@ backend_mcp_outbound_duration_seconds: prometheus_client.Histogram | None = None
 # for every claude metric so dashboards that union over
 # (agent, agent_id, backend) don't lose label sets when a metric only
 # emits on one backend. The placeholders below are declared but never
-# .inc()/.observe()'d by codex's executor — the underlying mechanism
+# .inc()/.observe()'d by openai's executor — the underlying mechanism
 # (e.g. PreToolUse hook engine, MCP caller cardinality tracker, SQLite
 # task-store lock instrumentation, settings.json reload watcher) lives
 # only on claude.
@@ -338,7 +339,7 @@ if _enabled:
     )
     # Session path layout drift (#530 / #796). Registered as a zero-value
     # placeholder so cross-backend dashboards filtering backend=~".*"
-    # don't drop a label set. codex does not currently self-probe SDK
+    # don't drop a label set. openai does not currently self-probe SDK
     # on-disk layout; a future self-test can bump this without touching
     # dashboard schemas.
     backend_session_path_mismatch_total = prometheus_client.Counter(
@@ -348,12 +349,12 @@ if _enabled:
         ["agent", "agent_id", "backend", "reason"],
     )
     # SDK cold-start timing (#796). Registered as a zero-value placeholder
-    # today — codex uses the OpenAI Agents SDK in-process so there is no
+    # today — openai uses the OpenAI Agents SDK in-process so there is no
     # subprocess spawn; this exists so dashboards carry the series across
     # all three backends.
     backend_sdk_subprocess_spawn_duration_seconds = prometheus_client.Histogram(
         "backend_sdk_subprocess_spawn_duration_seconds",
-        "Time to initialize the backend client/SDK (placeholder on codex).",
+        "Time to initialize the backend client/SDK (placeholder on openai).",
         ["agent", "agent_id", "backend", "model"],
         buckets=(0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60),
     )
@@ -395,7 +396,7 @@ if _enabled:
         ["agent", "agent_id", "backend"],
     )
     # Per-task SDK error/noise (#802). Parity with claude's subprocess-stderr
-    # metric surface. Codex runs the OpenAI Agents SDK in-process so there is
+    # metric surface. OpenAI runs the OpenAI Agents SDK in-process so there is
     # no literal subprocess stderr; instead these metrics tally SDK-side
     # error/exception events observed during a single run() invocation so
     # operator dashboards can union across backends.
@@ -564,7 +565,7 @@ if _enabled:
         "Total backend client connection-level failures (setup/teardown).",
         ["agent", "agent_id", "backend", "model"],
     )
-    # Context-usage fetch failures (#803). Parity with claude. Codex currently
+    # Context-usage fetch failures (#803). Parity with claude. OpenAI currently
     # reads token totals from the Agents SDK result object, so this counter
     # bumps whenever that extraction raises or returns a malformed payload.
     backend_sdk_context_fetch_errors_total = prometheus_client.Counter(
@@ -573,7 +574,7 @@ if _enabled:
         ["agent", "agent_id", "backend", "model"],
     )
     # Task retries (#803). Parity with claude's retry-on-session-collision
-    # path. Codex does not currently retry internally, so this counter ships
+    # path. OpenAI does not currently retry internally, so this counter ships
     # as a zero-value placeholder so dashboards can union across backends
     # without missing-label gaps; any future retry path can bump it.
     backend_task_retries_total = prometheus_client.Counter(
@@ -603,7 +604,7 @@ if _enabled:
         "backend_agent_md_revision",
         "Currently-active AGENTS.md revision (SHA-256 hex prefix, first 12 chars). "
         "Gauge value is 1 when set; previous revision is cleared on hot-reload. "
-        "Pair with the `codex.agent_md_revision` per-query span attribute to "
+        "Pair with the `openai.agent_md_revision` per-query span attribute to "
         "verify a behavioral rollout has propagated. See #1097.",
         ["agent", "agent_id", "backend", "revision"],
     )
@@ -651,7 +652,7 @@ if _enabled:
         "backend_sdk_tool_calls_per_query",
         "Number of tool calls per run_query() invocation.",
         # model label aligned with claude (#795) so cross-backend queries
-        # don't lose the per-model dimension on codex.
+        # don't lose the per-model dimension on openai.
         ["agent", "agent_id", "backend", "model"],
         buckets=(0, 1, 2, 5, 10, 20, 50),
     )
@@ -693,8 +694,8 @@ if _enabled:
     # baseline-chmod-777, baseline-dd-device). Non-shell enforcement is not
     # covered by this counter yet — see #586 for the deferred design.
     if _EMIT_DEPRECATED_HOOK_METRICS:
-        backend_codex_hooks_denials_total = prometheus_client.Counter(
-            "backend_codex_hooks_denials_total",
+        backend_openai_hooks_denials_total = prometheus_client.Counter(
+            "backend_openai_hooks_denials_total",
             "DEPRECATED alias for backend_hooks_denials_total (#789, #940). "
             "Gated on EMIT_DEPRECATED_HOOK_METRICS (default true; flip off "
             "after migrating dashboards). Label cardinality (agent, "
@@ -702,18 +703,27 @@ if _enabled:
             "canonical series — non-shell enforcement will not backfill.",
             ["agent", "agent_id", "backend", "rule"],
         )
+        backend_codex_hooks_denials_total = prometheus_client.Counter(
+            "backend_codex_hooks_denials_total",
+            "DEPRECATED pre-rename alias for backend_hooks_denials_total "
+            "(#789, #940). Gated on EMIT_DEPRECATED_HOOK_METRICS (default "
+            "true; flip off after migrating dashboards). Label cardinality "
+            "(agent, agent_id, backend, rule) intentionally narrower than "
+            "the canonical series — non-shell enforcement will not backfill.",
+            ["agent", "agent_id", "backend", "rule"],
+        )
     # Canonical cross-backend denial counter (#789). Label schema matches
-    # claude's (tool, source, rule); codex's shell baseline always fills
+    # claude's (tool, source, rule); openai's shell baseline always fills
     # tool='shell' and source='baseline' since non-shell enforcement is
     # still deferred (#586).
     backend_hooks_denials_total = prometheus_client.Counter(
         "backend_hooks_denials_total",
         "Total tool calls denied by a PreToolUse hook, labelled by tool name, "
         "rule source (baseline|extension), and the rule name that matched. "
-        "Canonical name across claude/codex/gemini backends.",
+        "Canonical name across claude/openai/gemini backends.",
         ["agent", "agent_id", "backend", "tool", "source", "rule"],
     )
-    # Parity with claude.backend_hooks_shed_total (#957). codex shares
+    # Parity with claude.backend_hooks_shed_total (#957). openai shares
     # shared/hook_events.schedule_post with the other backends; without
     # registering + passing a shed_counter the module's one-shot WARN
     # fires once and goes silent, so sustained shedding is invisible on
@@ -735,7 +745,7 @@ if _enabled:
     )
     backend_tool_audit_entries_total = prometheus_client.Counter(
         "backend_tool_audit_entries_total",
-        "Total rows written to tool-audit.jsonl by codex PostToolUse audit.",
+        "Total rows written to tool-audit.jsonl by openai PostToolUse audit.",
         ["agent", "agent_id", "backend", "tool"],
     )
     # Size / rotation observability on tool-activity.jsonl (#1102).
@@ -773,8 +783,8 @@ if _enabled:
     )
     # Peer-parity placeholders (#796): claude's hook surface exposes
     # backend_hooks_active_rules and backend_hooks_evaluations_total;
-    # register them on codex too so cross-backend dashboards don't drop
-    # the series. codex's hook path is baseline-only (#586 deferred) so
+    # register them on openai too so cross-backend dashboards don't drop
+    # the series. openai's hook path is baseline-only (#586 deferred) so
     # today these sit at their registered zero value.
     backend_hooks_active_rules = prometheus_client.Gauge(
         "backend_hooks_active_rules",
@@ -805,31 +815,31 @@ if _enabled:
     )
 
     # #1687: cross-backend parity placeholders. Declared so cross-backend
-    # PromQL joins don't drop label sets where claude emits and codex
-    # doesn't. None of these mechanisms exist on codex today; the
+    # PromQL joins don't drop label sets where claude emits and openai
+    # doesn't. None of these mechanisms exist on openai today; the
     # placeholders sit at zero unless/until parity work fills them in.
     backend_allowed_tools_reload_total = prometheus_client.Counter(
         "backend_allowed_tools_reload_total",
         "Total settings.json ALLOWED_TOOLS reloads observed (claude-only "
-        "mechanism — placeholder on codex for cross-backend join parity).",
+        "mechanism — placeholder on openai for cross-backend join parity).",
         ["agent", "agent_id", "backend", "direction"],
     )
     backend_hooks_blocked_total = prometheus_client.Counter(
         "backend_hooks_blocked_total",
         "DEPRECATED alias for backend_hooks_denials_total (#789). Placeholder "
-        "on codex so dashboards pinned to the claude-specific name still join.",
+        "on openai so dashboards pinned to the claude-specific name still join.",
         ["agent", "agent_id", "backend", "tool", "source", "rule"],
     )
     backend_session_caller_cardinality = prometheus_client.Gauge(
         "backend_session_caller_cardinality",
         "Distinct caller_identity values observed on /mcp since process start "
-        "(claude-only tracker — placeholder on codex for parity, see #1049).",
+        "(claude-only tracker — placeholder on openai for parity, see #1049).",
         ["agent", "agent_id", "backend"],
     )
     backend_sqlite_task_store_lock_wait_seconds = prometheus_client.Histogram(
         "backend_sqlite_task_store_lock_wait_seconds",
         "Seconds waited to acquire the SqliteTaskStore asyncio.Lock, by op "
-        "(claude-only instrumentation — placeholder on codex for parity).",
+        "(claude-only instrumentation — placeholder on openai for parity).",
         ["agent", "agent_id", "backend", "op"],
         buckets=(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0),
     )

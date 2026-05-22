@@ -57,7 +57,7 @@ EXPOSE 8000
 # override with METRICS_PORT env var. Only active when METRICS_ENABLED is set.
 EXPOSE 9000
 
-# WORKDIR alignment — match harness, claude, codex, gemini. Echo had
+# WORKDIR alignment — match harness, claude, openai, gemini. Echo had
 # previously stayed at /home/agent (the initial build-time WORKDIR);
 # every other container in a witwave agent pod runs at
 # /home/agent/workspace, so a `pwd` from any container's shell now

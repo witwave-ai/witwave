@@ -51,7 +51,7 @@ func TestValidatorRejectsDuplicateBackendNames(t *testing.T) {
 		Spec: witwavev1alpha1.WitwaveAgentSpec{
 			Backends: []witwavev1alpha1.BackendSpec{
 				{Name: "claude"},
-				{Name: "codex"},
+				{Name: "openai"},
 				{Name: "claude"}, // duplicate
 			},
 		},
@@ -71,7 +71,7 @@ func TestValidatorAllowsUniqueBackendNames(t *testing.T) {
 		Spec: witwavev1alpha1.WitwaveAgentSpec{
 			Backends: []witwavev1alpha1.BackendSpec{
 				{Name: "claude"},
-				{Name: "codex"},
+				{Name: "openai"},
 				{Name: "gemini"},
 			},
 		},

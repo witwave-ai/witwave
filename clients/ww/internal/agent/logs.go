@@ -22,7 +22,7 @@ type LogsOptions struct {
 	// Container — single container name to tail. Empty means "tail every
 	// container in the agent pod (harness + backend(s) + git-sync)" with
 	// each line prefixed by `[<container>]` so the user can tell streams
-	// apart. Set to a specific name (echo/claude/codex/gemini/harness/
+	// apart. Set to a specific name (echo/claude/openai/gemini/harness/
 	// git-sync) to filter to that one container — the prefix is still
 	// emitted for consistency.
 	Container string

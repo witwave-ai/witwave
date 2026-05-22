@@ -1,9 +1,9 @@
-"""Unit test for #1753 — codex sqlite_task_store records lock_wait_seconds.
+"""Unit test for #1753 — openai sqlite_task_store records lock_wait_seconds.
 
-Mirrors the parity gap that existed before #1753: codex used to register
+Mirrors the parity gap that existed before #1753: openai used to register
 ``backend_sqlite_task_store_lock_wait_seconds`` in metrics.py but never
 call ``.observe()``, so cross-backend dashboards saw a permanent zero
-on the codex bucket. The fix wires ``_observe_lock_wait`` around the
+on the openai bucket. The fix wires ``_observe_lock_wait`` around the
 to_thread-dispatched save / get / delete ops; this test asserts the
 helper is invoked on each path.
 
@@ -28,9 +28,9 @@ _REPO_ROOT = _HERE.parent.parent
 sys.path.insert(0, str(_HERE))
 sys.path.insert(0, str(_REPO_ROOT / "shared"))
 
-os.environ.setdefault("AGENT_NAME", "codex-test")
+os.environ.setdefault("AGENT_NAME", "openai-test")
 os.environ.setdefault("AGENT_OWNER", "test")
-os.environ.setdefault("AGENT_ID", "codex")
+os.environ.setdefault("AGENT_ID", "openai")
 
 
 # prometheus_client stub.
@@ -140,7 +140,7 @@ import sqlite_task_store as sts  # noqa: E402
 from a2a.types import Task  # noqa: E402
 
 
-class CodexLockWaitObservedTests(unittest.IsolatedAsyncioTestCase):
+class OpenAILockWaitObservedTests(unittest.IsolatedAsyncioTestCase):
     """Verify save / get / delete each invoke _observe_lock_wait once."""
 
     async def test_save_get_delete_observe_lock_wait(self):

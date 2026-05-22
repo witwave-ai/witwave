@@ -14,8 +14,8 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 RUN python3 -m venv /home/agent/.venv && chown -R agent:agent /home/agent/.venv
 ENV PATH="/home/agent/.venv/bin:/opt/tools-venv/bin:/usr/local/go/bin:/usr/local/bin:$PATH"
 
-COPY --chown=agent:agent backends/codex/requirements.txt /home/agent/codex/requirements.txt
-RUN pip install --no-cache-dir -r /home/agent/codex/requirements.txt \
+COPY --chown=agent:agent backends/openai/requirements.txt /home/agent/openai/requirements.txt
+RUN pip install --no-cache-dir -r /home/agent/openai/requirements.txt \
     && playwright install chromium --with-deps \
     && chmod -R a+rX "${PLAYWRIGHT_BROWSERS_PATH}"
 
@@ -35,12 +35,12 @@ RUN pip install --no-cache-dir \
 USER agent
 WORKDIR /home/agent
 
-COPY --chown=agent:agent backends/codex/ /home/agent/codex/
+COPY --chown=agent:agent backends/openai/ /home/agent/openai/
 COPY --chown=agent:agent shared/ /home/agent/shared/
 
 ENV PYTHONPATH="/home/agent/shared"
 
-RUN mkdir -p /home/agent/logs /home/agent/.codex/memory
+RUN mkdir -p /home/agent/logs /home/agent/.openai/memory /home/agent/.codex/memory
 WORKDIR /home/agent/workspace
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
@@ -51,4 +51,4 @@ EXPOSE 8000
 # override with METRICS_PORT env var. Only active when METRICS_ENABLED is set.
 EXPOSE 9000
 
-CMD ["python3", "/home/agent/codex/main.py"]
+CMD ["python3", "/home/agent/openai/main.py"]

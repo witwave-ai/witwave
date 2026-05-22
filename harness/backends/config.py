@@ -10,9 +10,9 @@ Example backend.yaml:
           url: http://claude-code-agent:8000
           model: claude-opus-4-7
 
-        - id: codex
-          url: http://codex-agent:8000
-          model: gpt-5.1-codex
+        - id: openai
+          url: http://openai-agent:8000
+          model: gpt-5.5
 
       routing:
         default:

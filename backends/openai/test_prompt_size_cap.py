@@ -1,4 +1,4 @@
-"""Regression coverage for the codex executor's prompt-size cap (#1620).
+"""Regression coverage for the openai executor's prompt-size cap (#1620).
 
 Risk: a pathological caller could ship a multi-GB prompt body. Without
 a hard cap, the prompt would be UTF-8 decoded, reflected through every
@@ -87,7 +87,7 @@ class PromptSizeCapMetricRegistrationTests(unittest.TestCase):
         self._prev = os.environ.get("METRICS_ENABLED")
         os.environ["METRICS_ENABLED"] = "1"
         # Displace any cached `prometheus_client` (sibling
-        # `test_health_ready_route_codex.py` installs a `_Metric` test-double
+        # `test_health_ready_route_openai.py` installs a `_Metric` test-double
         # at module-import time that stubs labels()/inc()/observe() but NOT
         # `.collect()` — the stable read API `_counter_value()` below relies
         # on) and the cached `metrics` module so this test re-imports against
@@ -130,7 +130,7 @@ class PromptSizeCapMetricRegistrationTests(unittest.TestCase):
         self.assertIsNotNone(self.metrics.backend_prompt_too_large_total)
 
     def test_counter_increments(self):
-        labels = {"agent": "test", "agent_id": "test", "backend": "codex"}
+        labels = {"agent": "test", "agent_id": "test", "backend": "openai"}
         before = _counter_value(self.metrics.backend_prompt_too_large_total, labels)
         self.metrics.backend_prompt_too_large_total.labels(**labels).inc()
         after = _counter_value(self.metrics.backend_prompt_too_large_total, labels)
