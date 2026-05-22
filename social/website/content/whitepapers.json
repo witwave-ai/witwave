@@ -44,6 +44,21 @@
       "status": "published",
       "primary": true,
       "themes": ["containerized-agents", "toolchains", "mcp", "architecture"]
+    },
+    {
+      "title": "The Autonomy Boundary",
+      "shortTitle": "Autonomy Boundary",
+      "slug": "the-autonomy-boundary",
+      "sourcePath": "social/papers/the-autonomy-boundary.md",
+      "markdownPath": "content/whitepapers/the-autonomy-boundary.md",
+      "pdfPath": "whitepapers/the-autonomy-boundary/the-autonomy-boundary.pdf",
+      "websitePath": "whitepapers/the-autonomy-boundary/",
+      "readerPath": "reader/?paper=the-autonomy-boundary",
+      "updatedAt": "2026-05-21",
+      "deck": "A standalone draft on the shift from commanded AI assistants to governed autonomous agents.",
+      "status": "draft",
+      "primary": true,
+      "themes": ["autonomy", "governance", "a2a", "agent-architecture"]
     }
   ]
 }

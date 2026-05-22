@@ -17,7 +17,7 @@ initReader().catch((error) => {
 
 async function initReader() {
   const catalog = await fetchJson(catalogUrl);
-  const papers = catalog.whitepapers || [];
+  const papers = (catalog.whitepapers || []).filter((paper) => paper.display !== false && paper.status !== "archived");
   const requestedSlug = new URLSearchParams(window.location.search).get("paper");
   const selected = papers.find((paper) => paper.slug === requestedSlug) || papers[0];
 
@@ -67,10 +67,11 @@ function renderPaperNav(papers, activeSlug) {
   readerPaperNav.innerHTML = papers
     .map((paper) => {
       const activeClass = paper.slug === activeSlug ? " active" : "";
+      const status = paper.status && paper.status !== "published" ? ` · ${paper.status}` : "";
       return `
         <a class="reader-paper-link${activeClass}" href="?paper=${encodeURIComponent(paper.slug)}">
           <span>${escapeHtml(paper.shortTitle || paper.title)}</span>
-          <small>${escapeHtml((paper.themes || []).slice(0, 2).join(" / "))}</small>
+          <small>${escapeHtml(`${(paper.themes || []).slice(0, 2).join(" / ")}${status}`)}</small>
         </a>
       `;
     })

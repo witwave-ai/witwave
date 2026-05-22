@@ -21,7 +21,8 @@ if (!fs.existsSync(siteDir)) {
 const generatedUrls = [];
 
 const whitepaperCatalog = readJson(path.join(repoRoot, 'social/website/content/whitepapers.json'));
-for (const paper of whitepaperCatalog.whitepapers || []) {
+const visibleWhitepapers = (whitepaperCatalog.whitepapers || []).filter(isVisibleWhitepaper);
+for (const paper of visibleWhitepapers) {
   generateWhitepaperPage(paper);
 }
 
@@ -30,7 +31,7 @@ for (const entry of postsCatalog.posts || []) {
   generateBlogPostPage(entry);
 }
 
-rewritePublicArticleLinks(whitepaperCatalog.whitepapers || []);
+rewritePublicArticleLinks(visibleWhitepapers);
 writeRssFeed(publishedPosts);
 writeSitemap(generatedUrls);
 console.log(`Generated ${generatedUrls.length} social website pages into ${path.relative(repoRoot, siteDir) || siteDir}.`);
@@ -49,6 +50,7 @@ function generateWhitepaperPage(paper) {
   const outputDir = path.join(siteDir, 'whitepapers', slug);
   const canonicalUrl = `${siteUrl}/whitepapers/${slug}/`;
   const lastmod = paper.updatedAt || paper.lastmod || gitLastModified(paper.sourcePath) || fileLastModified(markdownPath);
+  const statusLabel = paper.status && paper.status !== 'published' ? paper.status : '';
   const html = renderPage({
     depth: 2,
     title: `${title} | Witwave`,
@@ -78,6 +80,7 @@ function generateWhitepaperPage(paper) {
           <a class="button primary" href="../">All whitepapers</a>
           <a class="button secondary" href="../../${escapeAttr(pdfPath)}" download="${escapeAttr(slug)}.pdf">Download PDF</a>
         </div>
+        ${statusLabel ? `<p class="article-status">${escapeHtml(statusLabel)}</p>` : ''}
         ${renderMarkdown(markdown).html}
       </article>
     `,
@@ -85,6 +88,10 @@ function generateWhitepaperPage(paper) {
 
   writeFile(path.join(outputDir, 'index.html'), html);
   generatedUrls.push({ loc: canonicalUrl, lastmod, priority: '0.8', changefreq: 'monthly' });
+}
+
+function isVisibleWhitepaper(paper) {
+  return paper.display !== false && paper.status !== 'archived';
 }
 
 function generateBlogPostPage(entry) {

@@ -6,10 +6,11 @@ content strategy and page copy remains the `witwave` repository.
 
 ## Goals
 
-- Make the three foundational whitepapers prominent:
+- Make the foundational whitepapers prominent:
   - `social/papers/three-phases-of-ai-adoption.md`
   - `social/papers/anatomy-of-an-agentic-team.md`
   - `social/papers/tool-boundaries-for-containerized-agents.md`
+  - `social/papers/the-autonomy-boundary.md`
 - Provide a clear project entry point that explains the framework and links to the GitHub repository.
 - Provide a home for project posts derived from `social/posts/` and future essays.
 - Hold lightweight marketing/positioning copy for the public site.
@@ -105,7 +106,8 @@ secret and exits cleanly without publishing when neither is configured.
 
 ## AI maintenance rules
 
-- Treat `content/whitepapers.json` as the card/catalog source for whitepapers.
+- Treat `content/whitepapers.json` as the card/catalog source for whitepapers. Public drafts can use `status: "draft"`;
+  hidden drafts should also set `display: false`.
 - Keep `pdfPath` entries in `content/whitepapers.json` aligned with `scripts/build-whitepaper-pdfs.sh`; whitepaper PDFs
   are generated publish artifacts, not source files.
 - Treat `content/team.json` as the roster source for the public Team page, including `members` for active seats and
@@ -128,7 +130,7 @@ secret and exits cleanly without publishing when neither is configured.
   cloud-native autonomous agents, AI agent teams, Kubernetes, MCP tools, agentic AI adoption, and agent-native software
   engineering. Prefer one canonical URL per piece of content, static article pages for crawlers, and readable summaries
   that accurately describe what the page offers.
-- Keep the homepage focused: one thesis, one clear project entry point, three foundational papers, and one path to
+- Keep the homepage focused: one thesis, one clear project entry point, foundational papers, and one path to
   blog/updates.
 - Do not bury the whitepapers behind a generic resources page.
 - Keep marketing claims grounded in the foundational papers unless a source is added.

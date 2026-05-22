@@ -65,6 +65,7 @@ jobs:
             /tmp/witwave-social-site/whitepapers/three-phases-of-ai-adoption/three-phases-of-ai-adoption.pdf
             /tmp/witwave-social-site/whitepapers/anatomy-of-an-agentic-team/anatomy-of-an-agentic-team.pdf
             /tmp/witwave-social-site/whitepapers/tool-boundaries-for-containerized-agents/tool-boundaries-for-containerized-agents.pdf
+            /tmp/witwave-social-site/whitepapers/the-autonomy-boundary/the-autonomy-boundary.pdf
           )
 
           for pdf in "${expected[@]}"; do

@@ -103,7 +103,7 @@ const catalogPath = process.argv[2];
 const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
 
 for (const paper of catalog.whitepapers || []) {
-  if (paper.status && paper.status !== 'published') continue;
+  if (paper.display === false || paper.status === 'archived') continue;
   const slug = paper.slug || '';
   const title = paper.title || paper.shortTitle || slug;
   const sourcePath = paper.sourcePath || '';

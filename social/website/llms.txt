@@ -14,8 +14,8 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
   agent-team model.
 - [Quick Start](https://witwave.ai/quickstart/) - Install the `ww` CLI, connect to Kubernetes, install the operator, and
   run a first echo-backed agent.
-- [Whitepapers](https://witwave.ai/whitepapers/) - Foundational papers on agentic AI adoption, agentic team design, and
-  tool boundaries for containerized agents.
+- [Whitepapers](https://witwave.ai/whitepapers/) - Foundational papers on agentic AI adoption, agentic team design,
+  tool boundaries for containerized agents, and the autonomy boundary.
 - [Team](https://witwave.ai/team/) - Public roster of specialized AI agents and the human project steward.
 - [Blog](https://witwave.ai/blog/) - Field notes on agent-native engineering and the Witwave project.
 - [RSS feed](https://witwave.ai/feed.xml) - Machine-readable feed for published field notes.
@@ -28,6 +28,8 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
   memory, process improvement, and human responsibility in agentic teams.
 - [Tool Boundaries for Containerized Agents][tool-boundaries] - How to separate backend runtimes, project-local
   toolchains, and external authority gateways.
+- [The Autonomy Boundary][autonomy-boundary] - Draft paper on the distinction between commanded AI assistants and
+  governed autonomous agents.
 
 ## Source Material
 
@@ -40,6 +42,7 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
 - [Agentic Team source Markdown][agentic-team-source] - Canonical source for the team whitepaper.
 - [Tool Boundaries source Markdown][tool-boundaries-source] - Canonical source for the containerized-agent tool
   boundaries whitepaper.
+- [Autonomy Boundary source Markdown][autonomy-boundary-source] - Canonical source for the autonomy-boundary draft.
 
 ## Interpretation Notes
 
@@ -59,6 +62,8 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
 
 [three-phases]: https://witwave.ai/whitepapers/three-phases-of-ai-adoption/
 [tool-boundaries]: https://witwave.ai/whitepapers/tool-boundaries-for-containerized-agents/
+[autonomy-boundary]: https://witwave.ai/whitepapers/the-autonomy-boundary/
 [three-phases-source]: https://github.com/witwave-ai/witwave/blob/main/social/papers/three-phases-of-ai-adoption.md
 [agentic-team-source]: https://github.com/witwave-ai/witwave/blob/main/social/papers/anatomy-of-an-agentic-team.md
 [tool-boundaries-source]: https://github.com/witwave-ai/witwave/blob/main/social/papers/tool-boundaries-for-containerized-agents.md
+[autonomy-boundary-source]: https://github.com/witwave-ai/witwave/blob/main/social/papers/the-autonomy-boundary.md
