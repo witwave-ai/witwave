@@ -1,0 +1,10 @@
+{
+  "name": "witwave",
+  "private": true,
+  "scripts": {
+    "build:whitepapers": "scripts/build-whitepaper-pdfs.sh"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.9.0"
+  }
+}

@@ -23,6 +23,7 @@ dist/
 # Temporary files
 tmp/
 temp/
+build/
 *.tmp
 *.temp
 

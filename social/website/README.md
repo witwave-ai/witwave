@@ -71,17 +71,20 @@ social/posts/
 
 This is a static HTML/CSS/JS site that is mirrored into the dedicated GitHub Pages repository. The whitepaper reader
 fetches Markdown from `content/whitepapers/`, which is symlinked back to the canonical files under `social/papers/` in
-this repo. The blog reader is intentionally different: canonical posts and their manifest live under `social/posts/`,
-and the browser resolves the latest `main` commit SHA from the public `witwave-ai/witwave` repository before fetching
-commit-pinned raw Markdown. That means blog content changes need a normal source-repo commit and push, but they do not
-require a website-repo publish unless the site shell changes.
+this repo. The publish build also renders each whitepaper to PDF from the same Markdown source using Pandoc plus
+Chrome/Puppeteer, so the public site can offer PDF downloads without committing generated PDFs to this repo. The blog
+reader is intentionally different: canonical posts and their manifest live under `social/posts/`, and the browser
+resolves the latest `main` commit SHA from the public `witwave-ai/witwave` repository before fetching commit-pinned raw
+Markdown. That means blog content changes need a normal source-repo commit and push, but they do not require a
+website-repo publish unless the site shell changes.
 
 The publishing workflow copies this site into a temporary build directory with symlinks resolved, then runs
 `scripts/generate-social-static-pages.mjs` to create crawler-friendly static HTML pages from the canonical whitepaper
-and blog Markdown. The generator also rewrites published whitepaper links to the generated static URLs, expands the
+and blog Markdown. It then runs `scripts/build-whitepaper-pdfs.sh` to create downloadable PDFs for the generated
+whitepaper pages. The generator also rewrites published whitepaper links to the generated static URLs, expands the
 sitemap with generated article URLs and `lastmod` values, writes `feed.xml` for published blog posts, and leaves the
-JavaScript reader shells available but non-canonical. Generated pages are published to the GitHub Pages repository but
-are not committed back into this source tree.
+JavaScript reader shells available but non-canonical. Generated pages and PDFs are published to the GitHub Pages
+repository but are not committed back into this source tree.
 
 Publishing is automated from this repository by `.github/workflows/publish-social-website.yml`. The workflow builds
 `social/website/` with `scripts/sync-social-website.sh`, resolves symlinks, generates static Markdown-backed pages,
@@ -103,6 +106,8 @@ secret and exits cleanly without publishing when neither is configured.
 ## AI maintenance rules
 
 - Treat `content/whitepapers.json` as the card/catalog source for whitepapers.
+- Keep `pdfPath` entries in `content/whitepapers.json` aligned with `scripts/build-whitepaper-pdfs.sh`; whitepaper PDFs
+  are generated publish artifacts, not source files.
 - Treat `content/team.json` as the roster source for the public Team page, including `members` for active seats and
   `futureMembers` for visible placeholder roles.
 - Treat `social/posts/posts.json` as the browser-visible blog discovery manifest; GitHub Pages does not expose folder
@@ -127,7 +132,8 @@ secret and exits cleanly without publishing when neither is configured.
   blog/updates.
 - Do not bury the whitepapers behind a generic resources page.
 - Keep marketing claims grounded in the foundational papers unless a source is added.
-- Prefer small static changes over introducing a build system until the publishing repo requires it.
+- Keep build tooling minimal. The root Node dependency path exists only for generated whitepaper PDFs; preserve the
+  static HTML/CSS/JS shape unless a site feature genuinely needs more.
 - Keep `quickstart/index.html` short, command-first, and grounded in `clients/ww/README.md` plus
   `clients/ww/WALKTHROUGH.md`; it should always name Kubernetes cluster access as a prerequisite.
 - If a paper title or slug changes, update the source reader links, generated URL map, and `content/whitepapers.json` in
@@ -153,3 +159,11 @@ Then open `http://localhost:8080/social/website/`.
 
 Serving only `social/website/` is fine for layout checks, but the blog will read public content from GitHub in that
 mode. Serve the repository root when previewing unpublished local blog posts.
+
+To preview the generated static site with whitepaper PDFs:
+
+```bash
+npm ci
+scripts/sync-social-website.sh /tmp/witwave-site
+python3 -m http.server 8080 --directory /tmp/witwave-site
+```

@@ -58,6 +58,21 @@ jobs:
           GIT_SSH_COMMAND="ssh -i $HOME/.ssh/witwave-ai-github-io -o IdentitiesOnly=yes" \
             git clone git@github.com:witwave-ai/witwave-ai.github.io.git _site-repo
 
+      - name: Set up Node.js
+        if: steps.website_repo.outputs.publish == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install website build dependencies
+        if: steps.website_repo.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+          npm ci
+
       - name: Sync static website
         if: steps.website_repo.outputs.publish == 'true'
         run: scripts/sync-social-website.sh _site-repo

@@ -1,0 +1,76 @@
+name: CI — Social Website
+
+on:
+  pull_request:
+    paths:
+      - "social/website/**"
+      - "social/papers/**"
+      - "social/posts/**"
+      - "scripts/generate-social-static-pages.mjs"
+      - "scripts/build-whitepaper-pdfs.sh"
+      - "scripts/print-whitepaper-pdf.mjs"
+      - "scripts/sync-social-website.sh"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/ci-social-website.yml"
+  push:
+    branches: [main]
+    paths:
+      - "social/website/**"
+      - "social/papers/**"
+      - "social/posts/**"
+      - "scripts/generate-social-static-pages.mjs"
+      - "scripts/build-whitepaper-pdfs.sh"
+      - "scripts/print-whitepaper-pdf.mjs"
+      - "scripts/sync-social-website.sh"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/ci-social-website.yml"
+
+concurrency:
+  group: ci-social-website-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: static site + whitepaper PDFs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq pandoc
+          npm ci
+
+      - name: Build publish artifact
+        run: scripts/sync-social-website.sh /tmp/witwave-social-site
+
+      - name: Verify whitepaper PDFs
+        run: |
+          set -euo pipefail
+          expected=(
+            /tmp/witwave-social-site/whitepapers/three-phases-of-ai-adoption/three-phases-of-ai-adoption.pdf
+            /tmp/witwave-social-site/whitepapers/anatomy-of-an-agentic-team/anatomy-of-an-agentic-team.pdf
+            /tmp/witwave-social-site/whitepapers/tool-boundaries-for-containerized-agents/tool-boundaries-for-containerized-agents.pdf
+          )
+
+          for pdf in "${expected[@]}"; do
+            if [ ! -s "$pdf" ]; then
+              echo "::error::missing generated PDF: $pdf"
+              exit 1
+            fi
+            file "$pdf"
+          done

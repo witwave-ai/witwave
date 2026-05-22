@@ -15,9 +15,10 @@
 #     appears. The historical drift pile has been cleaned up, so main
 #     now has a real repo-wide Markdown formatting/linting floor.
 #
-# Tooling pinned via npx --yes <pkg>@<version> — no package.json at
-# repo root, no committed lockfile to maintain. Bump these versions
-# the same way any other dep is bumped: edit + commit + push.
+# Tooling pinned via npx --yes <pkg>@<version>. This workflow intentionally
+# stays independent from the root package.json, which is reserved for the
+# social website PDF build. Bump these versions the same way any other dep is
+# bumped: edit + commit + push.
 #
 # Reflow IS enforced — .prettierrc.yaml carries proseWrap=always +
 # printWidth=120, so unwrapped or over-long prose lines fail the

@@ -1,0 +1,173 @@
+@page {
+  size: letter;
+}
+
+:root {
+  color-scheme: light;
+  font-size: 11.5pt;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  max-width: 7.05in;
+  margin: 0 auto;
+  background: #ffffff;
+  color: #111827;
+  font-family: Georgia, Cambria, "Times New Roman", serif;
+  line-height: 1.58;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: #071018;
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.12;
+  break-after: avoid;
+}
+
+h1 {
+  margin: 0 0 0.22in;
+  font-size: 28pt;
+  letter-spacing: -0.035em;
+}
+
+h2 {
+  margin: 0.42in 0 0.14in;
+  padding-top: 0.2in;
+  border-top: 1px solid #d8dee4;
+  font-size: 19pt;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  margin: 0.3in 0 0.12in;
+  font-size: 14.5pt;
+}
+
+h4 {
+  margin: 0.22in 0 0.08in;
+  font-size: 10pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+p,
+li {
+  font-size: 10.6pt;
+}
+
+p {
+  margin: 0 0 0.13in;
+}
+
+strong {
+  color: #071018;
+}
+
+blockquote {
+  margin: 0.18in 0 0.3in;
+  padding: 0.15in 0.2in;
+  border-left: 5px solid #31e7d3;
+  border-radius: 0 0.09in 0.09in 0;
+  background: #effdfa;
+}
+
+blockquote p {
+  margin: 0;
+  color: #0f172a;
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  font-size: 13.5pt;
+  line-height: 1.36;
+}
+
+hr {
+  height: 1px;
+  margin: 0.32in 0;
+  border: 0;
+  background: #d8dee4;
+}
+
+ul,
+ol {
+  margin: 0.06in 0 0.18in;
+  padding-left: 0.28in;
+}
+
+li + li {
+  margin-top: 0.05in;
+}
+
+a {
+  color: #075985;
+  font-weight: 700;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.12em;
+}
+
+code {
+  padding: 0.02in 0.05in;
+  border-radius: 0.04in;
+  background: #f3f4f6;
+  color: #0f172a;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  overflow-wrap: anywhere;
+  margin: 0.18in 0;
+  padding: 0.16in;
+  border: 1px solid #d8dee4;
+  border-radius: 0.09in;
+  background: #f8fafc;
+  white-space: pre-wrap;
+  break-inside: avoid;
+}
+
+pre code {
+  padding: 0;
+  background: transparent;
+}
+
+table {
+  width: 100%;
+  margin: 0.18in 0 0.26in;
+  border-collapse: collapse;
+  font-size: 9.2pt;
+  break-inside: avoid;
+}
+
+th,
+td {
+  padding: 0.07in 0.08in;
+  border: 1px solid #d8dee4;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #eef2f7;
+  color: #071018;
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+}
+
+thead {
+  display: table-header-group;
+}
+
+tr,
+img,
+blockquote {
+  break-inside: avoid;
+}
+
+@media screen {
+  body {
+    padding: 0.65in 0;
+  }
+}

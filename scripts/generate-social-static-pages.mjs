@@ -43,14 +43,15 @@ function generateWhitepaperPage(paper) {
 
   const markdown = fs.readFileSync(markdownPath, 'utf8');
   const title = paper.title || headingFromMarkdown(markdown) || paper.slug;
-  const description = paper.deck || `Read ${title} from witwave.`;
+  const description = paper.deck || `Read ${title} from Witwave.`;
   const slug = paper.slug;
+  const pdfPath = paper.pdfPath || `whitepapers/${slug}/${slug}.pdf`;
   const outputDir = path.join(siteDir, 'whitepapers', slug);
   const canonicalUrl = `${siteUrl}/whitepapers/${slug}/`;
   const lastmod = paper.updatedAt || paper.lastmod || gitLastModified(paper.sourcePath) || fileLastModified(markdownPath);
   const html = renderPage({
     depth: 2,
-    title: `${title} | witwave`,
+    title: `${title} | Witwave`,
     description,
     canonicalUrl,
     ogType: 'article',
@@ -62,7 +63,7 @@ function generateWhitepaperPage(paper) {
         title,
         description,
         canonicalUrl,
-        authorName: 'witwave',
+        authorName: 'Witwave',
         dateModified: lastmod,
       }),
       breadcrumbSchema([
@@ -75,6 +76,7 @@ function generateWhitepaperPage(paper) {
       <article class="markdown-paper generated-article">
         <div class="reader-actions generated-actions">
           <a class="button primary" href="../">All whitepapers</a>
+          <a class="button secondary" href="../../${escapeAttr(pdfPath)}" download="${escapeAttr(slug)}.pdf">Download PDF</a>
           <a class="button secondary" href="../../${escapeAttr(paper.markdownPath)}" download="${escapeAttr(slug)}.md">Download MD</a>
         </div>
         ${renderMarkdown(markdown).html}
@@ -101,7 +103,7 @@ function generateBlogPostPage(entry) {
 
   const slug = post.slug || entry.slug;
   const title = stringify(post.title) || headingFromMarkdown(parsed.body) || slug;
-  const description = stringify(post.summary) || `Read ${title} from witwave.`;
+  const description = stringify(post.summary) || `Read ${title} from Witwave.`;
   const canonicalUrl = `${siteUrl}/blog/${slug}/`;
   const outputDir = path.join(siteDir, 'blog', slug);
   const articleBody = stripLeadingMarkdownHeading(parsed.body || '');
@@ -111,14 +113,14 @@ function generateBlogPostPage(entry) {
     title,
     description,
     canonicalUrl,
-    author: stringify(post.author) || 'witwave',
+    author: stringify(post.author) || 'Witwave',
     publishedAt: stringify(post.published_at),
     lastmod,
     categories: Array.isArray(post.tags) ? post.tags.map(stringify).filter(Boolean) : [],
   });
   const html = renderPage({
     depth: 2,
-    title: `${title} | witwave`,
+    title: `${title} | Witwave`,
     description,
     canonicalUrl,
     ogType: 'article',
@@ -130,7 +132,7 @@ function generateBlogPostPage(entry) {
         title,
         description,
         canonicalUrl,
-        authorName: stringify(post.author) || 'witwave',
+        authorName: stringify(post.author) || 'Witwave',
         datePublished: stringify(post.published_at),
         dateModified: lastmod,
       }),
@@ -181,7 +183,7 @@ ${escapeScriptJson({
   return `<!doctype html>
 <!--
   GENERATED FILE: Do not edit this HTML directly.
-  Update the Markdown source or content manifest in the witwave repository, then republish.
+  Update the Markdown source or content manifest in the Witwave repository, then republish.
 -->
 <html lang="en">
   <head>
@@ -190,7 +192,7 @@ ${escapeScriptJson({
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeAttr(description)}" />
     <link rel="canonical" href="${escapeAttr(canonicalUrl)}" />
-    <meta property="og:site_name" content="witwave" />
+    <meta property="og:site_name" content="Witwave" />
     <meta property="og:type" content="${escapeAttr(ogType)}" />
     <meta property="og:title" content="${escapeAttr(title)}" />
     <meta property="og:description" content="${escapeAttr(description)}" />
@@ -198,20 +200,20 @@ ${escapeScriptJson({
     <meta property="og:image" content="${socialImage}" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
-    <meta property="og:image:alt" content="witwave logo over a dark, high-tech interface background." />
+    <meta property="og:image:alt" content="Witwave logo over a dark, high-tech interface background." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeAttr(title)}" />
     <meta name="twitter:description" content="${escapeAttr(description)}" />
     <meta name="twitter:image" content="${socialImage}" />
-    <meta name="twitter:image:alt" content="witwave logo over a dark, high-tech interface background." />
+    <meta name="twitter:image:alt" content="Witwave logo over a dark, high-tech interface background." />
 ${structuredDataHtml.trimEnd()}
-    <link rel="alternate" type="application/rss+xml" title="witwave field notes" href="${siteUrl}/feed.xml" />
+    <link rel="alternate" type="application/rss+xml" title="Witwave field notes" href="${siteUrl}/feed.xml" />
     <link rel="icon" href="${prefix}assets/images/witwave-logo-terminal.svg" />
     <link rel="stylesheet" href="${prefix}assets/styles.css?v=copy-icon-only-20260514" />
   </head>
   <body${bodyClass ? ` class="${escapeAttr(bodyClass)}"` : ''}>
     <header class="site-header">
-      <a class="brand" href="${prefix}index.html" aria-label="witwave home">
+      <a class="brand" href="${prefix}index.html" aria-label="Witwave home">
         <img class="brand-logo" src="${prefix}assets/images/witwave-logo-terminal.svg" alt="" aria-hidden="true" />
       </a>
       <div class="header-actions">
@@ -227,7 +229,7 @@ ${content.trimEnd()}
     </main>
 
     <footer class="site-footer">
-      <p>witwave publishes thinking on agent-native engineering and AI-assisted software systems.</p>
+      <p>Witwave publishes thinking on agent-native engineering and AI-assisted software systems.</p>
       <a href="${prefix}project/">Project</a>
     </footer>
   </body>
@@ -278,10 +280,10 @@ function writeRssFeed(posts) {
     `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
-    <title>witwave field notes</title>
+    <title>Witwave field notes</title>
     <link>${siteUrl}/blog/</link>
     <atom:link href="${siteUrl}/feed.xml" rel="self" type="application/rss+xml" />
-    <description>Field notes on agent-native engineering, autonomous agent teams, and the witwave project.</description>
+    <description>Field notes on agent-native engineering, autonomous agent teams, and the Witwave project.</description>
     <language>en-us</language>
     <lastBuildDate>${escapeXml(toRssDate(today))}</lastBuildDate>
 ${items}
@@ -332,7 +334,7 @@ function articleSchema({ type, title, description, canonicalUrl, authorName, dat
     url: canonicalUrl,
     image: socialImage,
     author: {
-      '@type': authorName === 'witwave' ? 'Organization' : 'Person',
+      '@type': authorName.toLowerCase() === 'witwave' ? 'Organization' : 'Person',
       name: authorName,
     },
     publisher: organizationSchema(),
@@ -358,7 +360,7 @@ function organizationSchema() {
   return {
     '@type': 'Organization',
     '@id': organizationId,
-    name: 'witwave',
+    name: 'Witwave',
     url: `${siteUrl}/`,
     logo: `${siteUrl}/assets/images/witwave-logo-terminal.svg`,
     sameAs: ['https://github.com/witwave-ai'],
