@@ -77,7 +77,6 @@ function generateWhitepaperPage(paper) {
         <div class="reader-actions generated-actions">
           <a class="button primary" href="../">All whitepapers</a>
           <a class="button secondary" href="../../${escapeAttr(pdfPath)}" download="${escapeAttr(slug)}.pdf">Download PDF</a>
-          <a class="button secondary" href="../../${escapeAttr(paper.markdownPath)}" download="${escapeAttr(slug)}.md">Download MD</a>
         </div>
         ${renderMarkdown(markdown).html}
       </article>
@@ -209,7 +208,7 @@ ${escapeScriptJson({
 ${structuredDataHtml.trimEnd()}
     <link rel="alternate" type="application/rss+xml" title="Witwave field notes" href="${siteUrl}/feed.xml" />
     <link rel="icon" href="${prefix}assets/images/witwave-logo-terminal.svg" />
-    <link rel="stylesheet" href="${prefix}assets/styles.css?v=copy-icon-only-20260514" />
+    <link rel="stylesheet" href="${prefix}assets/styles.css?v=whitepaper-actions-20260521" />
   </head>
   <body${bodyClass ? ` class="${escapeAttr(bodyClass)}"` : ''}>
     <header class="site-header">
