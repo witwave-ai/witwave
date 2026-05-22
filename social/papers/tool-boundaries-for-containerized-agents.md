@@ -288,8 +288,8 @@ the Claude runtime. OpenAI needs the OpenAI Agents SDK runtime. Gemini needs the
 already has provider-specific dependencies, configuration, tool behavior, metrics, and failure modes.
 
 If every project tool lives inside those backends, every new capability becomes backend-image work. A new language, a
-new linter suite, a new build system, or a new integration must be evaluated against Claude, OpenAI, and Gemini even when
-the tool has nothing to do with the model provider.
+new linter suite, a new build system, or a new integration must be evaluated against Claude, OpenAI, and Gemini even
+when the tool has nothing to do with the model provider.
 
 The shared `backend-base` image is the right place for common platform utilities. It removes duplicated setup across the
 three backend Dockerfiles and keeps baseline versions pinned in one place. It should not become the default landing zone

@@ -1506,6 +1506,7 @@ agents:
         # #          CODEX_REASONING_EFFORT (minimal/low/medium/high/xhigh)
         # #          CODEX_STUB_MODE (true for offline smoke, false for API execution)
         # #          CODEX_MEMORY_ROOT (safe memory-tool root; default /home/agent/.codex/memory)
+        # #          CODEX_SESSION_STORE_PATH (Responses API session map; default /home/agent/.codex/sessions/responses.json)
         # env:
         #   - name: GEMINI_MAX_HISTORY_TURNS
         #     value: "100"

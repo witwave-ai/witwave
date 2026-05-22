@@ -128,6 +128,6 @@ After the table, include:
 | 023   | webhook headers                                       |
 | 024   | webhook extract                                       |
 | 025.a | Claude memory                                         |
-| 025.b | OpenAI memory                                          |
+| 025.b | OpenAI memory                                         |
 | 025.c | Gemini memory                                         |
 | 900   | cleanup                                               |

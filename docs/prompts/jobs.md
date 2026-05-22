@@ -95,6 +95,6 @@ Steps:
 | `enabled`     | No       | `true` (default) to activate, `false` to disable                                                                                 |
 | `session`     | No       | Session ID override; defaults to a deterministic UUID                                                                            |
 | `model`       | No       | Model override passed to the backend; defaults to backend default                                                                |
-| `agent`       | No       | Backend ID override (e.g. `openai`); defaults to routing config                                                                   |
+| `agent`       | No       | Backend ID override (e.g. `openai`); defaults to routing config                                                                  |
 | `consensus`   | No       | List of `{backend, model?}` entries to fan out to; empty list (default) disables consensus. Supports glob patterns in `backend`. |
 | `max-tokens`  | No       | Token budget for this dispatch. Stop and return partial response when reached.                                                   |

@@ -13,10 +13,12 @@ process.env.LOG_REDACT = "true";
 
 const {
   buildAgentCard,
+  extractRequestMetadata,
   extractPrompt,
   handleA2A,
   isShellCommandAllowed,
   maxOutputTokensForRequest,
+  maxTokensForRequest,
   renderMetrics,
   resolveMemoryPath,
   runMemoryTool,
@@ -72,6 +74,23 @@ test("handleA2A returns the message response shape harness and ww extract", asyn
   assert.match(response.body.result.parts[0].text, /codex backend scaffold/i);
 });
 
+test("extractRequestMetadata falls back to metadata.session_id for first-turn context", () => {
+  const extracted = extractRequestMetadata({
+    jsonrpc: "2.0",
+    id: "session",
+    method: "message/send",
+    params: {
+      message: {
+        role: "user",
+        metadata: { session_id: "stable-session" },
+        parts: [{ kind: "text", text: "hello codex" }],
+      },
+    },
+  });
+  assert.equal(extracted.contextId, "stable-session");
+  assert.equal(extracted.metadata.session_id, "stable-session");
+});
+
 test("handleA2A rejects unsupported methods as JSON-RPC errors", async () => {
   const response = await handleA2A({
     jsonrpc: "2.0",
@@ -111,6 +130,13 @@ test("maxOutputTokensForRequest accepts positive max_output_tokens metadata", ()
   assert.equal(maxOutputTokensForRequest({ maxOutputTokens: 256 }), 256);
   assert.equal(maxOutputTokensForRequest({ max_output_tokens: "0" }), undefined);
   assert.equal(maxOutputTokensForRequest({ max_output_tokens: "not-a-number" }), undefined);
+});
+
+test("maxTokensForRequest accepts positive max_tokens metadata", () => {
+  assert.equal(maxTokensForRequest({ max_tokens: "2048" }), 2048);
+  assert.equal(maxTokensForRequest({ maxTokens: 4096 }), 4096);
+  assert.equal(maxTokensForRequest({ max_tokens: "0" }), undefined);
+  assert.equal(maxTokensForRequest({ max_tokens: "not-a-number" }), undefined);
 });
 
 test("isShellCommandAllowed permits read-only diagnostics and rejects risky commands", () => {
@@ -174,6 +200,8 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_up/);
   assert.match(body, /backend_a2a_requests_total/);
   assert.match(body, /backend_prompt_length_bytes_count/);
+  assert.match(body, /backend_active_sessions/);
+  assert.match(body, /backend_budget_exceeded_total/);
   assert.match(body, /agent="/);
   assert.match(body, /backend="codex"/);
 });

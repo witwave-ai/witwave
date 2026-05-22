@@ -433,16 +433,15 @@ Summarise the day's key events.
 ```
 
 The value must be a positive integer. Invalid values are logged and ignored. The limit applies per-dispatch (not across
-sessions), so each job/task/trigger invocation gets a fresh budget. The streaming SDK backends currently enforce it:
+sessions), so each job/task/trigger invocation gets a fresh budget. LLM-backed runtimes enforce it from their provider
+usage stream or final usage summary:
 
-| Backend  | Token source                                       |
-| -------- | -------------------------------------------------- |
-| `claude` | `get_context_usage()` after each assistant turn    |
-| `openai` | `event.data.usage.total_tokens` on response events |
-| `gemini` | `chunk.usage_metadata.total_token_count` per chunk |
-
-`codex` is a newer backend scaffold; token-budget enforcement belongs on its parity backlog as the Codex execution loop
-matures.
+| Backend  | Token source                                                  |
+| -------- | ------------------------------------------------------------- |
+| `claude` | `get_context_usage()` after each assistant turn               |
+| `openai` | `event.data.usage.total_tokens` on response events            |
+| `codex`  | Responses API `usage.total_tokens` after each response create |
+| `gemini` | `chunk.usage_metadata.total_token_count` per chunk            |
 
 ## Adding an Agent
 
@@ -523,9 +522,9 @@ Each backend container additionally exposes:
 
 Each backend agent manages its own memory at `.agents/<env>/<name>/<backend>/memory/`. For `claude` and `openai`, memory
 files are markdown documents. The `codex` scaffold exposes bounded memory tools rooted at `CODEX_MEMORY_ROOT` (default
-`/home/agent/.codex/memory`) and reserves `.codex/sessions` for richer session parity as the execution loop matures. For
-`gemini`, conversation history is stored as JSON in `memory/sessions/`. Memory files are not committed to source
-control. harness has no memory layer of its own.
+`/home/agent/.codex/memory`) and persists Responses API `previous_response_id` mappings at `CODEX_SESSION_STORE_PATH`
+(default `/home/agent/.codex/sessions/responses.json`). For `gemini`, conversation history is stored as JSON in
+`memory/sessions/`. Memory files are not committed to source control. harness has no memory layer of its own.
 
 Workspace-backed memory is a separate shared volume. When a workspace declares a `memory` volume, bound agents see it at
 `/workspaces/<workspace-name>/memory`; the self team uses `witwave-self/memory`, and the test team mirrors the same
@@ -633,8 +632,8 @@ conversation-log redaction rules (idempotent merge-spans with UUID / OTel-trace 
 | `LOG_PROMPT_MAX_BYTES`         | `200`                              | Maximum bytes of the prompt logged at INFO level; `0` suppresses prompt logging entirely                                                         |
 
 Codex-specific runtime knobs include `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, `CODEX_STUB_MODE`, `CODEX_SHELL_ENABLED`,
-`CODEX_MEMORY_ENABLED`, and `CODEX_MEMORY_ROOT`. `CODEX_MEMORY_ROOT` bounds the Codex memory file tools; paths passed to
-those tools are relative to that root and cannot escape it.
+`CODEX_MEMORY_ENABLED`, `CODEX_MEMORY_ROOT`, and `CODEX_SESSION_STORE_PATH`. `CODEX_MEMORY_ROOT` bounds the Codex memory
+file tools; paths passed to those tools are relative to that root and cannot escape it.
 
 ## Metrics
 

@@ -81,7 +81,7 @@ Per-trigger URLs are intentionally `POST`-only because they dispatch work; use d
 | `secret-env-var` | No       | Name of an environment variable holding an HMAC-SHA256 secret. When set and the env var is non-empty, harness validates `X-Hub-Signature-256` (GitHub-compatible format). |
 | `session`        | No       | Session ID override. Defaults to a deterministic UUID derived from `AGENT_NAME` and `endpoint`.                                                                           |
 | `model`          | No       | Model override passed to the backend.                                                                                                                                     |
-| `agent`          | No       | Backend ID override (e.g. `openai`); defaults to routing config.                                                                                                           |
+| `agent`          | No       | Backend ID override (e.g. `openai`); defaults to routing config.                                                                                                          |
 | `consensus`      | No       | List of `{backend, model?}` entries to fan out to; empty list (default) disables consensus. Supports glob patterns in `backend`.                                          |
 | `max-tokens`     | No       | Token budget for this dispatch. Stop and return partial response when reached.                                                                                            |
 

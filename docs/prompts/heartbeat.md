@@ -36,6 +36,6 @@ start new work while a prior run is still in progress. Report what you did or wh
 | `schedule`    | Yes      | Cron expression (UTC)                                                                                                            |
 | `enabled`     | Yes      | `true` to activate, `false` to disable                                                                                           |
 | `model`       | No       | Model override passed to the backend; defaults to backend default                                                                |
-| `agent`       | No       | Backend ID override (e.g. `openai`); defaults to routing config                                                                   |
+| `agent`       | No       | Backend ID override (e.g. `openai`); defaults to routing config                                                                  |
 | `consensus`   | No       | List of `{backend, model?}` entries to fan out to; empty list (default) disables consensus. Supports glob patterns in `backend`. |
 | `max-tokens`  | No       | Token budget for this dispatch. Stop and return partial response when reached.                                                   |

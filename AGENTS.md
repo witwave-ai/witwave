@@ -484,9 +484,10 @@ when you need to target a specific session.
 
 Each backend manages its own memory under `.agents/<env>/<name>/<backend>/memory/` (e.g.
 `.agents/self/iris/claude/memory/`). For `claude` and `openai`, memory files are markdown documents. The newer `codex`
-scaffold exposes bounded memory tools rooted at `CODEX_MEMORY_ROOT` (default `/home/agent/.codex/memory`) and reserves
-`.codex/sessions` for richer session parity as its execution loop matures. For `gemini`, conversation history is stored
-as JSON in `memory/sessions/`. Memory files are not committed to source control. harness has no memory layer of its own.
+scaffold exposes bounded memory tools rooted at `CODEX_MEMORY_ROOT` (default `/home/agent/.codex/memory`) and persists
+Responses API `previous_response_id` mappings at `CODEX_SESSION_STORE_PATH` (default
+`/home/agent/.codex/sessions/responses.json`). For `gemini`, conversation history is stored as JSON in
+`memory/sessions/`. Memory files are not committed to source control. harness has no memory layer of its own.
 
 Workspace-backed memory is separate from backend-local memory. When a `WitwaveWorkspace` declares a `memory` volume,
 bound agents see it at `/workspaces/<workspace-name>/memory`; self-team identity docs use

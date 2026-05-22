@@ -36,6 +36,8 @@ const CODEX_MEMORY_ENABLED = parseBool(process.env.CODEX_MEMORY_ENABLED ?? "true
 const CODEX_MEMORY_ROOT = process.env.CODEX_MEMORY_ROOT || "/home/agent/.codex/memory";
 const CODEX_MEMORY_MAX_BYTES = Number.parseInt(process.env.CODEX_MEMORY_MAX_BYTES || "65536", 10);
 const CODEX_MEMORY_MAX_LIST_ENTRIES = Number.parseInt(process.env.CODEX_MEMORY_MAX_LIST_ENTRIES || "200", 10);
+const CODEX_SESSION_STORE_PATH = process.env.CODEX_SESSION_STORE_PATH || "/home/agent/.codex/sessions/responses.json";
+const MAX_SESSIONS = Math.max(1, Number.parseInt(process.env.MAX_SESSIONS || "10000", 10) || 10000);
 const CODEX_SHELL_ALLOWED_PREFIXES = splitList(
   process.env.CODEX_SHELL_ALLOWED_PREFIXES ||
     [
@@ -94,8 +96,17 @@ const metrics = {
   responseBytesSum: 0,
   emptyPromptsTotal: 0,
   promptTooLargeTotal: 0,
+  budgetExceededTotal: 0,
+  contextTokensCount: 0,
+  contextTokensSum: 0,
+  contextTokensRemainingCount: 0,
+  contextTokensRemainingSum: 0,
+  sessionStartsTotal: 0,
+  sessionEvictionsTotal: 0,
   lastA2ARequestTimestamp: 0,
 };
+
+let codexSessions = null;
 
 function parseBool(value) {
   if (value === undefined || value === null || value === "") {
@@ -158,6 +169,92 @@ function readTextIfExists(filePath) {
   } catch {
     return "";
   }
+}
+
+function loadSessionStore() {
+  if (codexSessions instanceof Map) {
+    return codexSessions;
+  }
+  const raw = readTextIfExists(CODEX_SESSION_STORE_PATH);
+  const sessions = new Map();
+  if (raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      for (const [sessionId, value] of Object.entries(parsed.sessions || {})) {
+        if (!sessionId || !value || typeof value !== "object") {
+          continue;
+        }
+        const previousResponseId = String(value.previous_response_id || "").trim();
+        if (!previousResponseId) {
+          continue;
+        }
+        sessions.set(sessionId, {
+          previous_response_id: previousResponseId,
+          created_at: value.created_at || new Date().toISOString(),
+          updated_at: value.updated_at || new Date().toISOString(),
+          model: value.model || "",
+        });
+      }
+    } catch (error) {
+      console.error(`codex backend: failed to parse ${CODEX_SESSION_STORE_PATH}:`, error);
+    }
+  }
+  codexSessions = sessions;
+  return codexSessions;
+}
+
+function saveSessionStore() {
+  if (!(codexSessions instanceof Map)) {
+    return;
+  }
+  try {
+    ensureParent(CODEX_SESSION_STORE_PATH);
+    const sessions = Object.fromEntries(codexSessions.entries());
+    fs.writeFileSync(
+      CODEX_SESSION_STORE_PATH,
+      JSON.stringify({ version: 1, updated_at: new Date().toISOString(), sessions }, null, 2),
+      "utf8",
+    );
+  } catch (error) {
+    console.error(`codex backend: failed to write ${CODEX_SESSION_STORE_PATH}:`, error);
+  }
+}
+
+function sessionForRequest(metadata, contextId) {
+  const raw = metadata?.session_id || metadata?.sessionId || contextId;
+  const sessionId = String(raw || "").trim();
+  return sessionId || crypto.randomUUID();
+}
+
+function getStoredSession(sessionId) {
+  return loadSessionStore().get(sessionId);
+}
+
+function recordSessionResponse(sessionId, responseId, model) {
+  if (!sessionId || !responseId) {
+    return;
+  }
+  const sessions = loadSessionStore();
+  const existing = sessions.get(sessionId);
+  const now = new Date().toISOString();
+  if (!existing) {
+    metrics.sessionStartsTotal += 1;
+  }
+  sessions.set(sessionId, {
+    previous_response_id: responseId,
+    created_at: existing?.created_at || now,
+    updated_at: now,
+    model: model || existing?.model || "",
+  });
+  while (sessions.size > MAX_SESSIONS) {
+    const oldest = sessions.keys().next().value;
+    if (oldest === undefined) {
+      break;
+    }
+    sessions.delete(oldest);
+    metrics.sessionEvictionsTotal += 1;
+  }
+  saveSessionStore();
 }
 
 function timestampForEntry(entry) {
@@ -283,13 +380,15 @@ export function extractPrompt(payload) {
   return "";
 }
 
-function extractRequestMetadata(payload) {
+export function extractRequestMetadata(payload) {
   const params = payload?.params || {};
   const message = params.message || {};
+  const metadata = message.metadata || params.metadata || {};
   return {
     message,
-    metadata: message.metadata || params.metadata || {},
-    contextId: message.contextId || params.contextId || crypto.randomUUID(),
+    metadata,
+    contextId:
+      message.contextId || params.contextId || metadata.session_id || metadata.sessionId || crypto.randomUUID(),
     messageId: message.messageId || params.messageId || crypto.randomUUID(),
   };
 }
@@ -335,6 +434,15 @@ function reasoningForRequest(metadata) {
 
 export function maxOutputTokensForRequest(metadata) {
   const raw = metadata?.max_output_tokens || metadata?.maxOutputTokens;
+  if (raw === undefined || raw === null || raw === "") {
+    return undefined;
+  }
+  const parsed = Number.parseInt(String(raw), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+export function maxTokensForRequest(metadata) {
+  const raw = metadata?.max_tokens || metadata?.maxTokens;
   if (raw === undefined || raw === null || raw === "") {
     return undefined;
   }
@@ -938,6 +1046,49 @@ function extractOutputText(response) {
   return chunks.join("\n");
 }
 
+function usageTotalTokens(response) {
+  const usage = response?.usage;
+  const candidates = [
+    usage?.total_tokens,
+    usage?.totalTokens,
+    usage?.input_tokens !== undefined || usage?.output_tokens !== undefined
+      ? Number(usage.input_tokens || 0) + Number(usage.output_tokens || 0)
+      : undefined,
+  ];
+  for (const candidate of candidates) {
+    const parsed = Number.parseInt(String(candidate), 10);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+  return 0;
+}
+
+function budgetResult(response, maxTokens) {
+  const totalTokens = usageTotalTokens(response);
+  if (totalTokens > 0) {
+    metrics.contextTokensCount += 1;
+    metrics.contextTokensSum += totalTokens;
+  }
+  if (maxTokens !== undefined && totalTokens > 0) {
+    metrics.contextTokensRemainingCount += 1;
+    metrics.contextTokensRemainingSum += Math.max(0, maxTokens - totalTokens);
+  }
+  return {
+    total_tokens: totalTokens,
+    max_tokens: maxTokens,
+    exceeded: maxTokens !== undefined && totalTokens >= maxTokens,
+  };
+}
+
+function appendBudgetNotice(text, budget) {
+  if (!budget?.exceeded) {
+    return text;
+  }
+  const notice = `Token budget exceeded: ${budget.total_tokens} tokens used of ${budget.max_tokens} limit.`;
+  return text ? `${text}\n\n${notice}` : notice;
+}
+
 async function getOpenAIClient() {
   if (!openaiClientPromise) {
     openaiClientPromise = import("openai").then((mod) => new mod.default());
@@ -952,16 +1103,38 @@ function shouldUseStub() {
   return !process.env.OPENAI_API_KEY;
 }
 
-async function runCodex(prompt, metadata) {
+async function createResponseWithSessionFallback(client, request, sessionId) {
+  try {
+    return await client.responses.create(request);
+  } catch (error) {
+    if (!request.previous_response_id) {
+      throw error;
+    }
+    const message = String(error?.message || error);
+    if (!/previous[_ ]response|previous_response_id|not found|expired/i.test(message)) {
+      throw error;
+    }
+    loadSessionStore().delete(sessionId);
+    saveSessionStore();
+    const retry = { ...request };
+    delete retry.previous_response_id;
+    return await client.responses.create(retry);
+  }
+}
+
+async function runCodex(prompt, metadata, sessionId) {
   const model = modelForRequest(metadata);
   const instructions = loadInstructions();
   const traceId = traceIdForMetadata(metadata);
+  const maxTokens = maxTokensForRequest(metadata);
   if (shouldUseStub()) {
     return {
       model,
       text:
         "codex backend scaffold — prompt received, but CODEX_STUB_MODE is active or OPENAI_API_KEY is unset. " +
         "Set OPENAI_API_KEY and CODEX_STUB_MODE=false to execute through the OpenAI Responses API.",
+      total_tokens: 0,
+      budget_exceeded: false,
     };
   }
 
@@ -981,16 +1154,30 @@ async function runCodex(prompt, metadata) {
   if (maxOutputTokens !== undefined) {
     request.max_output_tokens = maxOutputTokens;
   }
+  const storedSession = getStoredSession(sessionId);
+  if (storedSession?.previous_response_id) {
+    request.previous_response_id = storedSession.previous_response_id;
+  }
   const tools = codexToolDefinitions();
   if (tools.length > 0) {
     request.tools = tools;
     request.parallel_tool_calls = false;
   }
 
-  let response = await client.responses.create(request);
+  let response = await createResponseWithSessionFallback(client, request, sessionId);
+  if (response?.id) {
+    recordSessionResponse(sessionId, response.id, model);
+  }
+  let budget = budgetResult(response, maxTokens);
+  if (budget.exceeded) {
+    metrics.budgetExceededTotal += 1;
+  }
   if (tools.length > 0) {
     const maxIterations = maxToolIterationsForRequest(metadata);
     for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+      if (budget.exceeded) {
+        break;
+      }
       const calls = (response.output || []).filter((item) => item?.type === "function_call");
       if (calls.length === 0) {
         break;
@@ -1014,11 +1201,21 @@ async function runCodex(prompt, metadata) {
         ...(reasoning ? { reasoning } : {}),
         ...(maxOutputTokens !== undefined ? { max_output_tokens: maxOutputTokens } : {}),
       });
+      if (response?.id) {
+        recordSessionResponse(sessionId, response.id, model);
+      }
+      budget = budgetResult(response, maxTokens);
+      if (budget.exceeded) {
+        metrics.budgetExceededTotal += 1;
+      }
     }
   }
+  const text = extractOutputText(response) || JSON.stringify(response.output || response);
   return {
     model,
-    text: extractOutputText(response) || JSON.stringify(response.output || response),
+    text: appendBudgetNotice(text, budget),
+    total_tokens: budget.total_tokens,
+    budget_exceeded: budget.exceeded,
   };
 }
 
@@ -1032,6 +1229,7 @@ export async function handleA2A(payload) {
   }
 
   const { metadata, contextId, messageId } = extractRequestMetadata(payload);
+  const sessionId = sessionForRequest(metadata, contextId);
   const prompt = extractPrompt(payload).trim();
   const promptBytes = byteLength(prompt);
   const traceId = traceIdForMetadata(metadata);
@@ -1052,9 +1250,12 @@ export async function handleA2A(payload) {
       metrics.promptTooLargeTotal += 1;
       responseText = `codex backend — prompt of ${promptBytes} bytes exceeds MAX_PROMPT_BYTES=${MAX_PROMPT_BYTES}.`;
     } else {
-      const result = await runCodex(prompt, metadata);
+      const result = await runCodex(prompt, metadata, sessionId);
       model = result.model;
       responseText = result.text;
+      if (result.budget_exceeded) {
+        status = "budget_exceeded";
+      }
     }
   } catch (error) {
     status = "error";
@@ -1070,7 +1271,8 @@ export async function handleA2A(payload) {
     agent: AGENT_OWNER,
     agent_id: AGENT_ID,
     backend: BACKEND_ID,
-    session_id_hash: sessionHash(contextId),
+    session_id_hash: sessionHash(sessionId),
+    session_id: sessionId,
     context_id: contextId,
     message_id: messageId,
     model,
@@ -1086,6 +1288,7 @@ export async function handleA2A(payload) {
       backend: BACKEND_ID,
       model,
       status,
+      session_id_hash: sessionHash(sessionId),
       ...(traceId ? { trace_id: traceId } : {}),
     }),
   };
@@ -1368,6 +1571,26 @@ export function renderMetrics() {
     "# HELP backend_prompt_too_large_total Prompts rejected by MAX_PROMPT_BYTES.",
     "# TYPE backend_prompt_too_large_total counter",
     metricLine("backend_prompt_too_large_total", metrics.promptTooLargeTotal, labels()),
+    "# HELP backend_budget_exceeded_total Requests stopped after exceeding max_tokens.",
+    "# TYPE backend_budget_exceeded_total counter",
+    metricLine("backend_budget_exceeded_total", metrics.budgetExceededTotal, labels()),
+    "# HELP backend_context_tokens Context tokens observed from model usage.",
+    "# TYPE backend_context_tokens summary",
+    metricLine("backend_context_tokens_count", metrics.contextTokensCount, labels()),
+    metricLine("backend_context_tokens_sum", metrics.contextTokensSum, labels()),
+    "# HELP backend_context_tokens_remaining Remaining tokens before max_tokens budget.",
+    "# TYPE backend_context_tokens_remaining summary",
+    metricLine("backend_context_tokens_remaining_count", metrics.contextTokensRemainingCount, labels()),
+    metricLine("backend_context_tokens_remaining_sum", metrics.contextTokensRemainingSum, labels()),
+    "# HELP backend_active_sessions Active persisted Codex response sessions.",
+    "# TYPE backend_active_sessions gauge",
+    metricLine("backend_active_sessions", loadSessionStore().size, labels()),
+    "# HELP backend_session_starts_total Sessions first seen by this backend process.",
+    "# TYPE backend_session_starts_total counter",
+    metricLine("backend_session_starts_total", metrics.sessionStartsTotal, labels()),
+    "# HELP backend_session_evictions_total Sessions evicted due to MAX_SESSIONS.",
+    "# TYPE backend_session_evictions_total counter",
+    metricLine("backend_session_evictions_total", metrics.sessionEvictionsTotal, labels()),
     "# HELP backend_mcp_requests_total MCP requests by terminal status.",
     "# TYPE backend_mcp_requests_total counter",
   );

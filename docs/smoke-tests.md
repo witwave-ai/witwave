@@ -54,8 +54,8 @@ Fred, and any promoted Jack/Luke parity agents.
 
 ## Bob
 
-Bob is the larger smoke surface. In the default test deployment, every active Bob route targets Claude. OpenAI and Gemini
-configs remain in the tree as disabled/parked fixtures for future multi-backend runs.
+Bob is the larger smoke surface. In the default test deployment, every active Bob route targets Claude. OpenAI and
+Gemini configs remain in the tree as disabled/parked fixtures for future multi-backend runs.
 
 ### Jobs - run once on deploy
 
@@ -90,7 +90,7 @@ These fire once and trigger continuation chains. Check that all steps appear in 
 | Fixture                        | Backend     | What to check                                                                                                          |
 | ------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `CLAUDE.md` memory instruction | bob-claude  | Spec `025.a` writes a typed project memory under `/workspaces/witwave-test/memory/agents/bob/` and updates `MEMORY.md` |
-| `AGENTS.md` memory instruction | jack-openai  | Spec `025.b`, disabled by default, performs the same namespace/index check after Jack is promoted                      |
+| `AGENTS.md` memory instruction | jack-openai | Spec `025.b`, disabled by default, performs the same namespace/index check after Jack is promoted                      |
 | `GEMINI.md` memory instruction | luke-gemini | Spec `025.c`, disabled until Gemini can write/read workspace files; same-session recall is not memory parity           |
 
 ### Jobs - recurring
@@ -252,17 +252,17 @@ conversation-log-out verification pattern.
 
 ### Medium Complexity
 
-| Test                                              | What it would verify                                                                                                                   | Why deferred                                                                                          |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| **OpenAI backend parity**                          | `backend-check-openai`, `model-check-openai-*`, `animal-memory-openai`, `ping-openai`                                                      | Bob's OpenAI config is present but not deployed by default; Jack is the single-backend OpenAI scaffold. |
-| **OpenAI memory parity**                           | Jack's `AGENTS.md` memory check writes a typed project memory and namespace index under `/workspaces/witwave-test/memory/agents/jack/` | Jack requires `OPENAI_API_KEY` and is not deployed in the default Claude-first smoke run.             |
-| **Gemini memory parity**                          | Luke's `GEMINI.md` memory check writes the same file-backed namespace/index shape after Gemini filesystem/tool-call support lands      | Luke requires `GEMINI_API_KEY` and the current Gemini fixture cannot write workspace memory files.    |
-| **Gemini backend parity**                         | `backend-check-gemini`, `model-check-gemini-*`, `animal-memory-gemini`, `ping-gemini`                                                  | Gemini backend is supported; Luke is the single-backend Gemini scaffold.                              |
-| **Consensus fan-out**                             | Multi-model fan-out and synthesis across OpenAI + Claude models                                                                         | Bob's consensus fixtures are present but disabled because they depend on the dormant OpenAI backend.   |
-| **Prompt-kind filter on webhooks**                | `notify-on-kind` glob filter; a webhook subscribed to `job:*` fires on job responses but not trigger responses                         | Needs two webhook configs plus matching chain-sink triggers.                                          |
-| **Concurrent load ordering**                      | Multiple jobs firing at the same cron tick all complete without scheduler interleaving bugs                                            | Needs three or more jobs with identical `schedule:` plus clear log-ordering assertions.               |
-| **Session persistence across pod restart**        | Session ID and memory survive a pod restart                                                                                            | Requires manual deploy-time choreography: seed session, restart pod, verify memory.                   |
-| **Per-message `model` override via A2A metadata** | `metadata.model` on an inbound A2A request overrides the routing default and lands in the log                                          | Triggers do not yet propagate `metadata.model` from the HTTP payload to dispatch.                     |
+| Test                                              | What it would verify                                                                                                                   | Why deferred                                                                                            |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **OpenAI backend parity**                         | `backend-check-openai`, `model-check-openai-*`, `animal-memory-openai`, `ping-openai`                                                  | Bob's OpenAI config is present but not deployed by default; Jack is the single-backend OpenAI scaffold. |
+| **OpenAI memory parity**                          | Jack's `AGENTS.md` memory check writes a typed project memory and namespace index under `/workspaces/witwave-test/memory/agents/jack/` | Jack requires `OPENAI_API_KEY` and is not deployed in the default Claude-first smoke run.               |
+| **Gemini memory parity**                          | Luke's `GEMINI.md` memory check writes the same file-backed namespace/index shape after Gemini filesystem/tool-call support lands      | Luke requires `GEMINI_API_KEY` and the current Gemini fixture cannot write workspace memory files.      |
+| **Gemini backend parity**                         | `backend-check-gemini`, `model-check-gemini-*`, `animal-memory-gemini`, `ping-gemini`                                                  | Gemini backend is supported; Luke is the single-backend Gemini scaffold.                                |
+| **Consensus fan-out**                             | Multi-model fan-out and synthesis across OpenAI + Claude models                                                                        | Bob's consensus fixtures are present but disabled because they depend on the dormant OpenAI backend.    |
+| **Prompt-kind filter on webhooks**                | `notify-on-kind` glob filter; a webhook subscribed to `job:*` fires on job responses but not trigger responses                         | Needs two webhook configs plus matching chain-sink triggers.                                            |
+| **Concurrent load ordering**                      | Multiple jobs firing at the same cron tick all complete without scheduler interleaving bugs                                            | Needs three or more jobs with identical `schedule:` plus clear log-ordering assertions.                 |
+| **Session persistence across pod restart**        | Session ID and memory survive a pod restart                                                                                            | Requires manual deploy-time choreography: seed session, restart pod, verify memory.                     |
+| **Per-message `model` override via A2A metadata** | `metadata.model` on an inbound A2A request overrides the routing default and lands in the log                                          | Triggers do not yet propagate `metadata.model` from the HTTP payload to dispatch.                       |
 
 ### Not a Fit for This Document
 

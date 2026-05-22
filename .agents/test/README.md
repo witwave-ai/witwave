@@ -93,7 +93,7 @@ Backend directories only carry backend runtime config:
 | Directory  | Purpose                                                         |
 | ---------- | --------------------------------------------------------------- |
 | `.claude/` | Claude behavior/settings/MCP config for agents that run Claude. |
-| `.openai/`  | OpenAI behavior/config for OpenAI parity runs.                    |
+| `.openai/` | OpenAI behavior/config for OpenAI parity runs.                  |
 | `.gemini/` | Gemini behavior config for Gemini fixtures.                     |
 
 Do not add backend-specific `agent-card.md` files here unless a test explicitly needs direct backend-sidecar discovery.
@@ -122,13 +122,13 @@ directories, and `--with-persistence` gives each backend its own operator-owned 
 
 The parked fixtures exist so the active smoke team can grow deliberately rather than by surprise.
 
-| Surface                  | Current state                                                   | Promotion condition                                             |
-| ------------------------ | --------------------------------------------------------------- | --------------------------------------------------------------- |
-| Bob OpenAI backend        | Config present, backend not deployed by default.                | OpenAI budget/key available and OpenAI smoke rows re-enabled.    |
-| Bob Gemini backend       | Config present, backend not deployed by default.                | Gemini key available and Gemini smoke rows added or re-enabled. |
-| Jack OpenAI-only agent    | Filesystem scaffold, deployable through `ww`.                   | Deploy when single-backend OpenAI parity matters.                |
-| Luke Gemini-only agent   | Filesystem scaffold, deployable through `ww`.                   | Deploy when single-backend Gemini parity matters.               |
-| Consensus smoke fixtures | Prompt files present but disabled because they depend on OpenAI. | Re-enable after OpenAI is active in the test team.               |
+| Surface                  | Current state                                                    | Promotion condition                                             |
+| ------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| Bob OpenAI backend       | Config present, backend not deployed by default.                 | OpenAI budget/key available and OpenAI smoke rows re-enabled.   |
+| Bob Gemini backend       | Config present, backend not deployed by default.                 | Gemini key available and Gemini smoke rows added or re-enabled. |
+| Jack OpenAI-only agent   | Filesystem scaffold, deployable through `ww`.                    | Deploy when single-backend OpenAI parity matters.               |
+| Luke Gemini-only agent   | Filesystem scaffold, deployable through `ww`.                    | Deploy when single-backend Gemini parity matters.               |
+| Consensus smoke fixtures | Prompt files present but disabled because they depend on OpenAI. | Re-enable after OpenAI is active in the test team.              |
 
 ## How the smoke loop closes
 

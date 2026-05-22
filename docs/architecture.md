@@ -196,10 +196,10 @@ Agent identity and behavior are entirely file-based. No identity is baked into a
 | File        | Location                | Purpose                                                             |
 | ----------- | ----------------------- | ------------------------------------------------------------------- |
 | `CLAUDE.md` | `/home/agent/.claude/`  | Behavioral instructions injected into the Claude backend at startup |
-| `AGENTS.md` | `/home/agent/.openai/`   | Behavioral instructions injected into the OpenAI backend at startup  |
+| `AGENTS.md` | `/home/agent/.openai/`  | Behavioral instructions injected into the OpenAI backend at startup |
 | `GEMINI.md` | `/home/agent/.gemini/`  | Behavioral instructions injected into the Gemini backend at startup |
 | `memory/`   | `<name>/claude/memory/` | Persistent markdown memory files for Claude backend                 |
-| `memory/`   | `<name>/openai/memory/`  | Persistent markdown memory files for OpenAI backend                  |
+| `memory/`   | `<name>/openai/memory/` | Persistent markdown memory files for OpenAI backend                 |
 | `memory/`   | `<name>/gemini/memory/` | JSON session history for Gemini backend (`sessions/`)               |
 
 Backend-specific `agent-card.md` files may be mounted for direct backend-sidecar discovery, but the Kubernetes Service
@@ -241,18 +241,18 @@ for a named agent targets the harness container. The repo's self/test agent conf
 
 **Backends (claude / openai / gemini):**
 
-| Variable                   | Default                       | Description                                                                                  |
-| -------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------- |
+| Variable                   | Default                        | Description                                                                                  |
+| -------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------- |
 | `AGENT_NAME`               | `claude` / `openai` / `gemini` | Backend instance name (e.g. `iris-claude`)                                                   |
-| `AGENT_OWNER`              | _(same as `AGENT_NAME`)_      | Named agent this backend belongs to (e.g. `iris`); used in metric labels                     |
+| `AGENT_OWNER`              | _(same as `AGENT_NAME`)_       | Named agent this backend belongs to (e.g. `iris`); used in metric labels                     |
 | `AGENT_ID`                 | `claude` / `openai` / `gemini` | Backend slot identifier; used in metric labels                                               |
-| `AGENT_URL`                | `http://localhost:8000/`      | Public A2A endpoint URL reported in agent card                                               |
-| `BACKEND_PORT`             | `8000`                        | HTTP port the backend listens on (internal)                                                  |
-| `METRICS_ENABLED`          | _(unset)_                     | Enable Prometheus `/metrics`                                                                 |
-| `CONVERSATIONS_AUTH_TOKEN` | _(unset)_                     | Bearer token required to access `/conversations`, `/trace`, `/mcp`, and `/api/traces[/<id>]` |
-| `TASK_STORE_PATH`          | _(unset)_                     | Path for SQLite A2A task store; defaults to in-memory                                        |
-| `WORKER_MAX_RESTARTS`      | `5`                           | Consecutive crash limit before a critical worker marks the backend not-ready                 |
-| `LOG_PROMPT_MAX_BYTES`     | `200`                         | Max bytes of the prompt logged at INFO level; `0` suppresses it entirely                     |
+| `AGENT_URL`                | `http://localhost:8000/`       | Public A2A endpoint URL reported in agent card                                               |
+| `BACKEND_PORT`             | `8000`                         | HTTP port the backend listens on (internal)                                                  |
+| `METRICS_ENABLED`          | _(unset)_                      | Enable Prometheus `/metrics`                                                                 |
+| `CONVERSATIONS_AUTH_TOKEN` | _(unset)_                      | Bearer token required to access `/conversations`, `/trace`, `/mcp`, and `/api/traces[/<id>]` |
+| `TASK_STORE_PATH`          | _(unset)_                      | Path for SQLite A2A task store; defaults to in-memory                                        |
+| `WORKER_MAX_RESTARTS`      | `5`                            | Consecutive crash limit before a critical worker marks the backend not-ready                 |
+| `LOG_PROMPT_MAX_BYTES`     | `200`                          | Max bytes of the prompt logged at INFO level; `0` suppresses it entirely                     |
 
 ---
 

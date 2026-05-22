@@ -103,7 +103,7 @@ Extracted variables (defined under `extract:`) are also available in the `body:`
 | `signing-secret-env-var`    | No         | Name of an env var holding an HMAC-SHA256 secret → `X-Hub-Signature-256` header (GitHub-compatible).                                                                                                         |
 | `max-concurrent-deliveries` | No         | Per-subscription cap on concurrent in-flight deliveries. Defaults to `WEBHOOK_MAX_CONCURRENT_DELIVERIES_PER_SUB` (env var, default `10`).                                                                    |
 | `model`                     | No         | Model override for LLM extraction calls.                                                                                                                                                                     |
-| `agent`                     | No         | Backend ID override for LLM extraction calls (e.g. `openai`); defaults to routing config.                                                                                                                     |
+| `agent`                     | No         | Backend ID override for LLM extraction calls (e.g. `openai`); defaults to routing config.                                                                                                                    |
 
 ## Default Envelope
 

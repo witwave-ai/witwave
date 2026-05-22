@@ -456,7 +456,12 @@ class A2ABackend:
             if _carrier.get("traceparent"):
                 _outbound_traceparent = _carrier["traceparent"]
 
-            _metadata: dict = {}
+            # Always send the harness session id in metadata, even on the
+            # first A2A turn where contextId is intentionally omitted. Backends
+            # can use it as their stable session key until the A2A context is
+            # established; without it, first-turn state may be recorded under a
+            # backend-minted id that the harness never sends again.
+            _metadata: dict = {"session_id": session_id}
             if model:
                 _metadata["model"] = model
             if max_tokens is not None:

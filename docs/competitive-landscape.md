@@ -646,8 +646,8 @@ as an AWS-managed service. Locked to Bedrock-hosted models.
 
 **Relative standing:** Mandatory hyperscaler reference. AgentCore's Policy + Evaluations track directly against this
 project's hook policy engine + emerging smoke-test surface. Differentiators: we're open-source, self-hosted, and
-model-backend-agnostic (Claude / OpenAI / Gemini); AgentCore is closed, managed, Bedrock-only. The competitive dynamic is
-hyperscaler-managed-SaaS vs. self-hosted-Kubernetes — classic split.
+model-backend-agnostic (Claude / OpenAI / Gemini); AgentCore is closed, managed, Bedrock-only. The competitive dynamic
+is hyperscaler-managed-SaaS vs. self-hosted-Kubernetes — classic split.
 
 ### Microsoft Agent Framework + Foundry Agent Service (Microsoft)
 
@@ -874,11 +874,11 @@ Last updated: 2026-04-07 by local-agent.
   / `SandboxClaim`; source: <https://www.infoq.com/news/2026/05/gke-agent-sandbox-hypercluster/>, accessed 2026-05-11)
   all now occupy the same lane. Differentiators that _do_ hold up head-to-head with these: (1) **multi-backend routing
   under one named agent identity** — Claude / OpenAI / Gemini behind `backend.yaml` routing rules with per-concern
-  dispatch (heartbeat to claude, jobs to openai, etc.) is unique in the Kubernetes-native OSS set; competitors are mostly
-  single-framework (kagent on AutoGen) or single-model. (2) **Scheduler primitive breadth** — jobs, tasks, heartbeats,
-  triggers, continuations, webhooks as first-class `.witwave/` frontmatter files. kagent and OpenClaw don't ship
-  equivalents. (3) **Per-agent cross-pod topology** — harness + backends + shared MCP tools is a production-ready shape
-  that OpenClaw's single-agent framing doesn't match. (4) **Declarative CRD lifecycle via `WitwaveAgent` +
+  dispatch (heartbeat to claude, jobs to openai, etc.) is unique in the Kubernetes-native OSS set; competitors are
+  mostly single-framework (kagent on AutoGen) or single-model. (2) **Scheduler primitive breadth** — jobs, tasks,
+  heartbeats, triggers, continuations, webhooks as first-class `.witwave/` frontmatter files. kagent and OpenClaw don't
+  ship equivalents. (3) **Per-agent cross-pod topology** — harness + backends + shared MCP tools is a production-ready
+  shape that OpenClaw's single-agent framing doesn't match. (4) **Declarative CRD lifecycle via `WitwaveAgent` +
   `WitwavePrompt`** going through a dedicated operator with status phases, finalizers, and multi-tenant manifest
   ConfigMaps. kagent is closer to ours on this axis but uses CRDs only for agent definition, not prompt lifecycle.
 

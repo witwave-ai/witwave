@@ -55,7 +55,7 @@ highest-priority item for today. When done, respond with STANDUP_DONE.
 | `loop-gap`        | No       | Pause after a run completes before the next iteration. Format: `30s`, `15m`, `1h`, `1h30m`. Default: no pause.                   |
 | `done-when`       | No       | Stop looping for the day if the backend response contains this string.                                                           |
 | `model`           | No       | Model override passed to the backend.                                                                                            |
-| `agent`           | No       | Backend ID override (e.g. `openai`); defaults to routing config.                                                                  |
+| `agent`           | No       | Backend ID override (e.g. `openai`); defaults to routing config.                                                                 |
 | `enabled`         | No       | `false` disables without deleting. Default: `true`.                                                                              |
 | `consensus`       | No       | List of `{backend, model?}` entries to fan out to; empty list (default) disables consensus. Supports glob patterns in `backend`. |
 | `max-tokens`      | No       | Token budget for this dispatch. Stop and return partial response when reached.                                                   |

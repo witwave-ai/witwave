@@ -47,11 +47,11 @@ shell / web search / Playwright computer tools. The file is hot-reloaded on chan
 counts + latency + errors + per-query breakdown, context-window tokens, SDK error classification (connection / result /
 client / context-fetch), per-task stderr noise and retries, MCP config + server state, streaming-chunk drops,
 empty-prompt rejections, and hook evaluation + denials (canonical `backend_hooks_denials_total{tool,source,rule}`; the
-backend-specific `backend_openai_hooks_denials_total` alias and pre-rename
-`backend_codex_hooks_denials_total` alias are retained during migration and gated by
-`EMIT_DEPRECATED_HOOK_METRICS`). Claude is the superset; openai tracks placeholders for its missing series so
-cross-backend PromQL joins stay clean — `backend_sdk_subprocess_spawn_duration_seconds` is a zero-value placeholder
-since the Agents SDK runs in-process. See `metrics.py` for the live catalog.
+backend-specific `backend_openai_hooks_denials_total` alias and pre-rename `backend_codex_hooks_denials_total` alias are
+retained during migration and gated by `EMIT_DEPRECATED_HOOK_METRICS`). Claude is the superset; openai tracks
+placeholders for its missing series so cross-backend PromQL joins stay clean —
+`backend_sdk_subprocess_spawn_duration_seconds` is a zero-value placeholder since the Agents SDK runs in-process. See
+`metrics.py` for the live catalog.
 
 ## Endpoints
 
@@ -123,7 +123,7 @@ absolute-path basename fallback removed (#862); interpreter args are additionall
 
 ## Tracing (OpenTelemetry)
 
-When `OTEL_ENABLED=true` is set, openai emits a server span for every `execute()` call and continues any trace propagated
-by harness via the `metadata.traceparent` field (#469). The OTLP/HTTP exporter reads the standard
+When `OTEL_ENABLED=true` is set, openai emits a server span for every `execute()` call and continues any trace
+propagated by harness via the `metadata.traceparent` field (#469). The OTLP/HTTP exporter reads the standard
 `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_SERVICE_NAME` / `OTEL_TRACES_SAMPLER` env vars. When `OTEL_ENABLED` is falsy
 (default) the OTel call sites are no-ops. Bootstrap in `shared/otel.py` is shared with the harness and other backends.
