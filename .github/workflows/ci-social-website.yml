@@ -7,6 +7,7 @@ on:
       - "social/papers/**"
       - "social/posts/**"
       - "scripts/generate-social-static-pages.mjs"
+      - "scripts/render-social-whitepaper-lists.mjs"
       - "scripts/build-whitepaper-pdfs.sh"
       - "scripts/print-whitepaper-pdf.mjs"
       - "scripts/sync-social-website.sh"
@@ -20,6 +21,7 @@ on:
       - "social/papers/**"
       - "social/posts/**"
       - "scripts/generate-social-static-pages.mjs"
+      - "scripts/render-social-whitepaper-lists.mjs"
       - "scripts/build-whitepaper-pdfs.sh"
       - "scripts/print-whitepaper-pdf.mjs"
       - "scripts/sync-social-website.sh"
@@ -54,6 +56,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq pandoc
           npm ci
+
+      - name: Verify generated whitepaper rows
+        run: |
+          set -euo pipefail
+          node scripts/render-social-whitepaper-lists.mjs
+          git diff --exit-code -- social/website/index.html social/website/whitepapers/index.html
 
       - name: Build publish artifact
         run: scripts/sync-social-website.sh /tmp/witwave-social-site

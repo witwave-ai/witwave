@@ -12,6 +12,7 @@ This is intended for publishing the static site to witwave-ai.github.io.
 
 Notes:
   - Symlinks are resolved so content/whitepapers/*.md becomes real files.
+  - Whitepaper list rows are rendered from content/whitepapers.json.
   - Whitepapers and published blog posts are generated as static HTML pages.
   - Whitepaper PDFs are generated from the canonical Markdown sources.
   - .git/ is never touched in the destination.
@@ -43,6 +44,7 @@ rsync -aL --delete \
   --exclude '.git/' \
   "$source_dir" "$build_dir/"
 
+node "$repo_root/scripts/render-social-whitepaper-lists.mjs" "$build_dir"
 node "$repo_root/scripts/generate-social-static-pages.mjs" "$build_dir"
 "$repo_root/scripts/build-whitepaper-pdfs.sh" "$build_dir/whitepapers"
 
