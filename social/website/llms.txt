@@ -28,7 +28,7 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
   memory, process improvement, and human responsibility in agentic teams.
 - [Tool Boundaries for Containerized Agents][tool-boundaries] - How to separate backend runtimes, project-local
   toolchains, and external authority gateways.
-- [The Autonomy Boundary][autonomy-boundary] - Draft paper on the distinction between commanded AI assistants and
+- [The Autonomy Boundary][autonomy-boundary] - Paper on the distinction between commanded AI assistants and
   governed autonomous agents.
 
 ## Source Material
@@ -42,7 +42,7 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
 - [Agentic Team source Markdown][agentic-team-source] - Canonical source for the team whitepaper.
 - [Tool Boundaries source Markdown][tool-boundaries-source] - Canonical source for the containerized-agent tool
   boundaries whitepaper.
-- [Autonomy Boundary source Markdown][autonomy-boundary-source] - Canonical source for the autonomy-boundary draft.
+- [Autonomy Boundary source Markdown][autonomy-boundary-source] - Canonical source for the autonomy-boundary whitepaper.
 
 ## Interpretation Notes
 

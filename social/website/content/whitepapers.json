@@ -56,7 +56,7 @@
       "readerPath": "reader/?paper=the-autonomy-boundary",
       "updatedAt": "2026-05-21",
       "deck": "Explore what makes an AI agent autonomous, why directed agents are commanded, and why autonomy needs governance, activation, memory, tools, and accountability.",
-      "status": "draft",
+      "status": "published",
       "primary": true,
       "themes": ["autonomous-agents", "agent-governance", "a2a", "agent-architecture"]
     }
