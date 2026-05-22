@@ -13,7 +13,9 @@ social/
 ├── README.md                  (this file — the spec)
 ├── papers/                    whitepapers and standalone publications
 │   ├── three-phases-of-ai-adoption.md
-│   └── anatomy-of-an-agentic-team.md
+│   ├── anatomy-of-an-agentic-team.md
+│   ├── tool-boundaries-for-containerized-agents.md
+│   └── the-autonomy-boundary.md
 ├── website/                   public website source; GitHub Pages-ready static site
 │   ├── index.html
 │   ├── project/
@@ -34,8 +36,8 @@ social/
 - **Whitepapers** (`papers/`) — standalone framework pieces (e.g., `papers/three-phases-of-ai-adoption.md`). These don't
   follow the post spec; they're standalone publications. Treat them as source material that posts can reference.
 - **Website source** (`website/`) — the public website source managed in this repo and published through the dedicated
-  GitHub Pages repository. The website makes the two whitepapers prominent, explains the project, hosts the Quick Start
-  path, loads blog entries, and keeps positioning copy agent-maintainable.
+  GitHub Pages repository. The website makes the foundational whitepapers prominent, explains the project, hosts the
+  Quick Start path, loads blog entries, and keeps positioning copy agent-maintainable.
 - **Drafts** — work-in-progress in either shape, marked `status: draft` in frontmatter (posts) or simply unfinished
   (papers).
 
@@ -260,8 +262,8 @@ standalone documents that live under `social/papers/`. Conventions:
 - Optional frontmatter (just `title:` and `created:` for minimal tracking).
 - Posts can link to them via `related:` in the post's frontmatter — full path, e.g.
   `related: [social/papers/three-phases-of-ai-adoption.md]`.
-- Whitepapers don't have a status lifecycle. They're either drafts or published; once a paper goes public, edits are
-  corrections rather than revisions.
+- Whitepaper source files stay as standalone Markdown. Public visibility, draft labels, and generated PDF paths are
+  managed through `social/website/content/whitepapers.json`.
 
 ## Assets
 
