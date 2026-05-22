@@ -7,10 +7,9 @@
 
 ## Executive summary
 
-The word "agent" is becoming too broad to be useful by itself. A chatbot can be called an agent. A coding assistant in
-an IDE can be called an agent. A scheduled automation that calls a model can be called an agent. A durable worker that
-wakes up, observes a system, decides what matters, coordinates with peers, and acts through tools can also be called an
-agent.
+The word "agent" is becoming too broad to be useful by itself. It can refer to a chatbot, an IDE coding assistant, a
+scheduled model call, or a durable worker that wakes up, observes a system, decides what matters, coordinates with
+peers, and acts through tools.
 
 Those systems are not the same.
 
@@ -29,7 +28,7 @@ can then wake up through time, events, or messages; inspect its environment; dec
 communicate with humans or peers; and act within bounded authority.
 
 This paper argues that autonomy is not a mystical property of intelligence. It is an architectural and operating-model
-property. An autonomous agent needs at least four surfaces:
+property. At minimum, an autonomous agent needs four surfaces:
 
 - **Addressability.** A human or another agent can reach it through a stable communication interface.
 - **Activation.** It can be invoked by something other than an immediate human prompt: time, events, messages, jobs, or
@@ -37,8 +36,8 @@ property. An autonomous agent needs at least four surfaces:
 - **Discretion.** It can decide what to do within a delegated role and policy boundary.
 - **Accountability.** Its actions are constrained, observable, attributable, auditable, and reversible where possible.
 
-Those four surfaces are the compressed test. The rest of this paper expands them into a more practical stack: how the
-agent wakes up, what it can observe, how it decides, what it can do, how it remembers, how it communicates, and how its
+Those four surfaces are the short version. The rest of this paper expands them into a more practical stack: how the
+agent wakes up, what it observes, how it decides, what it can do, how it remembers, how it communicates, and how its
 authority is governed.
 
 A heartbeat, cron schedule, or webhook is therefore important, but insufficient. Those mechanisms give an agent a pulse.
@@ -58,10 +57,10 @@ operating model: whether the agent is continuously directed or durably governed.
 
 Agent language is overloaded because several different transitions are happening at once.
 
-First, models became capable enough to reason through multi-step tasks. Then tool use gave those models ways to affect
-systems outside the chat window. Then coding environments, browsers, APIs, MCP servers, and workflow systems gave those
-models richer action surfaces. Then teams started wiring agents into persistent runtimes: scheduled jobs, background
-workers, webhooks, event streams, task queues, memory stores, and agent-to-agent communication.
+First, models became capable enough to reason through multi-step tasks. Tool use then gave those models ways to affect
+systems outside the chat window. Coding environments, browsers, APIs, MCP servers, and workflow systems added richer
+action surfaces. Finally, teams started wiring agents into persistent runtimes: scheduled jobs, background workers,
+webhooks, event streams, task queues, memory stores, and agent-to-agent communication.
 
 Each step made agents feel more autonomous. But each step is different.
 
@@ -88,7 +87,7 @@ happen at all.
 
 ---
 
-## The old definition still helps
+## Older definitions still help
 
 The distinction is not new. Agent research has wrestled with the boundary between an agent and an ordinary program for
 decades.
@@ -123,11 +122,11 @@ The old and new framings converge on the same practical point:
 
 ## Commanded versus governed
 
-The commanded/governed distinction is the cleanest way to separate directed agents from autonomous ones.
+The commanded/governed distinction is the clearest way to separate directed agents from autonomous ones.
 
 ### Commanded agents
 
-A commanded agent is driven by direct human instruction. It may still be powerful. It may inspect files, call tools, run
+A commanded agent is driven by direct human instruction. It may still be powerful: it can inspect files, call tools, run
 tests, edit code, browse the web, summarize logs, or reason through a plan. But the human remains the primary scheduler,
 router, and controller.
 
@@ -145,12 +144,12 @@ This is the dominant experience of many IDE, CLI, editor, and chat-based agents.
 is mostly session-bound and human-steered.
 
 This can include asynchronous delegation. A human might ask an agent to fix a bug, generate a report, or draft a design
-while they do something else. That is useful delegation, but it remains commanded when the human still supplies the
-start signal, scope, and decision to continue.
+while they do something else. That may be valuable delegation, but it remains commanded when the human still supplies
+the start signal, scope, and decision to continue.
 
 ### Governed agents
 
-A governed autonomous agent is not free to do anything it wants. It is free to operate inside a defined role.
+A governed autonomous agent is not free to do anything it wants. It is authorized to operate inside a defined role.
 
 The human or organization defines:
 
@@ -195,7 +194,7 @@ That matters. It changes the agent from a passive respondent into a durable part
 But a pulse alone is not autonomy. A shell script can run every five minutes. A CI job can run on a schedule. A database
 backup can run nightly. Those systems are automated, but not necessarily autonomous in the agentic sense.
 
-The pulse becomes agentic when it starts a loop like this:
+The pulse matters when it starts a loop like this:
 
 1. Wake up.
 2. Read current state.
@@ -217,8 +216,8 @@ nervous system's incoming signals. They create opportunities for autonomy, but t
 
 ## The minimum autonomy stack
 
-A practical autonomous agent needs a stack of capabilities. Not every agent needs every capability at maximum strength,
-but the absence of any layer weakens the autonomy claim. The stack below expands the four surfaces from the executive
+A practical autonomous agent needs a stack of capabilities. Not every agent needs every capability at full strength, but
+the absence of any layer weakens the autonomy claim. The stack below expands the four surfaces from the executive
 summary into operational design requirements.
 
 ### 1. Addressability
@@ -376,7 +375,7 @@ The test does not require broad authority. A read-only observer can be autonomou
 anomalies, records evidence, communicates findings, and escalates issues according to policy. A write-capable
 remediation agent may be less autonomous in practice if every action is manually commanded.
 
-Autonomy is therefore not the same as write access. Autonomy is the capacity to operate under governance.
+Autonomy is therefore not the same as write access. It is the capacity to operate under governance.
 
 ---
 
@@ -387,7 +386,7 @@ Autonomy is therefore not the same as write access. Autonomy is the capacity to 
 A developer opens an IDE agent and asks it to fix a failing test. The agent reads files, proposes changes, edits code,
 runs tests, and explains the result.
 
-This is agentic. It is not strongly autonomous.
+This is agentic work. It is not autonomy in the sense this paper uses the term.
 
 The human initiated the work, scoped the task, watched the loop, decided which suggestions to accept, and ended the
 session. The agent had tools and reasoning, but the human remained the scheduler and controller.
@@ -400,7 +399,7 @@ This has activation, but limited autonomy.
 
 If the workflow simply follows a fixed script, it is automation with model assistance. It becomes more autonomous when
 it can decide what changed, identify anomalies, ask follow-up questions, select sources, delay publication when
-confidence is low, and record why it made those choices.
+confidence is low, and record the reasons for those choices.
 
 ### The reliability observer
 
@@ -469,7 +468,7 @@ The autonomy question is not "Does it have MCP?" The autonomy question is:
 > Under what conditions may the agent decide to use the tool, what may it do with the result, and who can observe or
 > revoke that authority?
 
-Tool use makes autonomy consequential. Governance makes it tolerable.
+Tool use makes autonomy consequential. Governance makes it usable.
 
 ---
 
