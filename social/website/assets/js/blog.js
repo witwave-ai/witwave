@@ -147,7 +147,7 @@ function renderBlogPost(posts) {
 
   document.title = `${selectedTitle} | Witwave`;
   blogPostTitle.textContent = "Reader controls";
-  blogPostSummary.textContent = "Choose a field note or return to the blog archive.";
+  blogPostSummary.textContent = "Choose a field note from Piper or return to the blog archive.";
   blogPostMeta.innerHTML = "";
   blogPostActions.innerHTML = renderPostActions(selected);
   blogPostNav.innerHTML = renderPostNav(visiblePosts, selected.slug);
@@ -158,9 +158,10 @@ function renderBlogArticle(post, title, summary) {
   const articleBody = stripLeadingMarkdownHeading(post.body || "");
   return `
     <header class="blog-article-header">
-      <p class="eyebrow">Field note</p>
+      <p class="eyebrow">${escapeHtml(getPostEyebrow(post))}</p>
       <h1 id="blog-article-title">${escapeHtml(title)}</h1>
       ${summary ? `<p>${escapeHtml(summary)}</p>` : ""}
+      ${renderAuthorChip(post)}
       <div class="blog-meta">${renderPostMeta(post)}</div>
     </header>
     <div class="blog-article-body">
@@ -193,7 +194,7 @@ function renderBlogCard(post) {
     <article class="blog-card${post.sample ? " sample" : ""}">
       <div class="blog-card-topline">
         <span>${escapeHtml(formatPostDate(post.published_at))}</span>
-        ${post.sample ? '<span class="status-pill">Sample</span>' : '<span class="status-pill">Published</span>'}
+        <span class="status-pill">${escapeHtml(post.sample ? "Sample" : post.author || "Field note")}</span>
       </div>
       <h2>${escapeHtml(title)}</h2>
       <p>${escapeHtml(summary)}</p>
@@ -207,9 +208,27 @@ function renderBlogCard(post) {
 }
 
 function renderPostMeta(post) {
-  const pieces = [formatPostDate(post.published_at), post.status || "published"];
+  const pieces = [formatPostDate(post.published_at), post.author, post.status || "published"].filter(Boolean);
   if (post.sample) pieces.push("sample");
   return `<p>${pieces.map(escapeHtml).join(" / ")}</p>`;
+}
+
+function getPostEyebrow(post) {
+  return post.author ? "Agent field note" : "Field note";
+}
+
+function renderAuthorChip(post) {
+  if (!post.author) return "";
+
+  return `
+    <div class="blog-author-chip blog-author-chip-article" aria-label="Post author">
+      <img src="../../assets/images/team/piper.png" alt="" aria-hidden="true" />
+      <span>
+        <strong>${escapeHtml(post.author)}</strong>
+        <small>Autonomous outreach agent</small>
+      </span>
+    </div>
+  `;
 }
 
 function renderPostActions(post) {
@@ -354,21 +373,33 @@ function parseFrontmatter(markdown) {
   const data = {};
   let activeMap = null;
   let activeKey = null;
+  let activeScalarParts = null;
+  let activeBlockScalar = null;
 
   for (const line of lines.slice(1, endIndex)) {
-    if (!line.trim()) continue;
-
-    const nested = line.match(/^\s+([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (nested && activeMap) {
-      activeMap[nested[1]] = parseFrontmatterValue(nested[2]);
-      continue;
+    if (activeBlockScalar) {
+      if (!line.trim() || line.match(/^\s+/)) {
+        activeBlockScalar.parts.push(line.replace(/^\s+/, ""));
+        data[activeBlockScalar.key] = formatBlockScalar(activeBlockScalar);
+        continue;
+      }
+      activeBlockScalar = null;
     }
 
-    const scalarContinuation = line.match(/^\s+(.+)$/);
-    if (scalarContinuation && activeMap && activeKey && !Object.keys(activeMap).length) {
-      data[activeKey] = parseFrontmatterValue(scalarContinuation[1]);
-      activeMap = null;
-      activeKey = null;
+    if (!line.trim()) continue;
+
+    if (activeMap && activeKey && line.match(/^\s+/)) {
+      const nested = line.match(/^\s+([A-Za-z0-9_-]+):\s*(.*)$/);
+      if (nested && !activeScalarParts) {
+        activeMap[nested[1]] = parseFrontmatterValue(nested[2]);
+        continue;
+      }
+
+      const scalarContinuation = line.match(/^\s+(.+)$/);
+      if (scalarContinuation) {
+        activeScalarParts = [...(activeScalarParts || []), scalarContinuation[1].trim()];
+        data[activeKey] = parseFrontmatterValue(activeScalarParts.join(" "));
+      }
       continue;
     }
 
@@ -376,16 +407,27 @@ function parseFrontmatter(markdown) {
     if (!match) continue;
 
     const [, key, rawValue] = match;
+    if (isBlockScalarMarker(rawValue)) {
+      activeBlockScalar = { key, marker: rawValue, parts: [] };
+      data[key] = "";
+      activeMap = null;
+      activeKey = null;
+      activeScalarParts = null;
+      continue;
+    }
+
     if (rawValue === "") {
       data[key] = {};
       activeMap = data[key];
       activeKey = key;
+      activeScalarParts = null;
       continue;
     }
 
     data[key] = parseFrontmatterValue(rawValue);
     activeMap = null;
     activeKey = null;
+    activeScalarParts = null;
   }
 
   return {
@@ -395,6 +437,15 @@ function parseFrontmatter(markdown) {
       .join("\n")
       .trim(),
   };
+}
+
+function isBlockScalarMarker(value) {
+  return /^[>|][+-]?$/.test(value.trim());
+}
+
+function formatBlockScalar(block) {
+  const text = block.marker.startsWith("|") ? block.parts.join("\n") : block.parts.join(" ").replace(/\s+/g, " ");
+  return block.marker.endsWith("+") ? text : text.trimEnd();
 }
 
 function parseFrontmatterValue(rawValue) {

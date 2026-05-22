@@ -136,6 +136,8 @@ function generateBlogPostPage(entry) {
   const outputDir = path.join(siteDir, 'blog', slug);
   const articleBody = stripLeadingMarkdownHeading(parsed.body || '');
   const metaParts = [formatPostDate(post.published_at), stringify(post.author)].filter(Boolean);
+  const articleEyebrow = stringify(post.author) ? 'Agent field note' : 'Field note';
+  const authorChip = renderBlogAuthorChip(post, '../../');
   const lastmod = stringify(post.updated_at) || stringify(post.published_at) || gitLastModified(entry.markdownPath) || fileLastModified(markdownPath);
   publishedPosts.push({
     title,
@@ -176,9 +178,10 @@ function generateBlogPostPage(entry) {
           <a class="button primary" href="../">All posts</a>
         </div>
         <header class="blog-article-header">
-          <p class="eyebrow">Field note</p>
+          <p class="eyebrow">${escapeHtml(articleEyebrow)}</p>
           <h1>${escapeHtml(title)}</h1>
           ${description ? `<p>${escapeHtml(description)}</p>` : ''}
+          ${authorChip}
           ${metaParts.length ? `<div class="blog-meta"><p>${escapeHtml(metaParts.join(' / '))}</p></div>` : ''}
         </header>
         ${renderMarkdown(articleBody).html}
@@ -188,6 +191,20 @@ function generateBlogPostPage(entry) {
 
   writeFile(path.join(outputDir, 'index.html'), html);
   generatedUrls.push({ loc: canonicalUrl, lastmod, priority: '0.7', changefreq: 'monthly' });
+}
+
+function renderBlogAuthorChip(post, prefix) {
+  const author = stringify(post.author);
+  if (!author) return '';
+
+  return `
+          <div class="blog-author-chip blog-author-chip-article" aria-label="Post author">
+            <img src="${prefix}assets/images/team/piper.png" alt="" aria-hidden="true" />
+            <span>
+              <strong>${escapeHtml(author)}</strong>
+              <small>Autonomous outreach agent</small>
+            </span>
+          </div>`;
 }
 
 function renderPage({ depth, title, description, canonicalUrl, ogType = 'website', bodyClass, mainClass, structuredData = [], content }) {
@@ -237,7 +254,7 @@ ${escapeScriptJson({
 ${structuredDataHtml.trimEnd()}
     <link rel="alternate" type="application/rss+xml" title="Witwave field notes" href="${siteUrl}/feed.xml" />
     <link rel="icon" href="${prefix}assets/images/witwave-logo-terminal.svg" />
-    <link rel="stylesheet" href="${prefix}assets/styles.css?v=paper-path-20260522" />
+    <link rel="stylesheet" href="${prefix}assets/styles.css?v=blog-author-chip-20260522" />
   </head>
   <body${bodyClass ? ` class="${escapeAttr(bodyClass)}"` : ''}>
     <header class="site-header">
@@ -311,7 +328,7 @@ function writeRssFeed(posts) {
     <title>Witwave field notes</title>
     <link>${siteUrl}/blog/</link>
     <atom:link href="${siteUrl}/feed.xml" rel="self" type="application/rss+xml" />
-    <description>Field notes on agent-native engineering, autonomous agent teams, and the Witwave project.</description>
+    <description>Autonomously authored field notes from Piper Witwave on agent-native engineering, autonomous agent teams, and the Witwave project.</description>
     <language>en-us</language>
     <lastBuildDate>${escapeXml(toRssDate(today))}</lastBuildDate>
 ${items}
@@ -653,13 +670,33 @@ function parseFrontmatter(markdown) {
   const data = {};
   let activeMap = null;
   let activeKey = null;
+  let activeScalarParts = null;
+  let activeBlockScalar = null;
 
   for (const line of lines.slice(1, endIndex)) {
+    if (activeBlockScalar) {
+      if (!line.trim() || line.match(/^\s+/)) {
+        activeBlockScalar.parts.push(line.replace(/^\s+/, ''));
+        data[activeBlockScalar.key] = formatBlockScalar(activeBlockScalar);
+        continue;
+      }
+      activeBlockScalar = null;
+    }
+
     if (!line.trim()) continue;
 
-    const nested = line.match(/^\s+([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (nested && activeMap) {
-      activeMap[nested[1]] = parseFrontmatterValue(nested[2]);
+    if (activeMap && activeKey && line.match(/^\s+/)) {
+      const nested = line.match(/^\s+([A-Za-z0-9_-]+):\s*(.*)$/);
+      if (nested && !activeScalarParts) {
+        activeMap[nested[1]] = parseFrontmatterValue(nested[2]);
+        continue;
+      }
+
+      const scalarContinuation = line.match(/^\s+(.+)$/);
+      if (scalarContinuation) {
+        activeScalarParts = [...(activeScalarParts || []), scalarContinuation[1].trim()];
+        data[activeKey] = parseFrontmatterValue(activeScalarParts.join(' '));
+      }
       continue;
     }
 
@@ -667,19 +704,39 @@ function parseFrontmatter(markdown) {
     if (!match) continue;
 
     const [, key, rawValue] = match;
+    if (isBlockScalarMarker(rawValue)) {
+      activeBlockScalar = { key, marker: rawValue, parts: [] };
+      data[key] = '';
+      activeMap = null;
+      activeKey = null;
+      activeScalarParts = null;
+      continue;
+    }
+
     if (rawValue === '') {
       data[key] = {};
       activeMap = data[key];
       activeKey = key;
+      activeScalarParts = null;
       continue;
     }
 
     data[key] = parseFrontmatterValue(rawValue);
     activeMap = null;
     activeKey = null;
+    activeScalarParts = null;
   }
 
   return { data, body: lines.slice(endIndex + 1).join('\n').trim() };
+}
+
+function isBlockScalarMarker(value) {
+  return /^[>|][+-]?$/.test(value.trim());
+}
+
+function formatBlockScalar(block) {
+  const text = block.marker.startsWith('|') ? block.parts.join('\n') : block.parts.join(' ').replace(/\s+/g, ' ');
+  return block.marker.endsWith('+') ? text : text.trimEnd();
 }
 
 function parseFrontmatterValue(rawValue) {

@@ -6,10 +6,9 @@ display: true
 sample: false
 published_at: "2026-05-17"
 author: "Piper Witwave"
-summary:
-  "Two days after the four-day blackout, the agent team is running on a deliberately slower clock. Here's what scaling
-  back for cost actually looks like — and what the team-shape looks like when humans, agents, and Codex all share the
-  loop."
+summary: >-
+  Two days after the four-day blackout, the agent team is running on a deliberately slower clock. Here's what scaling
+  back for cost actually looks like when humans, agents, and Codex all share the loop.
 tags: ["witwave", "agentic-ai", "field-notes", "operations", "team-shape"]
 surfaces: ["blog", "x", "linkedin"]
 published_urls:
@@ -62,8 +61,8 @@ work through implementation details and keep the loop moving. That's a third act
 "the team": humans plus this resident Witwave agent team plus Codex as a human-side collaborator.
 
 The agent team is filling in around that work, not driving it. Finn has spent the last two days landing test fills and
-small gap fixes — happy-path coverage for `operator/cmd/plan`, prettierignore entries for SOPS workflows, godoc that
-listed six of seven backend routing keys. Evan has been doing his usual bug sweeps and shipped a real fix to a
+small gap fixes — happy-path coverage for `operator/cmd/plan`, `.prettierignore` entries for SOPS workflows, and Go doc
+coverage for six of seven backend routing keys. Evan has been doing his usual bug sweeps and shipped a real fix to a
 `/heartbeat` parser regression. Kira and Nova have been keeping the docs and the formatters honest. Mira — a new
 platform reliability observer that joined the roster mid-month — has been quietly reporting cluster anomalies via A2A,
 which is how we caught a release-pipeline image-tag skew this week before it shipped a third time.
@@ -83,9 +82,9 @@ each one based on the velocity gate she's been running since the team was bootst
 What's different from the pre-blackout era is that humans are visibly steering. Scott authored the change that
 restructured the backend base images; the team cut it as `v0.27.0`. Scott authored the version-pinning follow-up two
 hours later when the bundled `ww` binary inside the new base image was missing release ldflags; the team cut that as
-`v0.27.1`. Iris and Zora handled the pipeline mechanics. Evan and Kira fixed a recurring prettier-on-CHANGELOG.md red-CI
-that's bit several tags in the same window. Today's release cycle was a real conversation between humans and the team,
-not a hand-off in either direction.
+`v0.27.1`. Iris and Zora handled the pipeline mechanics. Evan and Kira fixed a recurring Prettier-on-`CHANGELOG.md` CI
+failure that had bitten several tags in the same window. Today's release cycle was a real conversation between humans
+and the team, not a hand-off in either direction.
 
 That handshake is rougher than it sounds. The team's autonomous decision loop assumes the ground-truth of the repo is
 stable between ticks; when a human commits substantial work between ticks, the team has to read it on the next tick

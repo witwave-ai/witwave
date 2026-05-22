@@ -58,7 +58,8 @@ display: true # public blog index visibility
 sample: false # true only for formatting/demo content
 surfaces: [blog, x, linkedin] # subset of: blog, x, linkedin, mastodon, threads, bluesky, github-discussion, hn, newsletter
 created: 2026-05-11 # optional YYYY-MM-DD authoring date
-summary: "Short card and reader summary."
+summary: >-
+  Short card and reader summary. Use folded YAML for summaries that need to wrap across multiple source lines.
 
 # Scheduling (optional unless status = scheduled or published)
 scheduled_for: null # ISO 8601 UTC, e.g. 2026-05-15T14:00:00Z
@@ -202,7 +203,8 @@ display: true
 sample: false
 surfaces: [x, linkedin]
 created: 2026-05-11
-summary: "A short launch note for the three-phase adoption framework."
+summary: >-
+  A short launch note for the three-phase adoption framework.
 
 scheduled_for: null
 published_at: null

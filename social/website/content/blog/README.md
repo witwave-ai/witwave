@@ -27,7 +27,8 @@ status: "published" # draft | scheduled | published | archived
 display: true
 sample: false
 published_at: "2026-05-13"
-summary: "Short card and reader summary."
+summary: >-
+  Short card and reader summary. Use folded YAML for summaries that need to wrap across multiple source lines.
 tags: ["agentic-ai", "software-engineering"]
 surfaces: ["blog", "x", "linkedin"]
 published_urls:
