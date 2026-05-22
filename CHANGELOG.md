@@ -6,6 +6,30 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.27.8] — 2026-05-22
+
+Content-cycle patch publishing the **Autonomy Boundary** whitepaper through the social website, with supporting
+infrastructure (whitepaper PDF build pipeline, simplified download controls) and additional public-symbol docstrings on
+the harness orchestration layer. No changes to the `ww` CLI, operator runtime, images, or charts — release artifacts are
+functionally identical to v0.27.7 modulo the embedded version stamp.
+
+### Added
+
+- **whitepaper**: Publish "The Autonomy Boundary" whitepaper — `social/papers/the-autonomy-boundary.md` source plus the
+  matching `social/website/whitepapers/` entry, content-catalog record, and sitemap / llms.txt / index updates.
+- **website**: Add a whitepaper PDF build pipeline — `scripts/build-whitepaper-pdfs.sh`,
+  `scripts/print-whitepaper-pdf.mjs`, PDF stylesheet (`social/papers/whitepaper-pdf.css`), root-level `package.json` /
+  `package-lock.json` for the Node toolchain, and CI wiring (`ci-social-website.yml`, `publish-social-website.yml`).
+
+### Changed
+
+- **website**: Simplify the whitepaper download controls on the social website to streamline reader interaction.
+
+### Documentation
+
+- **harness**: Author one-paragraph docstrings on public symbols in the harness orchestration layer.
+- **social**: Refresh the social website's whitepaper catalog to include the autonomy-boundary entry.
+
 ## [0.27.7] — 2026-05-19
 
 Test-gap + docs-research patch. Fills the untested-public-API gap on the `ww` agent's `KubernetesApiAccessEnable` /
