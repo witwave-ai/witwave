@@ -16,6 +16,7 @@ is running:
   paths.
 - Nine **WitwaveAgent**s (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`) with
   `Spec.WorkspaceRefs` pointing at `witwave-self` so they share the workspace.
+
   - **iris** owns source-tree initialization + release captaincy + git plumbing for the team.
   - **kira** owns documentation hygiene + research.
   - **nova** owns code-internal hygiene (formatting, comment-vs-code verification, comment authoring).
@@ -94,10 +95,10 @@ mise exec -- scripts/sops-exec-env.py \
 ```
 
 The agent-create commands lift those decrypted shell variables into each agent's containers at the in-container env-var
-names each consumer expects: `CLAUDE_CODE_OAUTH_TOKEN` lands on Claude containers as-is; `OPENAI_API_KEY` lands on OpenAI
-containers as-is; `GITHUB_TOKEN` and `GITHUB_USER` land inside that agent's active backend container; and
-`GITSYNC_USERNAME` / `GITSYNC_PASSWORD` are minted into a per-agent `<name>-gitsync` Secret and `envFrom`-wired to the
-gitSync sidecar.
+names each consumer expects: `CLAUDE_CODE_OAUTH_TOKEN` lands on Claude containers as-is; `OPENAI_API_KEY` lands on
+OpenAI or Codex containers as-is; `GITHUB_TOKEN` and `GITHUB_USER` land inside that agent's active backend container;
+and `GITSYNC_USERNAME` / `GITSYNC_PASSWORD` are minted into a per-agent `<name>-gitsync` Secret and `envFrom`-wired to
+the gitSync sidecar.
 
 For this bootstrap the repo (`witwave-ai/witwave`) is public and the sidecar would clone anonymously without any creds —
 the `--gitsync-secret-from-env` wiring is shown so the pattern carries over verbatim when iris later points at a private
@@ -441,25 +442,32 @@ mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/mi
   --namespace witwave-self \
   --workspace witwave-self \
   --with-persistence \
-  --backend openai \
+  --backend codex \
   --harness-env TASK_TIMEOUT_SECONDS=7200 \
   --harness-env CONVERSATIONS_AUTH_DISABLED=true \
-  --backend-env openai:TASK_TIMEOUT_SECONDS=7200 \
-  --backend-env openai:CONVERSATIONS_AUTH_DISABLED=true \
-  --backend-env openai:OPENAI_MODEL=gpt-5.5 \
-  --backend-env openai:OPENAI_REASONING_EFFORT=xhigh \
-  --backend-secret-from-env openai=OPENAI_API_KEY \
-  --backend-secret-from-env openai=GITHUB_TOKEN \
-  --backend-secret-from-env openai=GITHUB_USER \
+  --backend-env codex:TASK_TIMEOUT_SECONDS=7200 \
+  --backend-env codex:CONVERSATIONS_AUTH_DISABLED=true \
+  --backend-env codex:CODEX_MODEL=gpt-5.5 \
+  --backend-env codex:CODEX_REASONING_EFFORT=xhigh \
+  --backend-env codex:CODEX_STUB_MODE=false \
+  --backend-env codex:CODEX_SHELL_ENABLED=true \
+  --backend-env codex:CODEX_SHELL_TIMEOUT_SECONDS=45 \
+  --backend-env codex:CODEX_SHELL_MAX_OUTPUT_BYTES=16000 \
+  --backend-env codex:CODEX_MEMORY_ENABLED=true \
+  --backend-env codex:CODEX_MEMORY_ROOT=/workspaces/witwave-self/memory/agents/mira \
+  --backend-secret-from-env codex=OPENAI_API_KEY \
+  --backend-secret-from-env codex=GITHUB_TOKEN \
+  --backend-secret-from-env codex=GITHUB_USER \
   --gitsync-bundle https://github.com/witwave-ai/witwave.git@main:.agents/self/mira \
   --gitsync-secret-from-env GITSYNC_USERNAME:GITSYNC_PASSWORD
 ```
 
-Mira is intentionally OpenAI-only in this bootstrap. Her `.witwave/backend.yaml` routes every concern to `openai` with
-model `gpt-5.5`, her primary loaded identity document is `.openai/AGENTS.md`, and her OpenAI skill mirror lives under
-`.openai/skills/`. Keep her `.claude/` folder parked in the repo so she can switch back to Claude later without
-rebuilding her identity from scratch; when one surface changes, keep the other semantically aligned. Her OpenAI backend
-also sets `OPENAI_REASONING_EFFORT=xhigh` for the requested extra-high reasoning posture.
+Mira is intentionally Codex-only in this bootstrap. Her `.witwave/backend.yaml` routes every concern to `codex` with
+model `gpt-5.5`, her primary loaded identity document is `.codex/AGENTS.md`, and her Codex skill mirror lives under
+`.codex/skills/`. Keep her `.claude/` folder parked in the repo so she can switch back to Claude later without
+rebuilding her identity from scratch; when one surface changes, keep the other semantically aligned. Her Codex backend
+also sets `CODEX_REASONING_EFFORT=xhigh` for the requested extra-high reasoning posture and roots the Codex memory tools
+at `/workspaces/witwave-self/memory/agents/mira`.
 
 After Mira is deployed, run her `platform-health` skill once manually before relying on the hourly heartbeat. The first
 run should report whether the deployed container actually has the read-only tools it needs (`ww`, `kubectl`, `gh`),

@@ -1,8 +1,8 @@
 # witwave
 
-Helm chart for the witwave platform — witwave harness and backends (claude, openai, gemini, echo), MCP tool servers, and
-optional dashboard. Deploys one pod per named agent with the harness + backends + git-sync sidecars colocated; MCP tools
-run as shared cluster-wide Deployments. Released to GHCR on every tag alongside `witwave-operator`.
+Helm chart for the witwave platform — witwave harness and backends (claude, openai, codex, gemini, echo), MCP tool
+servers, and optional dashboard. Deploys one pod per named agent with the harness + backends + git-sync sidecars
+colocated; MCP tools run as shared cluster-wide Deployments. Released to GHCR on every tag alongside `witwave-operator`.
 
 ## Prerequisites
 
@@ -321,7 +321,8 @@ mcpTools:
     serviceAccountName: mcp-helm # BYO SA with helm-release RBAC
 ```
 
-In each agent's `.claude/mcp.json` / `.openai/mcp.json` / `.gemini/mcp.json`, reference the tools by URL:
+In each agent's `.claude/mcp.json` / `.openai/mcp.json` / `.codex/mcp.json` / `.gemini/mcp.json`, reference the tools by
+URL:
 
 ```json
 {

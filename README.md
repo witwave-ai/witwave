@@ -16,7 +16,8 @@ agents.
 What Witwave includes:
 
 - A **harness** that routes work, schedules heartbeats/jobs/tasks, handles triggers, and chains continuations.
-- **Backend agents** for Claude, OpenAI, Gemini, and a zero-dependency `echo` stub for onboarding and smoke tests.
+- **Backend agents** for Claude, OpenAI, Codex, Gemini, and a zero-dependency `echo` stub for onboarding and smoke
+  tests.
 - Shared **MCP tools** for Kubernetes, Helm, and Prometheus.
 - A Kubernetes **operator**, Helm charts, and the `ww` CLI for installing and managing agents.
 - Persistent per-agent identity, memory, conversation logs, metrics, traces, and workspace bindings.
@@ -32,9 +33,9 @@ project goal rather than a convention.
 
 Built on the [A2A protocol](https://a2a-protocol.org). Each named agent is a set of containers: a **harness**
 infrastructure layer (A2A relay, heartbeat scheduler, job scheduler) and one or more **backend agent** containers that
-do the actual LLM work (Claude Agent SDK via `claude`, OpenAI Agents SDK via `openai`, Google Gemini SDK via `gemini`). A
-fourth backend, `echo`, ships as a zero-dependency stub — it returns a canned response quoting the caller's prompt and
-is the hello-world default for `ww agent create` when no API key is configured.
+do the actual LLM work (Claude Agent SDK via `claude`, OpenAI Agents SDK via `openai`, Codex-native Node backend via
+`codex`, Google Gemini SDK via `gemini`). The `echo` backend ships as a zero-dependency stub — it returns a canned
+response quoting the caller's prompt and is the hello-world default for `ww agent create` when no API key is configured.
 
 Multiple agents can collaborate as a team, but the named agent (harness + its backend agents) is the deployable unit.
 
@@ -44,9 +45,9 @@ Three tiers to keep straight:
 
 1. **A2A agent** — any server that publishes `/.well-known/agent.json`. The protocol's unit of identity. Both the
    harness and each backend agent qualify.
-2. **Backend agent** — the LLM-wrapping worker. One image per LLM family (`claude`, `openai`, `gemini`), plus the
-   zero-dependency `echo` stub. Each owns its own session state, memory, conversation log, and metrics, and is callable
-   standalone over A2A.
+2. **Backend agent** — the LLM-wrapping worker. One image per backend family (`claude`, `openai`, `codex`, `gemini`),
+   plus the zero-dependency `echo` stub. Each owns its own session state, memory, conversation log, and metrics, and is
+   callable standalone over A2A.
 3. **Named agent** — the deployable unit (`iris`, `nova`, `kira`, …). From outside it presents as a single A2A agent via
    the harness's endpoint. Inside, the harness orchestrates one or more backend agents using routing rules in
    `.witwave/backend.yaml`.
@@ -76,7 +77,8 @@ agents and you have a scheduler with nothing to dispatch to — no intelligence.
 | -------------------- | -------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Harness**          | `harness/`                 | Orchestrator agent  | Scheduling, triggering, chaining, A2A relay. No LLM of its own.                                                                                      |
 | **Claude backend**   | `backends/claude/`         | Backend agent       | Executes prompts via the Claude Agent SDK.                                                                                                           |
-| **OpenAI backend**    | `backends/openai/`          | Backend agent       | Executes prompts via the OpenAI Agents SDK. Supports web search and headless browser via Playwright.                                                 |
+| **OpenAI backend**   | `backends/openai/`         | Backend agent       | Executes prompts via the OpenAI Agents SDK. Supports web search and headless browser via Playwright.                                                 |
+| **Codex backend**    | `backends/codex/`          | Backend agent       | Node.js backend reserved for Codex-optimized coding-agent execution through the Responses API.                                                       |
 | **Gemini backend**   | `backends/gemini/`         | Backend agent       | Executes prompts via the Google Gemini SDK.                                                                                                          |
 | **Echo backend**     | `backends/echo/`           | Backend agent       | Zero-dependency stub. Returns a canned response quoting the prompt. Hello-world default + reference.                                                 |
 | **MCP tools**        | `tools/`                   | Tool infrastructure | `mcp-kubernetes`, `mcp-helm`, `mcp-prometheus` — shared MCP servers backends opt into.                                                               |
@@ -132,7 +134,7 @@ in [`operator/README.md`](operator/README.md#the-witwaveworkspace-resource).
 Operational details that complement the Agent Model above:
 
 - Each named agent has its own identity, memory, and configuration — none baked into the image. Behavioral instructions
-  for each backend agent come from a mounted file (`CLAUDE.md` for claude, `AGENTS.md` for openai, `GEMINI.md` for
+  for each backend agent come from a mounted file (`CLAUDE.md` for claude, `AGENTS.md` for openai/codex, `GEMINI.md` for
   gemini), and A2A identity comes from a mounted `agent-card.md`.
 - Every container (harness and each backend agent) exposes `/health` for probes and `/metrics` for Prometheus on a
   dedicated port (9000 by default) alongside its A2A endpoint.
@@ -142,6 +144,7 @@ Operational details that complement the Agent Model above:
 - Docker
 - A Claude Code OAuth token (`claude setup-token`) or Anthropic API key (for `claude`)
 - An OpenAI API key (for `openai`)
+- An OpenAI API key with Codex model access (for `codex`)
 - A Gemini API key (for `gemini`)
 - Nothing extra for `echo` — the stub backend runs without credentials or network access
 
@@ -154,7 +157,8 @@ on every release tag.
 | ---------------- | ------------------------------------------------- |
 | `harness`        | `ghcr.io/witwave-ai/images/harness:latest`        |
 | `claude`         | `ghcr.io/witwave-ai/images/claude:latest`         |
-| `openai`          | `ghcr.io/witwave-ai/images/openai:latest`          |
+| `openai`         | `ghcr.io/witwave-ai/images/openai:latest`         |
+| `codex`          | `ghcr.io/witwave-ai/images/codex:latest`          |
 | `gemini`         | `ghcr.io/witwave-ai/images/gemini:latest`         |
 | `echo`           | `ghcr.io/witwave-ai/images/echo:latest`           |
 | `backend-base`   | `ghcr.io/witwave-ai/images/backend-base:latest`   |
@@ -237,6 +241,7 @@ Pull published images:
 docker pull ghcr.io/witwave-ai/images/harness:latest
 docker pull ghcr.io/witwave-ai/images/claude:latest
 docker pull ghcr.io/witwave-ai/images/openai:latest
+docker pull ghcr.io/witwave-ai/images/codex:latest
 docker pull ghcr.io/witwave-ai/images/gemini:latest
 docker pull ghcr.io/witwave-ai/images/echo:latest
 docker pull ghcr.io/witwave-ai/images/backend-base:latest
@@ -249,6 +254,7 @@ docker build -f images/backend-base/Dockerfile -t backend-base:latest .
 docker build -f harness/Dockerfile -t harness:latest .
 docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/claude/Dockerfile -t claude:latest .
 docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/openai/Dockerfile -t openai:latest .
+docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/codex/Dockerfile -t codex:latest .
 docker build --build-arg BACKEND_BASE_IMAGE=backend-base:latest -f backends/gemini/Dockerfile -t gemini:latest .
 docker build -f backends/echo/Dockerfile -t echo:latest .
 ```
@@ -337,12 +343,16 @@ Each agent directory contains:
 ├── .witwave/              # Runtime config (agent-card.md, backend.yaml, HEARTBEAT.md, jobs/)
 ├── .claude/           # Claude backend config (CLAUDE.md, mcp.json, settings.json, skills/)
 ├── .openai/            # OpenAI backend config (AGENTS.md, config.toml)
+├── .codex/            # Codex backend config (AGENTS.md, config.toml)
 ├── .gemini/           # Gemini backend config (GEMINI.md)
 ├── logs/              # harness logs (runtime, not committed)
 ├── claude/         # Claude backend instance
 │   ├── logs/          # Conversation log (runtime, not committed)
 │   └── memory/        # Persistent memory (runtime, not committed)
 ├── openai/          # OpenAI backend instance
+│   ├── logs/
+│   └── memory/
+├── codex/          # Codex backend instance
 │   ├── logs/
 │   └── memory/
 └── gemini/         # Gemini backend instance
@@ -364,8 +374,11 @@ backend:
     - id: openai
       url: http://localhost:8011
 
-    - id: gemini
+    - id: codex
       url: http://localhost:8012
+
+    - id: gemini
+      url: http://localhost:8013
 
   routing:
     default: claude # fallback backend when no per-concern override matches
@@ -420,13 +433,16 @@ Summarise the day's key events.
 ```
 
 The value must be a positive integer. Invalid values are logged and ignored. The limit applies per-dispatch (not across
-sessions), so each job/task/trigger invocation gets a fresh budget. All three backend types enforce it:
+sessions), so each job/task/trigger invocation gets a fresh budget. The streaming SDK backends currently enforce it:
 
 | Backend  | Token source                                       |
 | -------- | -------------------------------------------------- |
 | `claude` | `get_context_usage()` after each assistant turn    |
-| `openai`  | `event.data.usage.total_tokens` on response events |
+| `openai` | `event.data.usage.total_tokens` on response events |
 | `gemini` | `chunk.usage_metadata.total_token_count` per chunk |
+
+`codex` is a newer backend scaffold; token-budget enforcement belongs on its parity backlog as the Codex execution loop
+matures.
 
 ## Adding an Agent
 
@@ -440,8 +456,8 @@ sessions), so each job/task/trigger invocation gets a fresh budget. All three ba
    identity and role
 
 3. Update the backend instruction files: `CLAUDE.md` (at `/home/agent/.claude/CLAUDE.md`), `AGENTS.md` (at
-   `/home/agent/.openai/AGENTS.md`), and `GEMINI.md` (at `/home/agent/.gemini/GEMINI.md`) with backend-specific
-   behavioral instructions
+   `/home/agent/.openai/AGENTS.md` or `/home/agent/.codex/AGENTS.md`), and `GEMINI.md` (at
+   `/home/agent/.gemini/GEMINI.md`) with backend-specific behavioral instructions
 
 4. Update `.agents/self/<name>/.witwave/backend.yaml` with the new agent's backend service names and URLs
 
@@ -494,20 +510,22 @@ Each backend container additionally exposes:
   boot-degraded state (claude #1608, openai+gemini #1672). Operators using K8s `readinessProbe` should point at
   `/health/ready`, not `/health`.
 - `GET /metrics` — Prometheus metrics (when `METRICS_ENABLED` is set)
-- `POST /mcp` — MCP JSON-RPC server (`initialize`, `tools/list`, `tools/call` with a single `ask_agent` tool); allows
+- `POST /mcp` — MCP JSON-RPC server (`initialize`, `tools/list`, `tools/call` with a backend-specific ask tool); allows
   MCP hosts (Claude Desktop, Cursor, VS Code extensions) to invoke the agent as a tool without going through harness.
-  **All three backends require a bearer token** (`CONVERSATIONS_AUTH_TOKEN`) on `/mcp` (#510, #516, #518); the shared
-  token guard also gates `/conversations` and `/trace`. If the env var is left empty the backend logs a startup warning
-  (#517) — set a non-empty token in production. The `session_id` attached to `/mcp` requests is routed through
-  `shared/session_binding.derive_session_id` with a bearer-token fingerprint before lookup/insert on every backend (#867
-  claude, #929 openai, #935 gemini, #941 shared path) so a caller cannot hijack another caller's session; set
-  `SESSION_ID_SECRET` in production to HMAC-derive the bound ID.
+  LLM-backed backends require a bearer token (`CONVERSATIONS_AUTH_TOKEN`) on `/mcp` (#510, #516, #518); the shared token
+  guard also gates `/conversations` and `/trace`. If the env var is left empty the backend logs a startup warning (#517)
+  or refuses protected endpoints unless `CONVERSATIONS_AUTH_DISABLED=true` is set for local/dev use. The Python SDK
+  backends bind `session_id` through `shared/session_binding.derive_session_id` with a bearer-token fingerprint before
+  lookup/insert (#867 claude, #929 openai, #935 gemini, #941 shared path); set `SESSION_ID_SECRET` in production to
+  HMAC-derive the bound ID.
 
 ## Memory
 
 Each backend agent manages its own memory at `.agents/<env>/<name>/<backend>/memory/`. For `claude` and `openai`, memory
-files are markdown documents. For `gemini`, conversation history is stored as JSON in `memory/sessions/`. Memory files
-are not committed to source control. harness has no memory layer of its own.
+files are markdown documents. The `codex` scaffold exposes bounded memory tools rooted at `CODEX_MEMORY_ROOT` (default
+`/home/agent/.codex/memory`) and reserves `.codex/sessions` for richer session parity as the execution loop matures. For
+`gemini`, conversation history is stored as JSON in `memory/sessions/`. Memory files are not committed to source
+control. harness has no memory layer of its own.
 
 Workspace-backed memory is a separate shared volume. When a workspace declares a `memory` volume, bound agents see it at
 `/workspaces/<workspace-name>/memory`; the self team uses `witwave-self/memory`, and the test team mirrors the same
@@ -520,6 +538,7 @@ namespace/index contract under `witwave-test/memory`.
 | claude  | Claude Max (OAuth) | `CLAUDE_CODE_OAUTH_TOKEN`            |
 | claude  | Anthropic API key  | `ANTHROPIC_API_KEY`                  |
 | openai  | OpenAI API key     | `OPENAI_API_KEY`                     |
+| codex   | OpenAI API key     | `OPENAI_API_KEY`                     |
 | gemini  | Gemini API key     | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
 
 ## Security
@@ -570,7 +589,7 @@ conversation-log redaction rules (idempotent merge-spans with UUID / OTel-trace 
 | `BACKEND_CONVERSATIONS_AUTH_TOKEN`          | _(unset)_                           | Bearer token forwarded to backend `/conversations`, `/trace`, and `/api/traces` endpoints (set if backends require auth)                                                                                                                 |
 | `TRIGGERS_AUTH_TOKEN`                       | _(unset)_                           | Bearer token required for inbound trigger requests (fallback when no per-trigger HMAC secret is set)                                                                                                                                     |
 | `HOOK_EVENTS_AUTH_TOKEN`                    | _(unset)_                           | Canonical bearer token on `/internal/events/hook-decision` (bound to the metrics listener, #924). `HARNESS_EVENTS_AUTH_TOKEN` is a back-compat alias that logs a deprecation warning when used alone (#859). Unset = refuse (#712, #933) |
-| `SESSION_ID_SECRET`                         | _(unset — permissive)_              | HMAC key for `shared/session_binding.derive_session_id` used on `/mcp` session-id binding across all three backends (#867/#929/#935/#941). Leave unset only in single-tenant dev; set to a 256-bit random value in production            |
+| `SESSION_ID_SECRET`                         | _(unset — permissive)_              | HMAC key for `shared/session_binding.derive_session_id` used on `/mcp` session-id binding across SDK backends (#867/#929/#935/#941). Leave unset only in single-tenant dev; set to a 256-bit random value in production                  |
 | `ADHOC_RUN_AUTH_TOKEN`                      | _(unset)_                           | Bearer token required for `POST /jobs/<name>/run`, `/tasks/<name>/run`; unset = refuse (#700)                                                                                                                                            |
 | `CORS_ALLOW_ORIGINS`                        | _(unset)_                           | Comma-separated list of allowed CORS origins; when unset, all cross-origin requests are denied (logs a warning)                                                                                                                          |
 | `CORS_ALLOW_WILDCARD`                       | `false`                             | Explicit acknowledgement for `CORS_ALLOW_ORIGINS=*`; template refuses the wildcard otherwise (#701)                                                                                                                                      |
@@ -591,27 +610,31 @@ conversation-log redaction rules (idempotent merge-spans with UUID / OTel-trace 
 | `A2A_BACKEND_MAX_RETRIES`                   | `3`                                 | Maximum retry attempts for transient backend errors (429, 502, 503, 504, connection errors); must be >= 1                                                                                                                                |
 | `A2A_BACKEND_RETRY_BACKOFF`                 | `1.0`                               | Base backoff in seconds for retry delay (exponential with jitter); multiplied by 2^attempt                                                                                                                                               |
 
-### Backend (claude / openai / gemini) environment variables
+### Backend (claude / openai / codex / gemini) environment variables
 
-| Variable                       | Default                   | Description                                                                                                                                            |
-| ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `AGENT_NAME`                   | `claude`/`openai`/`gemini` | Backend instance name (e.g. `iris-claude`)                                                                                                             |
-| `AGENT_OWNER`                  | _(same as `AGENT_NAME`)_  | Named agent this backend belongs to (e.g. `iris`); used in metric labels                                                                               |
-| `AGENT_ID`                     | `claude`/`openai`/`gemini` | Backend slot identifier (e.g. `claude`); used in metric labels                                                                                         |
-| `AGENT_URL`                    | `http://localhost:8000/`  | Public A2A endpoint URL for the agent card                                                                                                             |
-| `BACKEND_PORT`                 | `8000`                    | HTTP port the backend listens on (internal)                                                                                                            |
-| `METRICS_ENABLED`              | _(unset)_                 | Set to any non-empty value to expose `/metrics`                                                                                                        |
-| `METRICS_PORT`                 | `9000`                    | Dedicated port the metrics listener binds to (#643; same semantics as harness)                                                                         |
-| `CONVERSATIONS_AUTH_TOKEN`     | _(unset — warn on empty)_ | Bearer token required to access `/conversations`, `/trace`, `/mcp`, and `/api/traces[/<id>]` on all three LLM-backed backends (#510, #516, #517, #518) |
-| `CONVERSATIONS_AUTH_DISABLED`  | _(unset)_                 | Explicit escape hatch to run without the auth guard; loud startup log for visibility (#718). Intended for local dev only.                              |
-| `LOG_REDACT`                   | _(unset)_                 | When truthy, conversation and response logs redact user-prompt / agent-response content (#714)                                                         |
-| `GEMINI_MAX_HISTORY_BYTES`     | _(gemini only)_           | Byte ceiling on the JSON session-history file gemini persists per session; older turns are truncated to fit                                            |
-| `MCP_ALLOWED_COMMANDS`         | _(per-backend default)_   | Comma-separated allow-list of basenames for stdio entries parsed from `mcp.json`                                                                       |
-| `MCP_ALLOWED_COMMAND_PREFIXES` | _(per-backend default)_   | Comma-separated allow-list of absolute-path prefixes for stdio entries                                                                                 |
-| `MCP_ALLOWED_CWD_PREFIXES`     | _(per-backend default)_   | Comma-separated allow-list of working-directory prefixes for stdio entries (rejections counted on `backend_mcp_command_rejected_total`)                |
-| `TASK_STORE_PATH`              | _(unset)_                 | Path for SQLite A2A task store; defaults to in-memory (state lost on restart)                                                                          |
-| `WORKER_MAX_RESTARTS`          | `5`                       | Consecutive crash limit before a critical worker marks the backend not-ready                                                                           |
-| `LOG_PROMPT_MAX_BYTES`         | `200`                     | Maximum bytes of the prompt logged at INFO level; `0` suppresses prompt logging entirely                                                               |
+| Variable                       | Default                            | Description                                                                                                                                      |
+| ------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AGENT_NAME`                   | `claude`/`openai`/`codex`/`gemini` | Backend instance name (e.g. `iris-claude`)                                                                                                       |
+| `AGENT_OWNER`                  | _(same as `AGENT_NAME`)_           | Named agent this backend belongs to (e.g. `iris`); used in metric labels                                                                         |
+| `AGENT_ID`                     | `claude`/`openai`/`codex`/`gemini` | Backend slot identifier (e.g. `claude`); used in metric labels                                                                                   |
+| `AGENT_URL`                    | `http://localhost:8000/`           | Public A2A endpoint URL for the agent card                                                                                                       |
+| `BACKEND_PORT`                 | `8000`                             | HTTP port the backend listens on (internal)                                                                                                      |
+| `METRICS_ENABLED`              | _(unset)_                          | Set to any non-empty value to expose `/metrics`                                                                                                  |
+| `METRICS_PORT`                 | `9000`                             | Dedicated port the metrics listener binds to (#643; same semantics as harness)                                                                   |
+| `CONVERSATIONS_AUTH_TOKEN`     | _(unset — warn on empty)_          | Bearer token required to access `/conversations`, `/trace`, `/mcp`, and `/api/traces[/<id>]` on all LLM-backed backends (#510, #516, #517, #518) |
+| `CONVERSATIONS_AUTH_DISABLED`  | _(unset)_                          | Explicit escape hatch to run without the auth guard; loud startup log for visibility (#718). Intended for local dev only.                        |
+| `LOG_REDACT`                   | _(unset)_                          | When truthy, conversation and response logs redact user-prompt / agent-response content (#714)                                                   |
+| `GEMINI_MAX_HISTORY_BYTES`     | _(gemini only)_                    | Byte ceiling on the JSON session-history file gemini persists per session; older turns are truncated to fit                                      |
+| `MCP_ALLOWED_COMMANDS`         | _(per-backend default)_            | Comma-separated allow-list of basenames for stdio entries parsed from `mcp.json`                                                                 |
+| `MCP_ALLOWED_COMMAND_PREFIXES` | _(per-backend default)_            | Comma-separated allow-list of absolute-path prefixes for stdio entries                                                                           |
+| `MCP_ALLOWED_CWD_PREFIXES`     | _(per-backend default)_            | Comma-separated allow-list of working-directory prefixes for stdio entries (rejections counted on `backend_mcp_command_rejected_total`)          |
+| `TASK_STORE_PATH`              | _(unset)_                          | Path for SQLite A2A task store; defaults to in-memory (state lost on restart)                                                                    |
+| `WORKER_MAX_RESTARTS`          | `5`                                | Consecutive crash limit before a critical worker marks the backend not-ready                                                                     |
+| `LOG_PROMPT_MAX_BYTES`         | `200`                              | Maximum bytes of the prompt logged at INFO level; `0` suppresses prompt logging entirely                                                         |
+
+Codex-specific runtime knobs include `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, `CODEX_STUB_MODE`, `CODEX_SHELL_ENABLED`,
+`CODEX_MEMORY_ENABLED`, and `CODEX_MEMORY_ROOT`. `CODEX_MEMORY_ROOT` bounds the Codex memory file tools; paths passed to
+those tools are relative to that root and cannot escape it.
 
 ## Metrics
 

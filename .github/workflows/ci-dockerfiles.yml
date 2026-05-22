@@ -12,6 +12,7 @@ on:
     paths:
       - "**/Dockerfile"
       - ".github/workflows/ci-dockerfiles.yml"
+      - "backends/**/package*.json"
       - "backends/**/requirements.txt"
       - "clients/dashboard/package*.json"
       - "clients/ww/go.mod"
@@ -26,6 +27,7 @@ on:
     paths:
       - "**/Dockerfile"
       - ".github/workflows/ci-dockerfiles.yml"
+      - "backends/**/package*.json"
       - "backends/**/requirements.txt"
       - "clients/dashboard/package*.json"
       - "clients/ww/go.mod"
@@ -84,7 +86,7 @@ jobs:
             file: backends/openai/Dockerfile
             context: .
           - image: codex
-            file: backends/openai/Dockerfile
+            file: backends/codex/Dockerfile
             context: .
           - image: gemini
             file: backends/gemini/Dockerfile

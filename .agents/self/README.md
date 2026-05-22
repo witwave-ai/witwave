@@ -156,11 +156,12 @@ observation**. Build/release infrastructure and agent runtime lifecycle are tigh
 who notices a failed release should also understand whether the operator, pods, storage, and rollouts are healthy enough
 to recover. Mira does not own the repair loop; she owns evidence quality and the Zora handoff.
 
-Mira is the first self-team agent configured to run actively on OpenAI rather than Claude. Her active backend routes
-through `openai` with model `gpt-5.5` and `OPENAI_REASONING_EFFORT=xhigh`; her loaded OpenAI identity lives in
-`.agents/self/mira/.openai/AGENTS.md`, and her OpenAI skill mirror lives in `.agents/self/mira/.openai/skills/`. Her
-`.claude/` folder remains in the repo as a parked fallback so the team can switch back later while keeping the two
-identity and skill surfaces semantically aligned. (`.agents/self/mira/`)
+Mira is the first self-team agent configured to run actively on the new Codex backend rather than Claude. Her active
+backend routes through `codex` with model `gpt-5.5` and `CODEX_REASONING_EFFORT=xhigh`; her loaded Codex identity lives
+in `.agents/self/mira/.codex/AGENTS.md`, her Codex skill mirror lives in `.agents/self/mira/.codex/skills/`, and her
+Codex memory tools are rooted at `/workspaces/witwave-self/memory/agents/mira`. Her `.claude/` folder remains in the
+repo as a parked fallback so the team can switch back later while keeping the two identity and skill surfaces
+semantically aligned. (`.agents/self/mira/`)
 
 ## Topology
 
@@ -289,8 +290,8 @@ the team has months of state to reason over and the platform has real users with
 ## Reading further
 
 - Per-agent identity + skills: `.agents/self/<name>/.claude/CLAUDE.md` and `.agents/self/<name>/.claude/skills/` for
-  Claude-backed agents; `.agents/self/<name>/.openai/AGENTS.md` and `.agents/self/<name>/.openai/skills/` for OpenAI-backed
-  agents when a skill mirror exists.
+  Claude-backed agents; `.agents/self/<name>/.openai/AGENTS.md` or `.agents/self/<name>/.codex/AGENTS.md` plus the
+  matching `skills/` mirror for OpenAI/Codex-backed agents when one exists.
 - Per-agent public capability surface: `.agents/self/<name>/.witwave/agent-card.md`
 - Bootstrap (deploying the team to a cluster): `.agents/self/bootstrap.md`
 - Operational runbooks: `docs/runbooks/`

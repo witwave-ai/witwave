@@ -17,7 +17,8 @@ about:
 
 **Skill:** <skill name> v<skill version>
 
-**Component:** harness | claude | openai | gemini | ui | operator | charts | _(leave blank if cross-cutting or other)_
+**Component:** harness | claude | openai | codex | gemini | ui | operator | charts | _(leave blank if cross-cutting or
+other)_
 
 **Category:** security | reliability | maintainability | performance | observability
 

@@ -1,0 +1,78 @@
+name: CI — Codex Backend
+
+on:
+  pull_request:
+    paths:
+      - "backends/codex/**"
+      - ".github/workflows/ci-codex-backend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backends/codex/**"
+      - ".github/workflows/ci-codex-backend.yml"
+
+concurrency:
+  group: ci-codex-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: node test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backends/codex
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backends/codex/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build runtime image
+        working-directory: ${{ github.workspace }}
+        run:
+          docker build --build-arg BACKEND_BASE_IMAGE=ghcr.io/witwave-ai/images/backend-base:latest -f
+          backends/codex/Dockerfile -t codex:ci .
+
+      - name: Smoke runtime image
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          cid="$(docker run -d --rm \
+            -e CODEX_STUB_MODE=true \
+            -e CODEX_SHELL_ENABLED=true \
+            -e METRICS_ENABLED=true \
+            -e METRICS_PORT=9000 \
+            -p 18081:8000 \
+            -p 19081:9000 \
+            codex:ci)"
+          cleanup() { docker rm -f "$cid" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18081/health >/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+
+          curl -fsS http://127.0.0.1:18081/health/ready >/dev/null
+          curl -fsS -X POST http://127.0.0.1:18081/ \
+            -H "content-type: application/json" \
+            --data '{"jsonrpc":"2.0","id":"ci","method":"message/send","params":{"message":{"parts":[{"kind":"text","text":"hello"}]}}}' \
+            | node -e 'let data=""; process.stdin.on("data", c => data += c); process.stdin.on("end", () => { const j = JSON.parse(data); const text = j.result?.parts?.[0]?.text || ""; if (!text.includes("CODEX_STUB_MODE")) process.exit(1); });'
+          curl -fsS http://127.0.0.1:19081/metrics | grep 'backend_up{.*backend="codex"' >/dev/null

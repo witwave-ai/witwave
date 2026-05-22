@@ -35,7 +35,7 @@ import (
 // are scraped, not browsed.
 const HarnessHTTPPort = 8000
 
-// BackendHTTPPort is the claude/openai/gemini backend container's app
+// BackendHTTPPort is the claude/openai/codex/gemini backend container's app
 // listener — same pod as the harness, different port. Serves the
 // per-session SSE endpoint /api/sessions/{id}/stream that backs
 // `ww conversation show --follow` (the harness only fans out aggregate

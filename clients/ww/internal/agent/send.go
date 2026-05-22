@@ -46,8 +46,9 @@ type SendOptions struct {
 
 // a2aRequest / a2aResponse mirror the narrow subset of the A2A JSON-RPC
 // surface that `message/send` uses today. We don't build a full A2A
-// client here — the echo smoke test and claude/openai/gemini are served
-// by the A2A SDK, so there's a canonical wire format we can depend on.
+// client here — the echo smoke test plus claude/openai/codex/gemini use
+// the same narrow message/send shape, so there's a canonical wire format
+// we can depend on.
 type a2aRequest struct {
 	JSONRPC string            `json:"jsonrpc"`
 	ID      string            `json:"id"`

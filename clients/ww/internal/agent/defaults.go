@@ -65,9 +65,7 @@ const (
 	BackendEcho   = "echo"
 	BackendClaude = "claude"
 	BackendOpenAI = "openai"
-	// BackendCodex is a compatibility alias for the pre-rename OpenAI
-	// Agents SDK backend. Reserve the canonical codex name for the future
-	// Codex-native SDK backend once it lands.
+	// BackendCodex is the Codex-native coding-agent backend.
 	BackendCodex  = "codex"
 	BackendGemini = "gemini"
 )

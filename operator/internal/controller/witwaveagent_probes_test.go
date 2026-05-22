@@ -54,6 +54,13 @@ func TestBuildDeploymentBackendThreeProbeModel(t *testing.T) {
 					},
 				},
 				{
+					Name: "codex",
+					Image: witwavev1alpha1.ImageSpec{
+						Repository: "ghcr.io/witwave-ai/images/codex",
+						Tag:        "test",
+					},
+				},
+				{
 					Name: "gemini",
 					Image: witwavev1alpha1.ImageSpec{
 						Repository: "ghcr.io/witwave-ai/images/gemini",
@@ -82,7 +89,7 @@ func TestBuildDeploymentBackendThreeProbeModel(t *testing.T) {
 		byName[c.Name] = i
 	}
 
-	for _, name := range []string{"claude", "openai", "gemini"} {
+	for _, name := range []string{"claude", "openai", "codex", "gemini"} {
 		idx, ok := byName[name]
 		if !ok {
 			t.Fatalf("%s container missing from deployment", name)

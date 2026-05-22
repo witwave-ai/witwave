@@ -36,7 +36,7 @@ func describeCredSource(auth GitAuthResolver, resolvedSecret string) string {
 
 // pickBackendsForMappings returns the set of backend names that should
 // receive their per-backend `.<backend>/` gitMapping. Every known
-// backend (echo/claude/openai/gemini) gets one if it's present on the
+// backend (echo/claude/openai/codex/gemini) gets one if it's present on the
 // agent; unknown backends are surfaced so the user isn't silently
 // left with no sync coverage on a custom backend.
 func pickBackendsForMappings(backends []map[string]interface{}) ([]string, error) {

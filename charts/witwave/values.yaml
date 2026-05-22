@@ -1073,7 +1073,7 @@ backends:
 # Service in the release namespace, listening on port 8000 with
 # FastMCP's streamable-http transport. Agent backends reach them by URL
 # (http://<release>-mcp-<name>:8000) configured in each backend's
-# `.claude/mcp.json` / `.openai/mcp.json` / `.gemini/mcp.json`. This
+# `.claude/mcp.json` / `.openai/mcp.json` / `.codex/mcp.json` / `.gemini/mcp.json`. This
 # matches the architectural intent in AGENTS.md that MCP components are
 # independently deployable and shared across agents.
 #
@@ -1500,8 +1500,12 @@ agents:
         # #              SESSION_STORE_DIR (session JSON directory; default /home/agent/.gemini/memory/sessions)
         # #              MAX_SESSIONS (LRU cache size; default 10000)
         # #   claude: LOG_PROMPT_MAX_BYTES (max bytes of prompt logged at INFO; default 200; 0 = suppress)
-        # #   openai: OPENAI_MODEL (model override; default gpt-5.5; CODEX_MODEL is a legacy alias)
+        # #   openai: OPENAI_MODEL (model override; default gpt-5.5)
         # #           OPENAI_REASONING_EFFORT (minimal/low/medium/high/xhigh)
+        # #   codex: CODEX_MODEL (model override; default gpt-5.5)
+        # #          CODEX_REASONING_EFFORT (minimal/low/medium/high/xhigh)
+        # #          CODEX_STUB_MODE (true for offline smoke, false for API execution)
+        # #          CODEX_MEMORY_ROOT (safe memory-tool root; default /home/agent/.codex/memory)
         # env:
         #   - name: GEMINI_MAX_HISTORY_TURNS
         #     value: "100"
@@ -1548,7 +1552,7 @@ agents:
         #     - subPath: backups
         #       mountPath: /home/agent/.claude/backups
         #     - subPath: memory
-        #       mountPath: /home/agent/.claude/memory   # or .openai/memory / .gemini/memory for those backends
+        #       mountPath: /home/agent/.claude/memory   # or .openai/memory / .codex/memory / .gemini/memory
         #     - subPath: logs
         #       mountPath: /home/agent/logs             # conversation.jsonl, tool-activity.jsonl
         #     - subPath: state

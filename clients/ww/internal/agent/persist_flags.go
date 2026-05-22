@@ -52,7 +52,7 @@ type BackendStorageSpec struct {
 //   - echo:   1Gi  — symbolic mount; echo writes nothing real
 //   - claude: 10Gi — projects/sessions/backups/memory/logs accumulate
 //   - openai: 5Gi  — memory + sessions + logs, lighter footprint
-//   - codex:  5Gi  — legacy alias for openai until the Codex-native backend lands
+//   - codex:  5Gi  — Codex instructions, session state, memory, and logs
 //   - gemini: 5Gi  — JSON session store + logs grow with conversation length
 var BackendStorageSizeDefaults = map[string]string{
 	"echo":   "1Gi",
@@ -107,7 +107,7 @@ var BackendStoragePresets = map[string][]BackendStorageMount{
 		// here is a symbolic convention so `--persist` exercises the
 		// mechanic uniformly across backend types — useful for
 		// bootstrap walkthroughs that want to verify the per-backend
-		// PVC story without dragging in claude/openai/gemini API keys.
+		// PVC story without dragging in claude/openai/codex/gemini API keys.
 		// Path is type-keyed (`/home/agent/.echo/memory`) so two
 		// echo backends in the same agent (echo-1 + echo-2) each get
 		// their own PVC mounted at the same in-container path,

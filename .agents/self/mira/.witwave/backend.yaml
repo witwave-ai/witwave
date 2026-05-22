@@ -1,28 +1,28 @@
 backend:
   agents:
-    - id: openai
+    - id: codex
       url: http://localhost:8001
       model: gpt-5.5
 
   routing:
     default:
-      agent: openai
+      agent: codex
       model: gpt-5.5
     a2a:
-      agent: openai
+      agent: codex
       model: gpt-5.5
     heartbeat:
-      agent: openai
+      agent: codex
       model: gpt-5.5
     job:
-      agent: openai
+      agent: codex
       model: gpt-5.5
     task:
-      agent: openai
+      agent: codex
       model: gpt-5.5
     trigger:
-      agent: openai
+      agent: codex
       model: gpt-5.5
     continuation:
-      agent: openai
+      agent: codex
       model: gpt-5.5

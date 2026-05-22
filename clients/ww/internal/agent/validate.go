@@ -8,9 +8,9 @@ import (
 // Name length cap. Kubernetes limits most object names to 253 chars, but
 // container names (which the operator derives from the agent's name +
 // backend name) cap at 63. A 50-char agent-name ceiling leaves 13 chars
-// for the backend suffix — enough for `-claude` / `-openai` / `-gemini` /
-// `-echo` plus a trailing disambiguator without tripping the container-name
-// limit.
+// for the backend suffix — enough for `-claude` / `-openai` / `-codex` /
+// `-gemini` / `-echo` plus a trailing disambiguator without tripping the
+// container-name limit.
 const maxAgentNameLen = 50
 
 // DNS-1123 label pattern: lowercase alphanumerics and '-', must start and

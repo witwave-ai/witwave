@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/wait-for-sibling-ci
 
-  # Backend base image — shared base for claude/openai/gemini plus analyzer/tooling
+  # Backend base image — shared base for claude/openai/codex/gemini plus analyzer/tooling
   # surface. Backend image builds depend on `merge-backend-base` and receive
   # BACKEND_BASE_IMAGE pointing at the same stripped release version, so a release
   # tag like v0.26.2 builds backends from backend-base:0.26.2 rather than latest.
@@ -214,8 +214,6 @@ jobs:
           - harness
           - claude
           - openai
-          # Compatibility alias while existing agents migrate from the old
-          # Codex-named OpenAI Agents SDK backend.
           - codex
           - gemini
           - echo
@@ -229,7 +227,7 @@ jobs:
           - { image: harness,        file: harness/Dockerfile,           context: .                }
           - { image: claude,         file: backends/claude/Dockerfile,   context: .                }
           - { image: openai,         file: backends/openai/Dockerfile,   context: .                }
-          - { image: codex,          file: backends/openai/Dockerfile,   context: .                }
+          - { image: codex,          file: backends/codex/Dockerfile,    context: .                }
           - { image: gemini,         file: backends/gemini/Dockerfile,   context: .                }
           - { image: echo,           file: backends/echo/Dockerfile,     context: .                }
           - { image: operator,       file: operator/Dockerfile,          context: operator         }
@@ -328,8 +326,6 @@ jobs:
           - harness
           - claude
           - openai
-          # Compatibility alias while existing agents migrate from the old
-          # Codex-named OpenAI Agents SDK backend.
           - codex
           - gemini
           - echo

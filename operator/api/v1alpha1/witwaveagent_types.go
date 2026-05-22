@@ -94,7 +94,7 @@ type ProbesSpec struct {
 
 	// Startup configures the kubelet's startupProbe. The probe targets
 	// /health/start on backend containers that implement the three-probe
-	// model (claude/openai/gemini, post-#1686). The echo backend retains
+	// model (claude/openai/codex/gemini, post-#1686). The echo backend retains
 	// /health-only behaviour and does not get a startupProbe.
 	// +optional
 	Startup *ProbeSpec `json:"startup,omitempty"`
@@ -205,7 +205,7 @@ type BackendStorageSpec struct {
 
 // BackendSpec defines one backend sidecar container.
 type BackendSpec struct {
-	// Name identifies the backend (e.g. claude, openai, gemini, echo). Used as the
+	// Name identifies the backend (e.g. claude, openai, codex, gemini, echo). Used as the
 	// container name and the backend ID in routing. MaxLength caps the
 	// name well under the Kubernetes container-name limit (63) so the
 	// downstream container name `<agent>-<backend>` still fits comfortably
@@ -750,7 +750,7 @@ type WitwaveAgentSpec struct {
 	// +optional
 	PodDisruptionBudget *PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 
-	// Backends lists the backend sidecars (claude, openai, gemini, echo, …).
+	// Backends lists the backend sidecars (claude, openai, codex, gemini, echo, …).
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:MaxItems=50
 	Backends []BackendSpec `json:"backends"`
@@ -1516,7 +1516,7 @@ type MCPToolSpec struct {
 	// #1355 SECURITY NOTE: The cluster-scoped ServiceAccount pattern
 	// (when WitwaveAgent uses an SA with apiserver permissions for MCP
 	// tool access) mounts the SA token into EVERY pod container —
-	// including the backend containers (claude/openai/gemini). A
+	// including the backend containers (claude/openai/codex/gemini). A
 	// prompt-injection compromise of a backend can read
 	// /var/run/secrets/kubernetes.io/serviceaccount/token and make
 	// authenticated apiserver calls directly, bypassing every MCP
