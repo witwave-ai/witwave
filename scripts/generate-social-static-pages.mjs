@@ -51,6 +51,7 @@ function generateWhitepaperPage(paper) {
   const canonicalUrl = `${siteUrl}/whitepapers/${slug}/`;
   const lastmod = paper.updatedAt || paper.lastmod || gitLastModified(paper.sourcePath) || fileLastModified(markdownPath);
   const statusLabel = paper.status && paper.status !== 'published' ? paper.status : '';
+  const themes = normalizeThemes(paper.themes);
   const html = renderPage({
     depth: 2,
     title: `${title} | Witwave`,
@@ -67,6 +68,8 @@ function generateWhitepaperPage(paper) {
         canonicalUrl,
         authorName: 'Witwave',
         dateModified: lastmod,
+        keywords: themes,
+        about: themes.map(themeLabel),
       }),
       breadcrumbSchema([
         ['Home', `${siteUrl}/`],
@@ -92,6 +95,25 @@ function generateWhitepaperPage(paper) {
 
 function isVisibleWhitepaper(paper) {
   return paper.display !== false && paper.status !== 'archived';
+}
+
+function normalizeThemes(themes) {
+  return Array.isArray(themes) ? themes.map(stringify).filter(Boolean) : [];
+}
+
+function themeLabel(theme) {
+  const acronyms = new Map([
+    ['a2a', 'A2A'],
+    ['ai', 'AI'],
+    ['mcp', 'MCP'],
+    ['sdlc', 'SDLC'],
+  ]);
+
+  return theme
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => acronyms.get(part.toLowerCase()) || part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 function generateBlogPostPage(entry) {
@@ -331,7 +353,17 @@ ${body}
   );
 }
 
-function articleSchema({ type, title, description, canonicalUrl, authorName, datePublished, dateModified }) {
+function articleSchema({
+  type,
+  title,
+  description,
+  canonicalUrl,
+  authorName,
+  datePublished,
+  dateModified,
+  keywords = [],
+  about = [],
+}) {
   return compactObject({
     '@type': type,
     '@id': `${canonicalUrl}#article`,
@@ -344,6 +376,8 @@ function articleSchema({ type, title, description, canonicalUrl, authorName, dat
       name: authorName,
     },
     publisher: organizationSchema(),
+    keywords: keywords.length ? keywords.join(', ') : undefined,
+    about: about.length ? about.map((name) => ({ '@type': 'Thing', name })) : undefined,
     datePublished: datePublished || undefined,
     dateModified: dateModified || datePublished || undefined,
     mainEntityOfPage: canonicalUrl,
