@@ -66,7 +66,7 @@
     <link rel="icon" href="/favicon-48x48.png" type="image/png" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <link rel="stylesheet" href="assets/styles.css?v=whitepaper-actions-20260521" />
+    <link rel="stylesheet" href="assets/styles.css?v=paper-path-20260522" />
   </head>
   <body>
     <header class="site-header">
@@ -118,56 +118,59 @@
         </article>
       </section>
 
-      <section class="section-heading">
-        <p class="eyebrow">Start here</p>
-        <h2>Foundational papers</h2>
-        <p>
-          These papers anchor the site: the adoption path for agentic AI in software engineering, the operating model
-          for agentic teams, the tool-boundary architecture that keeps containerized agents practical, and the autonomy
-          boundary that separates commanded assistants from governed agents.
-        </p>
-      </section>
-
-      <section class="paper-grid" aria-label="Foundational whitepapers">
-        <article class="paper-card featured" id="three-phases">
-          <p class="card-kicker">Whitepaper</p>
-          <h3>The Three Phases of Agentic AI Adoption in Software Engineering</h3>
+      <section class="paper-path paper-path-home" aria-labelledby="home-paper-title">
+        <div class="paper-path-header">
+          <p class="eyebrow">Start here</p>
+          <h2 id="home-paper-title">Foundational papers</h2>
           <p>
-            Driven -> Delegated -> Native. A framework for understanding how agents create value in existing lifecycles,
-            and what changes when teams integrate them into the SDLC.
+            These papers anchor the site: the adoption path for agentic AI in software engineering, the operating model
+            for agentic teams, the autonomy boundary that separates commanded assistants from governed agents, and the
+            tool-boundary architecture that keeps containerized agents practical.
           </p>
-          <a href="reader/?paper=three-phases-of-ai-adoption">Read the paper</a>
-        </article>
+          <p>They are living white papers, maintained as agent research and operating patterns evolve.</p>
+        </div>
 
-        <article class="paper-card" id="agentic-team">
-          <p class="card-kicker">Whitepaper</p>
-          <h3>Anatomy of an Agentic Team</h3>
-          <p>
-            A practical model for specialized AI agents, coordination, memory, process improvement, and the human role
-            in an agent-native operating model.
-          </p>
-          <a href="reader/?paper=anatomy-of-an-agentic-team">Read the paper</a>
-        </article>
+        <div class="paper-path-list">
+          <a class="paper-path-item" href="reader/?paper=three-phases-of-ai-adoption">
+            <span class="paper-number">01</span>
+            <span class="paper-path-copy">
+              <span class="card-kicker">Adoption framework</span>
+              <strong>The Three Phases of Agentic AI Adoption in Software Engineering</strong>
+              <span>Driven -> Delegated -> Native: why adoption stalls until agents enter the lifecycle.</span>
+            </span>
+            <span class="paper-path-action">Read</span>
+          </a>
 
-        <article class="paper-card" id="tool-boundaries">
-          <p class="card-kicker">Whitepaper</p>
-          <h3>Tool Boundaries for Containerized Agents</h3>
-          <p>
-            A practical architecture for deciding what belongs in model backends, project toolchain containers, and MCP
-            or external authority gateways.
-          </p>
-          <a href="reader/?paper=tool-boundaries-for-containerized-agents">Read the paper</a>
-        </article>
+          <a class="paper-path-item" href="reader/?paper=anatomy-of-an-agentic-team">
+            <span class="paper-number">02</span>
+            <span class="paper-path-copy">
+              <span class="card-kicker">Operating model</span>
+              <strong>Anatomy of an Agentic Team</strong>
+              <span>How specialized agents coordinate, remember, improve, and keep humans accountable.</span>
+            </span>
+            <span class="paper-path-action">Read</span>
+          </a>
 
-        <article class="paper-card" id="autonomy-boundary">
-          <p class="card-kicker">Whitepaper</p>
-          <h3>The Autonomy Boundary</h3>
-          <p>
-            A standalone argument for why directed agents are commanded, autonomous agents are governed, and autonomy is
-            an operating model rather than a model feature.
-          </p>
-          <a href="reader/?paper=the-autonomy-boundary">Read the paper</a>
-        </article>
+          <a class="paper-path-item" href="reader/?paper=the-autonomy-boundary">
+            <span class="paper-number">03</span>
+            <span class="paper-path-copy">
+              <span class="card-kicker">Autonomy model</span>
+              <strong>The Autonomy Boundary</strong>
+              <span>Why directed agents are commanded, autonomous agents are governed, and both need clarity.</span>
+            </span>
+            <span class="paper-path-action">Read</span>
+          </a>
+
+          <a class="paper-path-item" href="reader/?paper=tool-boundaries-for-containerized-agents">
+            <span class="paper-number">04</span>
+            <span class="paper-path-copy">
+              <span class="card-kicker">Architecture companion</span>
+              <strong>Tool Boundaries for Containerized Agents</strong>
+              <span>Where model backends, project toolchains, and external authority gateways should sit.</span>
+            </span>
+            <span class="paper-path-action">Read</span>
+          </a>
+        </div>
       </section>
 
       <section class="team-preview">

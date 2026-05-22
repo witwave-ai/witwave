@@ -237,7 +237,7 @@ ${escapeScriptJson({
 ${structuredDataHtml.trimEnd()}
     <link rel="alternate" type="application/rss+xml" title="Witwave field notes" href="${siteUrl}/feed.xml" />
     <link rel="icon" href="${prefix}assets/images/witwave-logo-terminal.svg" />
-    <link rel="stylesheet" href="${prefix}assets/styles.css?v=whitepaper-actions-20260521" />
+    <link rel="stylesheet" href="${prefix}assets/styles.css?v=paper-path-20260522" />
   </head>
   <body${bodyClass ? ` class="${escapeAttr(bodyClass)}"` : ''}>
     <header class="site-header">

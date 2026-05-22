@@ -1,6 +1,10 @@
 # Tool Boundaries for Containerized Agents
 
-> Working paper on native tools, MCP tools, and project-specific toolchains for long-running AI agents.
+> A practical architecture for deciding what belongs in model backends, project toolchain containers, and external
+> authority gateways.
+
+_This is a living white paper. It is maintained as agent architectures, research, protocols, and operating patterns
+evolve._
 
 ---
 
@@ -21,6 +25,11 @@ Witwave currently runs three real model backends: Claude, Codex, and Gemini. Eac
 A2A server. The platform also has a shared `backend-base` image that gives those backends a pinned baseline of common
 command-line tools: Go, Node, `kubectl`, `ww`, `gh`, Helm, ruff, shellcheck, hadolint, gitleaks, trivy, and related
 analysis and test tooling.
+
+This paper uses Witwave as the concrete reference implementation, but the boundary applies more broadly to any
+long-running, containerized agent platform. The details will vary by runtime, but the architectural pressure is the
+same: model execution, local project execution, and external authority should not collapse into one container just
+because the agent needs all three.
 
 That baseline is useful. It also raises the next design question: where should project-specific execution live when a
 workspace needs tools beyond the shared platform baseline?
@@ -900,7 +909,7 @@ long-running sidecars.
 
 ---
 
-## Open questions
+## Open design questions
 
 ### Should toolchains be per-agent or per-workspace?
 
@@ -941,6 +950,30 @@ routing should wait until traces show common patterns.
 
 ---
 
+## Evidence and boundaries
+
+This paper is an architectural design argument, not a benchmark result. It makes a narrow claim: containerized agent
+platforms need a stable boundary between model runtimes, project-local execution, and external authority.
+
+The recommendation is grounded in several practical constraints:
+
+- Kubernetes pods are designed for co-located containers that can share storage and network resources, making sidecars a
+  natural fit for tightly coupled support services.
+- MCP provides a standard protocol surface for tool calls, but the protocol does not decide where authority or execution
+  should live.
+- Dev containers show that development environments can be described as reusable containerized tool surfaces, but they
+  do not define an agent execution contract by themselves.
+- Kubernetes RBAC and ServiceAccounts separate having a CLI installed from having permission to use cluster authority.
+- OWASP and NIST guidance both point toward explicit tool permissions, observability, auditability, and least privilege
+  when agents can call tools or execute commands.
+
+The paper intentionally does not claim that every project needs multiple toolchain containers, that every command should
+be MCP-mediated, or that native tools should disappear. It argues for clearer placement. Common platform utilities can
+belong in a shared backend base. Project-specific build and test environments should have a first-class home. External
+systems with credentials and blast radius should be treated as authority boundaries.
+
+---
+
 ## Conclusion
 
 The recommendation is straightforward: make toolchains a first-class architectural layer.
@@ -957,3 +990,25 @@ boundary. The container, credential, and authority model is the boundary.
 That separation lets Witwave grow one layer at a time. Toolchains evolve with projects. Gateways carry external
 authority. Backends remain focused on model work. The agent gets the tools it needs, and the platform keeps a clear
 answer to where those tools belong.
+
+---
+
+## Sources and further reading
+
+- Model Context Protocol.
+  [Base Protocol Overview](https://modelcontextprotocol.io/specification/2024-11-05/basic/index). Useful for grounding
+  MCP as a JSON-RPC protocol surface between clients and servers.
+- Kubernetes. [Pods](https://kubernetes.io/docs/concepts/workloads/pods/). Useful for the co-located container, shared
+  storage, and shared network assumptions behind sidecar toolchains.
+- Kubernetes. [Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/) and
+  [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/). Useful for separating
+  installed tools from Kubernetes API authority.
+- Development Containers. [Development Containers](https://containers.dev/). Useful for the idea that development
+  environments can be represented as reusable container definitions.
+- Open Container Initiative. [Open Container Initiative](https://opencontainers.org/). Useful background for the image,
+  runtime, and distribution standards behind portable containerized execution.
+- OWASP. [MCP Top 10](https://owasp.org/www-project-mcp-top-10/). Useful for MCP-specific risks around secret exposure,
+  scope creep, command execution, authentication, telemetry, shadow servers, and context over-sharing.
+- NIST, 2025.
+  [Lessons Learned from the Consortium: Tool Use in Agent Systems](https://www.nist.gov/news-events/news/2025/08/lessons-learned-consortium-tool-use-agent-systems).
+  Useful for reasoning about tool functionality, access patterns, risk, reliability, monitoring, and autonomy.

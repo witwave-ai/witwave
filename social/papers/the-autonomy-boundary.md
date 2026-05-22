@@ -3,6 +3,9 @@
 > What separates a directed AI assistant from an autonomous agent — and why autonomous agents are governed, not merely
 > commanded.
 
+_This is a living white paper. It is maintained as agent architectures, research, protocols, and operating patterns
+evolve._
+
 ---
 
 ## Executive summary
@@ -591,6 +594,23 @@ Autonomy is not MCP.
 Each of those can support autonomy. None of them defines it.
 
 The defining move is the shift from immediate command to governed operation over time.
+
+---
+
+## Evidence and boundaries
+
+This paper is a synthesis, not a formal standard. It combines older agent theory, modern LLM-agent research, emerging
+agent protocol work, and security guidance around tool use and autonomy.
+
+The central claim is intentionally narrow: autonomy is best understood as an operating-model property. A system becomes
+meaningfully autonomous when it can be addressed, activated, situated, persistent, communicative, discretionary, and
+governed within a role. Model quality, tool access, schedules, webhooks, A2A, and MCP can all contribute to that model,
+but none of them is sufficient alone.
+
+The paper does not claim that every autonomous agent should have write access, that humans should disappear from the
+loop, or that autonomy is always better than commanded assistance. Many useful agents should remain commanded,
+read-only, human-gated, or narrow. The stronger claim is that systems should be honest about which side of the boundary
+they occupy, because commanded agents and governed autonomous agents need different design, risk, and trust models.
 
 ---
 

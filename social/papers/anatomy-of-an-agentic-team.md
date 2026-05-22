@@ -3,6 +3,9 @@
 > What a software team looks like when every member is an autonomous agent — and how that shape diverges from the
 > all-human and hybrid teams it replaces.
 
+_This is a living white paper. It is maintained as agent architectures, research, protocols, and operating patterns
+evolve._
+
 ---
 
 ## Executive summary
@@ -51,6 +54,10 @@ that maintain a software platform, commit directly to `main`, and coordinate wit
 specialist members are designed for future expansion — see _The team in motion_ below — so the roster captured here is a
 current snapshot, not a final configuration. The reference is included here in full enough to stand alone; no outside
 team roster is required to understand the model.
+
+In this paper, an agentic team means a standing team of governed autonomous agents, not a temporary multi-agent workflow
+assembled for one prompt. The agents have durable roles, memory, schedules, tools, logs, and communication surfaces.
+Humans remain accountable for direction and boundaries, but the team's routine coordination happens inside the system.
 
 | Agent     | Substrate owned                                                     |
 | --------- | ------------------------------------------------------------------- |

@@ -3,6 +3,9 @@
 > A framework for understanding whether agents are being driven interactively by humans, delegated bounded work inside
 > the old process, or integrated into the development lifecycle itself.
 
+_This is a living white paper. It is maintained as agent architectures, research, protocols, and operating patterns
+evolve._
+
 ---
 
 ## Executive summary
@@ -180,6 +183,11 @@ each step.
 The practical graduation is therefore:
 
 **session-bound tool -> delegated worker -> governed lifecycle participant.**
+
+Throughout this paper, Driven, Delegated, and Native describe adoption phases. Commanded and governed describe control
+models. A Phase 1 or Phase 2 agent can still be a real agent, but it usually remains commanded by the human-driven
+process around it. Phase 3 becomes credible when agents operate under durable identity, policy, activation, memory,
+observability, and escalation rather than moment-to-moment prompting.
 
 ---
 
@@ -583,6 +591,30 @@ auditability is not advanced; it is exposed.
 
 ---
 
+## Conclusion
+
+The most important distinction in AI adoption is not which tool a team buys. It is whether AI is integrated into the
+development lifecycle.
+
+In Phase 1, humans drive agents interactively inside their local development loop. In Phase 2, humans delegate bounded
+work to agents inside the old process. In Phase 3, the process itself changes so agents can participate safely and
+usefully in how software is planned, built, evaluated, checked, released, remembered, observed, and improved.
+
+The strategic mistake is assuming that more agent usage naturally produces Phase 3. It does not. Without product intent,
+context, evals, gates, rollback, logs, security boundaries, identity, platform support, WIP control, observability, and
+measurement, the organization gets more output without a reliably better system.
+
+For teams at Phase 2, the next step is not maximum autonomy. The next step is lifecycle integration: pick a narrow slice
+of work, make the intent and context available, define the gates, run the evals, log the decisions, observe the tool
+calls, measure the result, and keep the human role clear.
+
+The question for engineering leaders is therefore not only, "Are we using AI?" Most teams are, or soon will be.
+
+The better question is: **where, exactly, is AI wired into our development lifecycle, and what controls make that wiring
+safe enough to trust?**
+
+---
+
 ## Sources and further reading
 
 The framework in this paper is an interpretation of current practice and research, not a direct restatement of any one
@@ -677,30 +709,6 @@ framework without being treated as settled enterprise evidence.
 - Aman Madaan et al., [Self-Refine](https://arxiv.org/abs/2303.17651). Useful background for iterative agent refinement.
 - Guanzhi Wang et al., [Voyager](https://arxiv.org/abs/2305.16291). Useful background for skill libraries and
   compounding agent capability.
-
----
-
-## Conclusion
-
-The most important distinction in AI adoption is not which tool a team buys. It is whether AI is integrated into the
-development lifecycle.
-
-In Phase 1, humans drive agents interactively inside their local development loop. In Phase 2, humans delegate bounded
-work to agents inside the old process. In Phase 3, the process itself changes so agents can participate safely and
-usefully in how software is planned, built, evaluated, checked, released, remembered, observed, and improved.
-
-The strategic mistake is assuming that more agent usage naturally produces Phase 3. It does not. Without product intent,
-context, evals, gates, rollback, logs, security boundaries, identity, platform support, WIP control, observability, and
-measurement, the organization gets more output without a reliably better system.
-
-For teams at Phase 2, the next step is not maximum autonomy. The next step is lifecycle integration: pick a narrow slice
-of work, make the intent and context available, define the gates, run the evals, log the decisions, observe the tool
-calls, measure the result, and keep the human role clear.
-
-The question for engineering leaders is therefore not only, "Are we using AI?" Most teams are, or soon will be.
-
-The better question is: **where, exactly, is AI wired into our development lifecycle, and what controls make that wiring
-safe enough to trust?**
 
 ---
 

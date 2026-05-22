@@ -9,7 +9,7 @@
       "pdfPath": "whitepapers/three-phases-of-ai-adoption/three-phases-of-ai-adoption.pdf",
       "websitePath": "whitepapers/three-phases-of-ai-adoption/",
       "readerPath": "reader/?paper=three-phases-of-ai-adoption",
-      "updatedAt": "2026-05-14",
+      "updatedAt": "2026-05-22",
       "deck": "Driven -> Delegated -> Native: the practical path from IDE agents to an agent-native development lifecycle.",
       "status": "published",
       "primary": true,
@@ -24,26 +24,11 @@
       "pdfPath": "whitepapers/anatomy-of-an-agentic-team/anatomy-of-an-agentic-team.pdf",
       "websitePath": "whitepapers/anatomy-of-an-agentic-team/",
       "readerPath": "reader/?paper=anatomy-of-an-agentic-team",
-      "updatedAt": "2026-05-14",
+      "updatedAt": "2026-05-22",
       "deck": "A practical model for how specialized agents coordinate, remember, improve, and keep humans in the loop.",
       "status": "published",
       "primary": true,
       "themes": ["agentic-teams", "coordination", "memory", "operating-model"]
-    },
-    {
-      "title": "Tool Boundaries for Containerized Agents",
-      "shortTitle": "Tool Boundaries",
-      "slug": "tool-boundaries-for-containerized-agents",
-      "sourcePath": "social/papers/tool-boundaries-for-containerized-agents.md",
-      "markdownPath": "content/whitepapers/tool-boundaries-for-containerized-agents.md",
-      "pdfPath": "whitepapers/tool-boundaries-for-containerized-agents/tool-boundaries-for-containerized-agents.pdf",
-      "websitePath": "whitepapers/tool-boundaries-for-containerized-agents/",
-      "readerPath": "reader/?paper=tool-boundaries-for-containerized-agents",
-      "updatedAt": "2026-05-18",
-      "deck": "A practical architecture for separating model backends, project toolchains, and external authority gateways.",
-      "status": "published",
-      "primary": true,
-      "themes": ["containerized-agents", "toolchains", "mcp", "architecture"]
     },
     {
       "title": "The Autonomy Boundary",
@@ -54,11 +39,26 @@
       "pdfPath": "whitepapers/the-autonomy-boundary/the-autonomy-boundary.pdf",
       "websitePath": "whitepapers/the-autonomy-boundary/",
       "readerPath": "reader/?paper=the-autonomy-boundary",
-      "updatedAt": "2026-05-21",
-      "deck": "Explore what makes an AI agent autonomous, why directed agents are commanded, and why autonomy needs governance, activation, memory, tools, and accountability.",
+      "updatedAt": "2026-05-22",
+      "deck": "A practical model for distinguishing commanded AI assistants from governed autonomous agents through activation, memory, tools, and accountability.",
       "status": "published",
       "primary": true,
       "themes": ["autonomous-agents", "agent-governance", "a2a", "agent-architecture"]
+    },
+    {
+      "title": "Tool Boundaries for Containerized Agents",
+      "shortTitle": "Tool Boundaries",
+      "slug": "tool-boundaries-for-containerized-agents",
+      "sourcePath": "social/papers/tool-boundaries-for-containerized-agents.md",
+      "markdownPath": "content/whitepapers/tool-boundaries-for-containerized-agents.md",
+      "pdfPath": "whitepapers/tool-boundaries-for-containerized-agents/tool-boundaries-for-containerized-agents.pdf",
+      "websitePath": "whitepapers/tool-boundaries-for-containerized-agents/",
+      "readerPath": "reader/?paper=tool-boundaries-for-containerized-agents",
+      "updatedAt": "2026-05-22",
+      "deck": "A practical architecture for separating model backends, project toolchains, and external authority gateways.",
+      "status": "published",
+      "primary": true,
+      "themes": ["containerized-agents", "toolchains", "mcp", "architecture"]
     }
   ]
 }

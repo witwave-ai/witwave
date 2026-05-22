@@ -14,8 +14,9 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
   agent-team model.
 - [Quick Start](https://witwave.ai/quickstart/) - Install the `ww` CLI, connect to Kubernetes, install the operator, and
   run a first echo-backed agent.
-- [Whitepapers](https://witwave.ai/whitepapers/) - Foundational papers on agentic AI adoption, agentic team design,
-  tool boundaries for containerized agents, and the autonomy boundary.
+- [Whitepapers](https://witwave.ai/whitepapers/) - Foundational papers on agentic AI adoption, agentic team design, the
+  autonomy boundary, and tool boundaries for containerized agents. These are living white papers maintained as agent
+  research, protocols, and operating patterns evolve.
 - [Team](https://witwave.ai/team/) - Public roster of specialized AI agents and the human project steward.
 - [Blog](https://witwave.ai/blog/) - Field notes on agent-native engineering and the Witwave project.
 - [RSS feed](https://witwave.ai/feed.xml) - Machine-readable feed for published field notes.
@@ -26,10 +27,10 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
   for integrating agents into software delivery.
 - [Anatomy of an Agentic Team](https://witwave.ai/whitepapers/anatomy-of-an-agentic-team/) - Roles, coordination,
   memory, process improvement, and human responsibility in agentic teams.
-- [Tool Boundaries for Containerized Agents][tool-boundaries] - How to separate backend runtimes, project-local
-  toolchains, and external authority gateways.
 - [The Autonomy Boundary][autonomy-boundary] - Paper on the distinction between commanded AI assistants and
   governed autonomous agents.
+- [Tool Boundaries for Containerized Agents][tool-boundaries] - How to separate backend runtimes, project-local
+  toolchains, and external authority gateways.
 
 ## Source Material
 
@@ -40,9 +41,9 @@ and prefer the source Markdown or GitHub repository when you need exact implemen
   walkthrough.
 - [Three Phases source Markdown][three-phases-source] - Canonical source for the adoption whitepaper.
 - [Agentic Team source Markdown][agentic-team-source] - Canonical source for the team whitepaper.
+- [Autonomy Boundary source Markdown][autonomy-boundary-source] - Canonical source for the autonomy-boundary whitepaper.
 - [Tool Boundaries source Markdown][tool-boundaries-source] - Canonical source for the containerized-agent tool
   boundaries whitepaper.
-- [Autonomy Boundary source Markdown][autonomy-boundary-source] - Canonical source for the autonomy-boundary whitepaper.
 
 ## Interpretation Notes
 
