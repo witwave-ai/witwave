@@ -8,6 +8,7 @@ import { Client as McpClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { extractOtelContext, getInMemoryTraces, initOtelIfEnabled, runWithSpan } from "./otel.js";
+import YAML from "yaml";
 
 const STARTED_AT = new Date();
 const START_MONO = performance.now();
@@ -53,6 +54,9 @@ const CODEX_MEMORY_MAX_BYTES = Number.parseInt(process.env.CODEX_MEMORY_MAX_BYTE
 const CODEX_MEMORY_MAX_LIST_ENTRIES = Number.parseInt(process.env.CODEX_MEMORY_MAX_LIST_ENTRIES || "200", 10);
 const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH || "/home/agent/.codex/mcp.json";
 const MCP_TOOL_AUTH_TOKEN = process.env.MCP_TOOL_AUTH_TOKEN || "";
+const HOOKS_CONFIG_PATH = process.env.HOOKS_CONFIG_PATH || "/home/agent/.codex/hooks.yaml";
+const HOOKS_BASELINE_ENABLED =
+  process.env.HOOKS_BASELINE_ENABLED === undefined ? true : parseBool(process.env.HOOKS_BASELINE_ENABLED);
 const CODEX_MCP_CLIENT_TIMEOUT_MS = Math.max(
   1000,
   Math.round(Number.parseFloat(process.env.CODEX_MCP_CLIENT_TIMEOUT_SECONDS || "30") * 1000) || 30000,
@@ -145,6 +149,10 @@ const metrics = {
   sessionEvictionsTotal: 0,
   streamingEventsEmitted: new Map(),
   streamingChunksDropped: new Map(),
+  hookDenials: new Map(),
+  hookWarnings: new Map(),
+  hookEvaluations: new Map(),
+  hookConfigErrors: new Map(),
   lastA2ARequestTimestamp: 0,
 };
 
@@ -194,6 +202,315 @@ function byteLength(text) {
 function sanitizeModelLabel(value) {
   const raw = String(value || "");
   return /^[a-zA-Z0-9._-]{1,64}$/.test(raw) ? raw : "unknown";
+}
+
+function mapKey(...parts) {
+  return parts.map((part) => String(part ?? "")).join("\0");
+}
+
+function mapKeyParts(key) {
+  return String(key).split("\0");
+}
+
+const SYSTEM_PATH_PREFIXES = ["/etc", "/boot", "/bin", "/sbin", "/usr", "/lib", "/lib64", "/sys", "/proc", "/dev"];
+
+const CODEX_BASELINE_HOOK_RULES = [
+  {
+    name: "baseline-rm-rf-root",
+    tool: "Bash",
+    source: "baseline",
+    action: "deny",
+    reason: "rm -rf targeting root or a system directory — refusing by baseline policy.",
+    matches: (input) => {
+      const command = normalizeCommand(input?.command);
+      return /\brm\b(?=[^;&|`<>]*\s-r?f|[^;&|`<>]*\s-f?r)[^;&|`<>]*(\s|=)(\/|\/\*|~|\$HOME|\/etc\b|\/var\b|\/usr\b|\/boot\b|\/lib\b|\/bin\b|\/sbin\b)/i.test(
+        command,
+      );
+    },
+  },
+  {
+    name: "baseline-git-force-push-main",
+    tool: "Bash",
+    source: "baseline",
+    action: "deny",
+    reason: "git push --force to main/master — refusing by baseline policy.",
+    matches: (input) => {
+      const command = normalizeCommand(input?.command);
+      return /\bgit\s+push\b(?=[^;&|`<>]*(--force\b|-f\b|--force-with-lease\b))[^;&|`<>]*(\bmain\b|\bmaster\b|:main\b|:master\b)/i.test(
+        command,
+      );
+    },
+  },
+  {
+    name: "baseline-curl-pipe-shell",
+    tool: "Bash",
+    source: "baseline",
+    action: "deny",
+    reason: "curl/wget piped to a shell — refusing by baseline policy.",
+    matches: (input) => {
+      const command = normalizeCommand(input?.command);
+      return /\b(curl|wget)\b[^|]*\|\s*(sh|bash|zsh|python3?)\b|\bbash\s+<\(\s*(curl|wget)\b/i.test(command);
+    },
+  },
+  {
+    name: "baseline-chmod-777",
+    tool: "Bash",
+    source: "baseline",
+    action: "deny",
+    reason: "chmod world-writable (0777 or a+w/o+w) — refusing by baseline policy.",
+    matches: (input) => {
+      const command = normalizeCommand(input?.command);
+      return /\bchmod\b\s+(-R\s+)?([0-7]*777\b|[ao]\+w\b|a=.*w)/i.test(command);
+    },
+  },
+  {
+    name: "baseline-dd-device",
+    tool: "Bash",
+    source: "baseline",
+    action: "deny",
+    reason: "dd to a block device — refusing by baseline policy.",
+    matches: (input) => {
+      const command = normalizeCommand(input?.command);
+      return /\bdd\b[^;&|`<>]*\bof=\/dev\/(sd|nvme|disk|hd|vd|xvd|mmcblk|loop|mapper\/|md|dm-)/i.test(command);
+    },
+  },
+  {
+    name: "baseline-write-system-path",
+    tool: "Write",
+    source: "baseline",
+    action: "deny",
+    reason: "Write/Edit targeting a system path (/etc, /usr, /bin, …) — refusing by baseline policy.",
+    matches: (input) => {
+      const rawPath = input?.file_path || input?.path || input?.notebook_path || "";
+      if (typeof rawPath !== "string" || !rawPath || !path.posix.isAbsolute(rawPath)) {
+        return false;
+      }
+      const normalized = path.posix.normalize(rawPath);
+      return SYSTEM_PATH_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
+    },
+  },
+];
+
+let hookExtensionRuleCache = {
+  signature: "",
+  rules: [],
+};
+
+function hookConfigSignature() {
+  try {
+    const stat = fs.statSync(HOOKS_CONFIG_PATH);
+    return `${stat.mtimeMs}:${stat.size}`;
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      inc(metrics.hookConfigErrors, "stat_failed");
+      console.warn(`codex backend: failed to stat hooks config at ${HOOKS_CONFIG_PATH}: ${error?.message || error}`);
+    }
+    return "missing";
+  }
+}
+
+function parseHookExtensionRule(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    inc(metrics.hookConfigErrors, "non_mapping_entry");
+    return undefined;
+  }
+  const name = typeof raw.name === "string" && raw.name.trim() ? raw.name.trim() : "";
+  if (!name) {
+    inc(metrics.hookConfigErrors, "missing_name");
+    return undefined;
+  }
+  const rawTool = typeof raw.tool === "string" && raw.tool.trim() ? raw.tool.trim() : undefined;
+  const tool = rawTool === "*" ? undefined : rawTool;
+  let denyPattern = typeof raw.deny_if_match === "string" ? raw.deny_if_match : "";
+  let warnPattern = typeof raw.warn_if_match === "string" ? raw.warn_if_match : "";
+  if (denyPattern && warnPattern) {
+    inc(metrics.hookConfigErrors, "both_patterns");
+    warnPattern = "";
+  }
+  if (!denyPattern && !warnPattern) {
+    inc(metrics.hookConfigErrors, "no_pattern");
+    return undefined;
+  }
+  try {
+    return {
+      name,
+      tool,
+      source: "extension",
+      action: denyPattern ? "deny" : "warn",
+      reason: typeof raw.reason === "string" && raw.reason.trim() ? raw.reason.trim() : `blocked by extension rule ${name}`,
+      pattern: new RegExp(denyPattern || warnPattern),
+    };
+  } catch (error) {
+    inc(metrics.hookConfigErrors, "invalid_regex");
+    console.warn(`codex backend: invalid hooks.yaml regex for rule ${name}: ${error?.message || error}`);
+    return undefined;
+  }
+}
+
+export function loadHookExtensionRulesFromText(text) {
+  if (!String(text || "").trim()) {
+    return [];
+  }
+  let parsed;
+  try {
+    parsed = YAML.parse(text) || {};
+  } catch (error) {
+    inc(metrics.hookConfigErrors, "file_load_failed");
+    throw error;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    inc(metrics.hookConfigErrors, "not_mapping");
+    return [];
+  }
+  const extensions = parsed.extensions || [];
+  if (!Array.isArray(extensions)) {
+    inc(metrics.hookConfigErrors, "non_list_extensions");
+    return [];
+  }
+  return extensions.map(parseHookExtensionRule).filter(Boolean);
+}
+
+function loadHookExtensionRules() {
+  const signature = hookConfigSignature();
+  if (signature === hookExtensionRuleCache.signature) {
+    return hookExtensionRuleCache.rules;
+  }
+  if (signature === "missing") {
+    hookExtensionRuleCache = { signature, rules: [] };
+    return hookExtensionRuleCache.rules;
+  }
+  const raw = readTextIfExists(HOOKS_CONFIG_PATH);
+  try {
+    const rules = loadHookExtensionRulesFromText(raw);
+    hookExtensionRuleCache = { signature, rules };
+    return rules;
+  } catch (error) {
+    console.warn(`codex backend: failed to load hooks config at ${HOOKS_CONFIG_PATH}: ${error?.message || error}`);
+    // Keep the last valid rules on parse failure, matching the safer hot-reload posture used by the Python backends.
+    return hookExtensionRuleCache.rules;
+  }
+}
+
+function hookActiveRules() {
+  return [...(HOOKS_BASELINE_ENABLED ? CODEX_BASELINE_HOOK_RULES : []), ...loadHookExtensionRules()];
+}
+
+function hookToolAliases(toolName) {
+  const aliases = new Set([String(toolName || "")]);
+  if (toolName === "run_shell_command") {
+    aliases.add("Bash");
+    aliases.add("ShellTool");
+  }
+  if (toolName === "write_memory_file" || toolName === "append_memory_file") {
+    aliases.add("Write");
+    aliases.add("Edit");
+  }
+  if (String(toolName || "").startsWith("mcp__")) {
+    aliases.add("MCP");
+  }
+  return aliases;
+}
+
+function hookRuleMatchesTool(rule, toolName) {
+  if (!rule.tool) {
+    return true;
+  }
+  return hookToolAliases(toolName).has(rule.tool);
+}
+
+function hookInputHaystack(input) {
+  try {
+    return JSON.stringify(input || {}, (_, value) => (typeof value === "bigint" ? String(value) : value));
+  } catch {
+    return String(input || "");
+  }
+}
+
+function ruleMatchesInput(rule, input) {
+  if (typeof rule.matches === "function") {
+    return Boolean(rule.matches(input || {}));
+  }
+  if (rule.pattern instanceof RegExp) {
+    return rule.pattern.test(hookInputHaystack(input));
+  }
+  return false;
+}
+
+export function evaluatePreToolUse(toolName, toolInput = {}, rules = hookActiveRules()) {
+  let firstWarn;
+  for (const rule of rules) {
+    if (!hookRuleMatchesTool(rule, toolName)) {
+      continue;
+    }
+    try {
+      if (!ruleMatchesInput(rule, toolInput)) {
+        continue;
+      }
+    } catch (error) {
+      inc(metrics.hookConfigErrors, "predicate_runtime");
+      console.warn(`codex backend: hook rule ${rule.name} raised during evaluation: ${error?.message || error}`);
+      continue;
+    }
+    if (rule.action === "deny") {
+      return { decision: "deny", rule };
+    }
+    if (rule.action === "warn" && !firstWarn) {
+      firstWarn = rule;
+    }
+  }
+  if (firstWarn) {
+    return { decision: "warn", rule: firstWarn };
+  }
+  return { decision: "allow", rule: undefined };
+}
+
+function safeToolInputPreview(input) {
+  return truncateBytes(redactText(hookInputHaystack(input)), 4096);
+}
+
+function recordHookDecision(toolName, toolInput, traceId) {
+  const { decision, rule } = evaluatePreToolUse(toolName, toolInput);
+  inc(metrics.hookEvaluations, mapKey(toolName, decision));
+  if (!rule) {
+    return undefined;
+  }
+  const metricKey = mapKey(toolName, rule.source || "extension", rule.name || "unknown");
+  if (decision === "deny") {
+    inc(metrics.hookDenials, metricKey);
+  } else if (decision === "warn") {
+    inc(metrics.hookWarnings, metricKey);
+  }
+  appendJsonl(TRACE_LOG, {
+    timestamp: new Date().toISOString(),
+    backend: BACKEND_ID,
+    event_type: "tool_audit",
+    tool: toolName,
+    decision,
+    rule: rule.name,
+    source: rule.source,
+    reason: rule.reason,
+    input_preview: safeToolInputPreview(toolInput),
+    ...(traceId ? { trace_id: traceId } : {}),
+  });
+  return { decision, rule };
+}
+
+function preToolUseGate(toolName, toolInput, traceId) {
+  const decision = recordHookDecision(toolName, toolInput, traceId);
+  if (!decision || decision.decision !== "deny") {
+    return undefined;
+  }
+  const reason = decision.rule?.reason || "tool call denied by PreToolUse policy";
+  inc(metrics.toolCalls, `${toolName}:refused`);
+  return {
+    ok: false,
+    refused: true,
+    hook_denied: true,
+    tool: toolName,
+    ...(traceId ? { trace_id: traceId } : {}),
+    rule: decision.rule?.name || "unknown",
+    reason,
+  };
 }
 
 function sessionHash(sessionId) {
@@ -1455,7 +1772,7 @@ async function runMcpTool(functionName, args = {}, traceId) {
   }
 }
 
-async function handleFunctionCall(call, traceId) {
+export async function handleFunctionCall(call, traceId) {
   const withToolSpan = async (fn) =>
     await runWithSpan(
       call?.name === "run_shell_command" ? "shell" : "tool.call",
@@ -1482,6 +1799,10 @@ async function handleFunctionCall(call, traceId) {
         reason: `invalid function arguments: ${error?.message || String(error)}`,
       };
     }
+    const denied = preToolUseGate("run_shell_command", { command: args.command }, traceId);
+    if (denied) {
+      return denied;
+    }
     return await withToolSpan(async () => await runShellCommand(args.command, traceId));
   }
 
@@ -1496,6 +1817,10 @@ async function handleFunctionCall(call, traceId) {
         reason: `invalid function arguments: ${error?.message || String(error)}`,
       };
     }
+    const denied = preToolUseGate(call.name, args, traceId);
+    if (denied) {
+      return denied;
+    }
     return await withToolSpan(async () => await runMemoryTool(call.name, args, traceId));
   }
 
@@ -1509,6 +1834,15 @@ async function handleFunctionCall(call, traceId) {
         refused: true,
         reason: `invalid function arguments: ${error?.message || String(error)}`,
       };
+    }
+    const tool = mcpToolCache.toolIndex.get(call.name);
+    const denied = preToolUseGate(
+      call.name,
+      { ...args, mcp_server: tool?.serverName || "", mcp_tool: tool?.toolName || "" },
+      traceId,
+    );
+    if (denied) {
+      return denied;
     }
     return await withToolSpan(async () => await runMcpTool(call.name, args, traceId));
   }
@@ -2388,6 +2722,48 @@ export function renderMetrics() {
     const [tool, status] = key.split(":", 2);
     lines.push(metricLine("backend_tool_calls_total", value, labels({ tool, status })));
   }
+  lines.push(
+    "# HELP backend_hooks_denials_total Total tool calls denied by a PreToolUse hook.",
+    "# TYPE backend_hooks_denials_total counter",
+  );
+  for (const [key, value] of metrics.hookDenials.entries()) {
+    const [tool, source, rule] = mapKeyParts(key);
+    lines.push(metricLine("backend_hooks_denials_total", value, labels({ tool, source, rule })));
+  }
+  lines.push(
+    "# HELP backend_hooks_warnings_total Total tool calls flagged but allowed by a PreToolUse hook.",
+    "# TYPE backend_hooks_warnings_total counter",
+  );
+  for (const [key, value] of metrics.hookWarnings.entries()) {
+    const [tool, source, rule] = mapKeyParts(key);
+    lines.push(metricLine("backend_hooks_warnings_total", value, labels({ tool, source, rule })));
+  }
+  lines.push(
+    "# HELP backend_hooks_evaluations_total Total PreToolUse hook evaluations grouped by final decision.",
+    "# TYPE backend_hooks_evaluations_total counter",
+  );
+  for (const [key, value] of metrics.hookEvaluations.entries()) {
+    const [tool, decision] = mapKeyParts(key);
+    lines.push(metricLine("backend_hooks_evaluations_total", value, labels({ tool, decision })));
+  }
+  lines.push(
+    "# HELP backend_hooks_config_errors_total Total hooks.yaml parse/reload/validation errors by reason.",
+    "# TYPE backend_hooks_config_errors_total counter",
+  );
+  for (const [reason, value] of metrics.hookConfigErrors.entries()) {
+    lines.push(metricLine("backend_hooks_config_errors_total", value, labels({ reason })));
+  }
+  const extensionRuleCount = loadHookExtensionRules().length;
+  lines.push(
+    "# HELP backend_hooks_active_rules Number of currently active PreToolUse rules by source.",
+    "# TYPE backend_hooks_active_rules gauge",
+    metricLine(
+      "backend_hooks_active_rules",
+      HOOKS_BASELINE_ENABLED ? CODEX_BASELINE_HOOK_RULES.length : 0,
+      labels({ source: "baseline" }),
+    ),
+    metricLine("backend_hooks_active_rules", extensionRuleCount, labels({ source: "extension" })),
+  );
   return `${lines.join("\n")}\n`;
 }
 

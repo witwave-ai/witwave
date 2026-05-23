@@ -18,6 +18,7 @@
     "@opentelemetry/resources": "2.7.1",
     "@opentelemetry/sdk-trace-base": "2.7.1",
     "@opentelemetry/sdk-trace-node": "2.7.1",
-    "openai": "6.39.0"
+    "openai": "6.39.0",
+    "yaml": "2.8.1"
   }
 }

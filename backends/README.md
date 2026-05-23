@@ -13,7 +13,7 @@ secrets, and implementation details.
 | Choose this backend | When it is the best fit                                                                                                                      | Main nuance                                                                                                                            |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `claude`            | Mature autonomous coding work, strongest hook policy, Claude-specific skills, and the broadest production-hardening surface.                 | Most mature, but tied to Claude credentials/quotas and the Claude Agent SDK execution model.                                           |
-| `codex`             | Codex-optimized coding agents on GPT-5.5, especially when we want lower-cost OpenAI execution with live trace proof of model/reasoning tier. | Newer backend; strong core path is in place, but hook parity and some tool surfaces are still catching up.                             |
+| `codex`             | Codex-optimized coding agents on GPT-5.5, especially when we want lower-cost OpenAI execution with live trace proof of model/reasoning tier. | Newer backend; Codex-owned function tools are hook-gated, but some broader tool surfaces are still catching up.                        |
 | `openai`            | General OpenAI Agents SDK execution, especially when web search, browser/computer tools, or SDK-native OpenAI agent behavior matter.         | General OpenAI backend, not Codex-specific; heavier tool surface than `codex`, but less aligned to the Codex-native runtime direction. |
 | `gemini`            | Provider diversity, Gemini-specific evaluation, and second-opinion / fallback workflows.                                                     | Gemini does not have the same skill-folder convention; memory and tool ergonomics differ from Claude/Codex.                            |
 | `echo`              | No-cost smoke tests, CLI onboarding, harness regression tests, and hello-world deployments.                                                  | Not an LLM backend; intentionally minimal and not suitable for real agent work.                                                        |
@@ -58,7 +58,8 @@ Nuances:
 - Runtime is Node.js, unlike the Python `claude`, `openai`, and `gemini` backends.
 - It supports bounded shell, memory tools, URL-shaped MCP tools, conversation logs, metrics, OpenTelemetry, and session
   continuity through `previous_response_id`.
-- It is newer than `claude`; the next meaningful hardening gap is hook-policy parity for non-shell tools.
+- It is newer than `claude`; Codex-owned shell, memory, and URL-shaped MCP function tools now pass through a
+  PreToolUse-style hook gate, while broader SDK/tool-surface parity is still maturing.
 - `.codex/config.toml` exists for backend-local configuration, but not every Codex CLI-style flag necessarily maps to an
   active Node backend feature yet.
 

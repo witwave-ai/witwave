@@ -20,6 +20,8 @@ The first implementation is contract-first:
 - per-session SSE updates at `/api/sessions/<session_id>/stream`
 - Responses API text deltas streamed into the session SSE feed before the final A2A response
 - bounded memory tools rooted at `CODEX_MEMORY_ROOT`
+- PreToolUse-style hook gating for Codex-owned function tools (`run_shell_command`, memory tools, and URL-shaped MCP
+  tools)
 - persisted Responses API session continuity via `previous_response_id`
 - caller-bound session derivation when `SESSION_ID_SECRET` is set
 - per-dispatch `max_tokens` budget checks from Responses API usage
@@ -51,6 +53,8 @@ the OpenAI Responses API.
 | `CODEX_MEMORY_MAX_LIST_ENTRIES`     | `200`                                        | Maximum file paths returned by `list_memory_files`              |
 | `MCP_CONFIG_PATH`                   | `/home/agent/.codex/mcp.json`                | URL-shaped MCP server config loaded as backend-local tools      |
 | `MCP_TOOL_AUTH_TOKEN`               | unset                                        | Bearer token auto-stamped onto MCP server calls                 |
+| `HOOKS_CONFIG_PATH`                 | `/home/agent/.codex/hooks.yaml`              | Optional PreToolUse extension rules                             |
+| `HOOKS_BASELINE_ENABLED`            | `true`                                       | Enables built-in baseline deny rules                            |
 | `CODEX_MCP_CLIENT_TIMEOUT_SECONDS`  | `30`                                         | Timeout for MCP connect/list/call operations                    |
 | `CODEX_MCP_MAX_OUTPUT_BYTES`        | `12000`                                      | Maximum bytes returned to the model from one MCP tool call      |
 | `CODEX_SESSION_STORE_PATH`          | `/home/agent/.codex/sessions/responses.json` | Persistent session → `previous_response_id` map                 |
@@ -99,6 +103,24 @@ When `MCP_CONFIG_PATH` points at a `.codex/mcp.json` file, URL-shaped entries ar
 named `mcp__<server>__<tool>`. The Codex container connects to the MCP server directly, so in-cluster service URLs such
 as `http://witwave-mcp-kubernetes:8000` remain private to the cluster. Command/stdio MCP entries are ignored by this
 backend for now; use URL-shaped streamable-http MCP servers for parity with the Kubernetes deployment model.
+
+Codex evaluates PreToolUse-style policy before executing any function tool it owns. The built-in baseline denies common
+destructive shell patterns (`rm -rf /`, `git push --force main`, `curl | sh`, `chmod 777`, `dd of=/dev/...`) and
+system-path write attempts through the same rule names used by the shared hook vocabulary. Optional extension rules are
+loaded from `HOOKS_CONFIG_PATH` using the familiar `hooks.yaml` shape:
+
+```yaml
+extensions:
+  - name: deny-example-memory-marker
+    tool: write_memory_file
+    deny_if_match: "DO_NOT_WRITE"
+    reason: "example extension deny"
+```
+
+Tool aliases keep common cross-backend rules useful: `run_shell_command` also matches `tool: Bash`, and memory writes
+also match `tool: Write`. Denied calls return a refused function result to the model, emit `tool_audit` rows in
+`TRACE_LOG`, and increment `backend_hooks_*` metrics. This gate covers Codex-owned function tools; it does not make the
+Node backend a drop-in clone of Claude's SDK hook surface.
 
 OpenTelemetry is active when either `OTEL_ENABLED=true` or `OTEL_IN_MEMORY_SPANS` is positive. OTLP export is opt-in;
 the in-memory ring is enabled by default so `/api/traces` can show recent backend spans without requiring a collector.

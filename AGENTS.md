@@ -117,7 +117,7 @@ Five backend types exist, each implemented as a standalone A2A server:
 - **`gemini`** — Google Gemini backend (google-genai SDK). Source in `backends/gemini/`. Image: `gemini:latest`.
 - **`echo`** — zero-dependency stub backend that returns a canned response. Ships as the default for `ww agent create`
   hello-world onboarding; no API keys required. Also used for harness regression tests and CI smoke tests. Source in
-  `backends/echo/`. Image: `echo:latest`. Deliberately minimal: A2A + `/health` only — no MCP, no metrics, no
+  `backends/echo/`. Image: `echo:latest`. Deliberately minimal: A2A + health/metrics plumbing only — no MCP, no
   conversation persistence, no hooks, no session binding. See `backends/echo/README.md` for the intentional-non-scope
   list.
 
@@ -127,8 +127,7 @@ Each backend:
 - Exposes `/` as the A2A JSON-RPC task endpoint
 - Exposes `/health` (liveness — 200 once the process is up, even while initialising) and `/health/ready` (readiness —
   503 while initialising or boot-degraded) per the cycle-1 #1608 + cycle-7 #1672 split. K8s `livenessProbe` should
-  target `/health`; `readinessProbe` should target `/health/ready`. (`echo` is the exception — it ships only `/health`
-  per its intentional-non-scope list.)
+  target `/health`; `readinessProbe` should target `/health/ready`.
 - Exposes `/metrics` for Prometheus scraping (when `METRICS_ENABLED` is set)
 - Exposes `/conversations`, `/trace`, `/mcp`, and `/api/traces[/<id>]` guarded by the same bearer token
   (`CONVERSATIONS_AUTH_TOKEN`) — parity across all LLM-backed backends (#510, #516, #518). An empty token logs a startup
@@ -142,6 +141,11 @@ Each backend:
 - Receives behavioral instructions via a mounted file (`CLAUDE.md` for claude, `AGENTS.md` for openai/codex, `GEMINI.md`
   for gemini). Backend-specific `agent-card.md` files are optional; the named agent's public card is served by harness
   from `.witwave/agent-card.md`
+
+Codex-owned function tools (`run_shell_command`, memory tools, and URL-shaped MCP tools) pass through a
+PreToolUse-style gate before execution. The gate supports the shared baseline rule names plus optional `.codex/hooks.yaml`
+extension rules and emits `backend_hooks_*` metrics. Claude remains the full SDK hook reference; Gemini still has an AFC
+interposition gap for pre-tool enforcement.
 
 Each named agent has its own dedicated backend instances. For example, iris can have `iris-claude`, `iris-openai`,
 `iris-codex`, and `iris-gemini`.
@@ -500,8 +504,9 @@ The LLM-backed services expose a common `backend_*` metric label shape so cross-
 `(agent, agent_id, backend)` without backend-specific series names. **Claude is the Python SDK superset** — any metric
 that exists on one Python SDK backend exists on claude; peers fill in placeholders where a series doesn't apply (e.g.
 openai's `backend_sdk_subprocess_spawn_duration_seconds` is a zero-value placeholder because the Agents SDK runs
-in-process). The Node-based `codex` scaffold exposes the core `backend_*` process/request counters from `main.js` while
-its richer metric parity fills in. Look at each backend's `metrics.py` or `main.js` for the live catalog; look at
+in-process). The Node-based `codex` backend exposes the core `backend_*` process/request counters plus Codex-specific
+streaming, function-tool, hook, and OTel metrics from `main.js`. Look at each backend's `metrics.py` or `main.js` for
+the live catalog; look at
 `charts/witwave/dashboards/*.json` for the rendered Grafana views; look at
 `charts/witwave/templates/prometheusrule.yaml` for the default alert set.
 
