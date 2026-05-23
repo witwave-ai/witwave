@@ -6,6 +6,27 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.29.1] — 2026-05-23
+
+Codex-backend parity patch: the JavaScript codex backend now exposes live response deltas to the same session stream
+surface the rest of the platform watches, records bounded streaming metrics, and emits OpenTelemetry spans into the
+existing trace inspection API. This is the first release suitable for testing a Codex-only live agent without losing the
+observability surfaces we rely on during backend rollout.
+
+### Added
+
+- **backends/codex**: Stream OpenAI Responses API deltas into `/api/sessions/<id>/stream` when
+  `CODEX_RESPONSES_STREAMING=true`, while preserving the existing non-streaming path as the default.
+- **backends/codex**: Add bounded streaming telemetry for response deltas, stream duration, and stream failures so Codex
+  activity can be graphed alongside the other backends.
+- **backends/codex**: Add Node OpenTelemetry support with optional OTLP export and an in-memory span ring powering
+  `/api/traces` and `/api/traces/<trace_id>`.
+
+### Fixed
+
+- **backends/codex**: Preserve trace context through A2A requests and streamed response sessions so live Codex tests can
+  be inspected without depending on external telemetry infrastructure.
+
 ## [0.29.0] — 2026-05-23
 
 Codex-backend maturation minor: the JavaScript `backends/codex` scaffold introduced in v0.28.0 grows up. Sessions are
