@@ -25,6 +25,8 @@ The first implementation is contract-first:
 - per-dispatch `max_tokens` budget checks from Responses API usage
 - a minimal `/mcp` surface with the backend-neutral `ask_agent` tool name
 - backend-local MCP client bridging for URL-shaped `.codex/mcp.json` entries
+- streaming-delta Prometheus counters with bounded `model` labels
+- OpenTelemetry spans for A2A execution, MCP `tools/call`, Responses API calls, and function tools
 
 When `OPENAI_API_KEY` is unset, the backend runs in stub mode by default so CI and image smoke tests can verify the
 runtime contract without spending tokens. Set `OPENAI_API_KEY` and `CODEX_STUB_MODE=false` to execute prompts through
@@ -66,6 +68,10 @@ the OpenAI Responses API.
 | `MAX_PROMPT_BYTES`                  | `10485760`                                   | Inbound prompt byte ceiling                                     |
 | `METRICS_ENABLED`                   | unset                                        | Enables the dedicated metrics listener                          |
 | `METRICS_PORT`                      | `9000`                                       | Dedicated Prometheus listener port                              |
+| `OTEL_ENABLED`                      | unset                                        | Enables OTLP/HTTP span export                                   |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`       | SDK default                                  | OTLP/HTTP collector endpoint when `OTEL_ENABLED=true`           |
+| `OTEL_IN_MEMORY_SPANS`              | `1000`                                       | In-memory trace ring size for `/api/traces`                     |
+| `OTEL_SERVICE_NAME`                 | `codex-<agent>`                              | Service name for emitted spans                                  |
 
 A2A metadata may set `model`, `reasoning_effort`, `max_output_tokens`, or `max_tokens` for a single request. Invalid or
 non-positive token values are ignored. `max_output_tokens` is sent to the Responses API as an output cap; `max_tokens`
@@ -93,6 +99,10 @@ When `MCP_CONFIG_PATH` points at a `.codex/mcp.json` file, URL-shaped entries ar
 named `mcp__<server>__<tool>`. The Codex container connects to the MCP server directly, so in-cluster service URLs such
 as `http://witwave-mcp-kubernetes:8000` remain private to the cluster. Command/stdio MCP entries are ignored by this
 backend for now; use URL-shaped streamable-http MCP servers for parity with the Kubernetes deployment model.
+
+OpenTelemetry is active when either `OTEL_ENABLED=true` or `OTEL_IN_MEMORY_SPANS` is positive. OTLP export is opt-in;
+the in-memory ring is enabled by default so `/api/traces` can show recent backend spans without requiring a collector.
+Inbound `traceparent` values from A2A metadata or MCP HTTP headers are continued so Codex spans join the harness trace.
 
 ## Local Test
 

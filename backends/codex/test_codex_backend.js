@@ -29,6 +29,7 @@ const {
   mcpToolResultText,
   maxOutputTokensForRequest,
   maxTokensForRequest,
+  publishSessionChunk,
   renderMetrics,
   resolveMemoryPath,
   runMemoryTool,
@@ -76,6 +77,22 @@ async function postJson(port, path, payload, headers = {}) {
     );
     req.on("error", reject);
     req.end(body);
+  });
+}
+
+async function getJson(port, path, headers = {}) {
+  return await new Promise((resolve, reject) => {
+    const req = http.get(`http://127.0.0.1:${port}${path}`, { headers }, (res) => {
+      let data = "";
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => {
+        resolve({ status: res.statusCode, body: data ? JSON.parse(data) : undefined });
+      });
+    });
+    req.on("error", reject);
   });
 }
 
@@ -217,6 +234,28 @@ test("collectStreamingResponse fails closed when the stream has no completed res
   );
 });
 
+test("streaming delta metrics use bounded model labels", () => {
+  publishSessionChunk("00000000-0000-4000-8000-000000000201", {
+    role: "assistant",
+    seq: 1,
+    content: "delta",
+    final: false,
+    model: "gpt-5.5",
+  });
+  publishSessionChunk("00000000-0000-4000-8000-000000000202", {
+    role: "assistant",
+    seq: 1,
+    content: "delta",
+    final: false,
+    model: "bad model label",
+  });
+
+  const body = renderMetrics();
+  assert.match(body, /backend_streaming_events_emitted_total\{.*model="gpt-5\.5".*\} 1/);
+  assert.match(body, /backend_streaming_events_emitted_total\{.*model="unknown".*\} 1/);
+  assert.match(body, /backend_streaming_chunks_dropped_total/);
+});
+
 test("handleA2A returns the message response shape harness and ww extract", async () => {
   const response = await handleA2A({
     jsonrpc: "2.0",
@@ -238,6 +277,35 @@ test("handleA2A returns the message response shape harness and ww extract", asyn
   assert.equal(response.body.result.role, "agent");
   assert.equal(response.body.result.contextId, "ctx-1");
   assert.match(response.body.result.parts[0].text, /codex backend scaffold/i);
+});
+
+test("A2A calls emit OpenTelemetry spans visible through /api/traces", async () => {
+  const traceId = "22222222222222222222222222222222";
+  await handleA2A({
+    jsonrpc: "2.0",
+    id: "otel",
+    method: "message/send",
+    params: {
+      message: {
+        role: "user",
+        metadata: {
+          session_id: "otel-session",
+          traceparent: `00-${traceId}-3333333333333333-01`,
+        },
+        parts: [{ kind: "text", text: "trace me" }],
+      },
+    },
+  });
+
+  await withTestServer(async (port) => {
+    const result = await getJson(port, `/api/traces/${traceId}`);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.data[0].traceID, traceId);
+    assert.ok(
+      result.body.data[0].spans.some((span) => span.operationName === "backend.a2a.execute"),
+      "expected backend.a2a.execute span",
+    );
+  });
 });
 
 test("session stream endpoint publishes user and final assistant chunks", async () => {

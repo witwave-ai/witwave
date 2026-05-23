@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { Client as McpClient } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { extractOtelContext, getInMemoryTraces, initOtelIfEnabled, runWithSpan } from "./otel.js";
 
 const STARTED_AT = new Date();
 const START_MONO = performance.now();
@@ -19,6 +20,15 @@ const AGENT_VERSION = process.env.AGENT_VERSION || "0.1.0";
 const AGENT_OWNER = process.env.AGENT_OWNER || AGENT_NAME;
 const AGENT_ID = process.env.AGENT_ID || process.env.HOSTNAME || "codex";
 const BACKEND_ID = "codex";
+
+initOtelIfEnabled({
+  serviceName: process.env.OTEL_SERVICE_NAME || `${BACKEND_ID}-${AGENT_OWNER}`,
+  resourceAttributes: {
+    agent: AGENT_OWNER,
+    agent_id: AGENT_ID,
+    backend: BACKEND_ID,
+  },
+});
 
 const CONVERSATION_LOG = process.env.CONVERSATION_LOG || "/home/agent/logs/conversation.jsonl";
 const TRACE_LOG = process.env.TRACE_LOG || "/home/agent/logs/tool-activity.jsonl";
@@ -133,6 +143,8 @@ const metrics = {
   contextTokensRemainingSum: 0,
   sessionStartsTotal: 0,
   sessionEvictionsTotal: 0,
+  streamingEventsEmitted: new Map(),
+  streamingChunksDropped: new Map(),
   lastA2ARequestTimestamp: 0,
 };
 
@@ -166,12 +178,22 @@ function parseNonNegativeInt(value, defaultValue) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultValue;
 }
 
+function parsePositiveInt(value, defaultValue) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+}
+
 function inc(map, key, amount = 1) {
   map.set(key, (map.get(key) || 0) + amount);
 }
 
 function byteLength(text) {
   return Buffer.byteLength(text || "", "utf8");
+}
+
+function sanitizeModelLabel(value) {
+  const raw = String(value || "");
+  return /^[a-zA-Z0-9._-]{1,64}$/.test(raw) ? raw : "unknown";
 }
 
 function sessionHash(sessionId) {
@@ -320,19 +342,27 @@ function sseSerialize(envelope) {
   return `event: ${envelope.type}\nid: ${envelope.id}\ndata: ${JSON.stringify(envelope)}\n\n`;
 }
 
-export function publishSessionChunk(sessionId, { role, seq, content, final }) {
+export function publishSessionChunk(sessionId, { role, seq, content, final, model }) {
   const stream = getSessionStream(sessionId, { create: true });
   if (!stream) {
     return undefined;
   }
+  const roleValue = String(role || "assistant");
+  const contentValue = String(content || "");
+  const finalValue = Boolean(final);
+  const isAssistantDelta = roleValue === "assistant" && !finalValue && contentValue;
+  const modelLabel = sanitizeModelLabel(model || CODEX_MODEL);
   const envelope = sessionStreamEnvelope(stream, "conversation.chunk", {
     session_id_hash: sessionHash(sessionId),
-    role: String(role || "assistant"),
+    role: roleValue,
     seq: Number.isFinite(Number(seq)) ? Number(seq) : 0,
-    content: String(content || ""),
-    final: Boolean(final),
+    content: contentValue,
+    final: finalValue,
   });
   stream.ring.push(envelope);
+  if (isAssistantDelta) {
+    inc(metrics.streamingEventsEmitted, modelLabel);
+  }
   while (stream.ring.length > CONVERSATION_STREAM_RING_MAX) {
     stream.ring.shift();
   }
@@ -341,6 +371,9 @@ export function publishSessionChunk(sessionId, { role, seq, content, final }) {
       res.write(sseSerialize(envelope));
     } catch {
       stream.subscribers.delete(res);
+      if (isAssistantDelta) {
+        inc(metrics.streamingChunksDropped, modelLabel);
+      }
     }
   }
   scheduleSessionStreamCleanup(stream);
@@ -1351,55 +1384,6 @@ async function runShellCommand(command, traceId) {
   });
 }
 
-function traceSummaryFromEntries(entries, traceId) {
-  const matches = entries.filter((entry) => entry?.trace_id === traceId || entry?.traceID === traceId);
-  if (matches.length === 0) {
-    return undefined;
-  }
-  const first = matches[0];
-  const last = matches[matches.length - 1];
-  const firstTs = timestampForEntry(first);
-  const lastTs = timestampForEntry(last);
-  const duration =
-    firstTs && lastTs && lastTs >= firstTs ? Number(((lastTs.getTime() - firstTs.getTime()) / 1000).toFixed(6)) : 0;
-  return {
-    traceID: traceId,
-    spans: matches,
-    processes: {},
-    duration,
-    startTime: firstTs ? firstTs.getTime() * 1000 : undefined,
-  };
-}
-
-function traceList(limit = 20, offset = 0) {
-  const entries = [...readJsonlEntries(CONVERSATION_LOG), ...readJsonlEntries(TRACE_LOG)];
-  const byTrace = new Map();
-  for (const entry of entries) {
-    const traceId = entry?.trace_id || entry?.traceID;
-    if (!traceId || !/^[0-9a-fA-F]{32}$/.test(String(traceId))) {
-      continue;
-    }
-    if (!byTrace.has(traceId)) {
-      byTrace.set(traceId, []);
-    }
-    byTrace.get(traceId).push(entry);
-  }
-  const traces = [];
-  for (const [traceId, traceEntries] of byTrace.entries()) {
-    const summary = traceSummaryFromEntries(traceEntries, traceId);
-    if (summary) {
-      traces.push(summary);
-    }
-  }
-  traces.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
-  return {
-    data: traces.slice(offset, offset + limit),
-    total: traces.length,
-    limit,
-    offset,
-  };
-}
-
 export function mcpToolResultText(result) {
   const chunks = [];
   for (const item of result?.content || []) {
@@ -1472,6 +1456,21 @@ async function runMcpTool(functionName, args = {}, traceId) {
 }
 
 async function handleFunctionCall(call, traceId) {
+  const withToolSpan = async (fn) =>
+    await runWithSpan(
+      call?.name === "run_shell_command" ? "shell" : "tool.call",
+      {
+        kind: "internal",
+        attributes: {
+          "tool.name": call?.name || "",
+          "trace.id": traceId || "",
+          "agent.id": AGENT_ID,
+          backend: BACKEND_ID,
+        },
+      },
+      fn,
+    );
+
   if (call?.name === "run_shell_command") {
     let args = {};
     try {
@@ -1483,7 +1482,7 @@ async function handleFunctionCall(call, traceId) {
         reason: `invalid function arguments: ${error?.message || String(error)}`,
       };
     }
-    return await runShellCommand(args.command, traceId);
+    return await withToolSpan(async () => await runShellCommand(args.command, traceId));
   }
 
   if (["read_memory_file", "write_memory_file", "append_memory_file", "list_memory_files"].includes(call?.name)) {
@@ -1497,7 +1496,7 @@ async function handleFunctionCall(call, traceId) {
         reason: `invalid function arguments: ${error?.message || String(error)}`,
       };
     }
-    return await runMemoryTool(call.name, args, traceId);
+    return await withToolSpan(async () => await runMemoryTool(call.name, args, traceId));
   }
 
   if (mcpToolCache.toolIndex.has(call?.name)) {
@@ -1511,7 +1510,7 @@ async function handleFunctionCall(call, traceId) {
         reason: `invalid function arguments: ${error?.message || String(error)}`,
       };
     }
-    return await runMcpTool(call.name, args, traceId);
+    return await withToolSpan(async () => await runMcpTool(call.name, args, traceId));
   }
 
   {
@@ -1616,17 +1615,31 @@ export async function collectStreamingResponse(stream, onTextDelta) {
   return completedResponse;
 }
 
-async function createResponse(client, request, onTextDelta) {
-  if (CODEX_RESPONSES_STREAMING && onTextDelta) {
-    const stream = await client.responses.create({ ...request, stream: true });
-    return await collectStreamingResponse(stream, onTextDelta);
-  }
-  return await client.responses.create(request);
+async function createResponse(client, request, onTextDelta, spanAttributes = {}) {
+  return await runWithSpan(
+    "llm.request",
+    {
+      kind: "client",
+      attributes: {
+        "llm.provider": "openai",
+        "llm.request.model": request.model,
+        "llm.request.streaming": CODEX_RESPONSES_STREAMING && onTextDelta ? "true" : "false",
+        ...spanAttributes,
+      },
+    },
+    async () => {
+      if (CODEX_RESPONSES_STREAMING && onTextDelta) {
+        const stream = await client.responses.create({ ...request, stream: true });
+        return await collectStreamingResponse(stream, onTextDelta);
+      }
+      return await client.responses.create(request);
+    },
+  );
 }
 
-async function createResponseWithSessionFallback(client, request, sessionId, onTextDelta) {
+async function createResponseWithSessionFallback(client, request, sessionId, onTextDelta, spanAttributes = {}) {
   try {
-    return await createResponse(client, request, onTextDelta);
+    return await createResponse(client, request, onTextDelta, spanAttributes);
   } catch (error) {
     if (!request.previous_response_id) {
       throw error;
@@ -1639,7 +1652,7 @@ async function createResponseWithSessionFallback(client, request, sessionId, onT
     saveSessionStore();
     const retry = { ...request };
     delete retry.previous_response_id;
-    return await createResponse(client, retry, onTextDelta);
+    return await createResponse(client, retry, onTextDelta, { ...spanAttributes, "llm.request.session_retry": "true" });
   }
 }
 
@@ -1690,6 +1703,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
     request,
     storedSessionId || sessionId,
     hooks.onAssistantDelta,
+    { "session.id_hash": sessionHash(sessionId), "response.previous_id": request.previous_response_id || "" },
   );
   if (response?.id) {
     recordSessionResponse(sessionId, response.id, model);
@@ -1730,6 +1744,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
           ...(maxOutputTokens !== undefined ? { max_output_tokens: maxOutputTokens } : {}),
         },
         hooks.onAssistantDelta,
+        { "session.id_hash": sessionHash(sessionId), "response.previous_id": response.id || "", "tool.loop": "true" },
       );
       if (response?.id) {
         recordSessionResponse(sessionId, response.id, model);
@@ -1763,6 +1778,10 @@ export async function handleA2A(payload) {
   const prompt = extractPrompt(payload).trim();
   const promptBytes = byteLength(prompt);
   const traceId = traceIdForMetadata(metadata);
+  const otelParentContext =
+    typeof metadata?.traceparent === "string" && metadata.traceparent
+      ? extractOtelContext({ traceparent: metadata.traceparent })
+      : undefined;
   metrics.promptBytesCount += 1;
   metrics.promptBytesSum += promptBytes;
   metrics.lastA2ARequestTimestamp = Date.now() / 1000;
@@ -1775,7 +1794,7 @@ export async function handleA2A(payload) {
   let model = modelForRequest(metadata);
   let assistantSeq = 1;
   const publishAssistantDelta = (content) => {
-    publishSessionChunk(sessionId, { role: "assistant", seq: assistantSeq, content, final: false });
+    publishSessionChunk(sessionId, { role: "assistant", seq: assistantSeq, content, final: false, model });
     assistantSeq += 1;
   };
   try {
@@ -1788,9 +1807,23 @@ export async function handleA2A(payload) {
       metrics.promptTooLargeTotal += 1;
       responseText = `codex backend — prompt of ${promptBytes} bytes exceeds MAX_PROMPT_BYTES=${MAX_PROMPT_BYTES}.`;
     } else {
-      const result = await runCodex(prompt, metadata, sessionId, candidateSessionIds, {
-        onAssistantDelta: publishAssistantDelta,
-      });
+      const result = await runWithSpan(
+        "backend.a2a.execute",
+        {
+          kind: "server",
+          parentContext: otelParentContext,
+          attributes: {
+            "agent.id": AGENT_ID,
+            "session.id_hash": sessionHash(sessionId),
+            "a2a.method": payload.method,
+            "llm.request.model": model,
+          },
+        },
+        async () =>
+          await runCodex(prompt, metadata, sessionId, candidateSessionIds, {
+            onAssistantDelta: publishAssistantDelta,
+          }),
+      );
       model = result.model;
       responseText = result.text;
       if (result.budget_exceeded) {
@@ -2018,7 +2051,21 @@ async function handleMcp(req, res) {
       const rawSessionId = sanitizeRawSessionId(args.session_id || "");
       const callerIdentity = callerIdentityFromRequest(req);
       const candidateSessionIds = deriveSessionCandidates(rawSessionId, callerIdentity);
-      const resultText = await runCodex(String(prompt), args, candidateSessionIds[0], candidateSessionIds);
+      const resultText = await runWithSpan(
+        "backend.mcp.tools_call",
+        {
+          kind: "server",
+          parentContext: req.headers.traceparent
+            ? extractOtelContext({ traceparent: String(req.headers.traceparent) })
+            : undefined,
+          attributes: {
+            "tool.name": name,
+            "agent.id": AGENT_ID,
+            "session.id_hash": sessionHash(candidateSessionIds[0]),
+          },
+        },
+        async () => await runCodex(String(prompt), args, candidateSessionIds[0], candidateSessionIds),
+      );
       result = { content: [{ type: "text", text: resultText.text }] };
     } else {
       status = "method_not_found";
@@ -2120,27 +2167,28 @@ function handleApiTraces(req, res) {
   const url = new URL(req.url || "/", "http://localhost");
   const traceMatch = url.pathname.match(/^\/api\/traces\/([0-9a-fA-F]{32})$/);
   try {
+    const traces = getInMemoryTraces();
     if (traceMatch) {
       const traceId = traceMatch[1].toLowerCase();
-      const entries = [...readJsonlEntries(CONVERSATION_LOG), ...readJsonlEntries(TRACE_LOG)];
-      const summary = traceSummaryFromEntries(entries, traceId);
-      if (!summary) {
-        return jsonResponse(res, 404, { error: "trace not found" });
+      const match = traces.find((traceItem) => traceItem.traceID === traceId);
+      if (!match) {
+        return jsonResponse(res, 404, { data: [], total: 0 });
       }
-      return jsonResponse(res, 200, { data: [summary], total: 1, limit: 1, offset: 0 });
+      return jsonResponse(res, 200, { data: [match], total: 1, limit: 1, offset: 0 });
     }
+    const cap = parsePositiveInt(process.env.OTEL_IN_MEMORY_SPANS, 1000);
     const limitRaw = url.searchParams.get("limit");
     const offsetRaw = url.searchParams.get("offset");
     const limit = limitRaw ? Number.parseInt(limitRaw, 10) : 20;
     const offset = offsetRaw ? Number.parseInt(offsetRaw, 10) : 0;
-    jsonResponse(
-      res,
-      200,
-      traceList(
-        Number.isFinite(limit) && limit > 0 ? Math.min(limit, 1000) : 20,
-        Number.isFinite(offset) && offset > 0 ? offset : 0,
-      ),
-    );
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, cap) : 20;
+    const safeOffset = Number.isFinite(offset) && offset > 0 ? offset : 0;
+    jsonResponse(res, 200, {
+      data: traces.slice(safeOffset, safeOffset + safeLimit),
+      total: traces.length,
+      limit: safeLimit,
+      offset: safeOffset,
+    });
   } catch (error) {
     jsonResponse(res, 500, { error: error?.message || String(error) });
   }
@@ -2299,6 +2347,20 @@ export function renderMetrics() {
     "# HELP backend_session_evictions_total Sessions evicted due to MAX_SESSIONS.",
     "# TYPE backend_session_evictions_total counter",
     metricLine("backend_session_evictions_total", metrics.sessionEvictionsTotal, labels()),
+    "# HELP backend_streaming_events_emitted_total Total partial assistant text chunks enqueued during streaming.",
+    "# TYPE backend_streaming_events_emitted_total counter",
+  );
+  for (const [model, value] of metrics.streamingEventsEmitted.entries()) {
+    lines.push(metricLine("backend_streaming_events_emitted_total", value, labels({ model })));
+  }
+  lines.push(
+    "# HELP backend_streaming_chunks_dropped_total Total streaming chunks dropped after subscriber write failures.",
+    "# TYPE backend_streaming_chunks_dropped_total counter",
+  );
+  for (const [model, value] of metrics.streamingChunksDropped.entries()) {
+    lines.push(metricLine("backend_streaming_chunks_dropped_total", value, labels({ model })));
+  }
+  lines.push(
     "# HELP backend_mcp_requests_total MCP requests by terminal status.",
     "# TYPE backend_mcp_requests_total counter",
   );
