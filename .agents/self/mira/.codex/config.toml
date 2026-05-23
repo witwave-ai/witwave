@@ -1,4 +1,10 @@
+model = "gpt-5.5"
+reasoning_effort = "xhigh"
+
 [tools]
 shell = true
-web_search = true
-computer = true
+memory = true
+mcp = true
+
+[runtime]
+max_tool_iterations = 6

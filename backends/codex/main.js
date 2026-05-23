@@ -21,6 +21,8 @@ const AGENT_VERSION = process.env.AGENT_VERSION || "0.1.0";
 const AGENT_OWNER = process.env.AGENT_OWNER || AGENT_NAME;
 const AGENT_ID = process.env.AGENT_ID || process.env.HOSTNAME || "codex";
 const BACKEND_ID = "codex";
+const CODEX_CONFIG_TOML = process.env.CODEX_CONFIG_TOML || "/home/agent/.codex/config.toml";
+const CODEX_CONFIG = loadCodexConfig(CODEX_CONFIG_TOML);
 
 initOtelIfEnabled({
   serviceName: process.env.OTEL_SERVICE_NAME || `${BACKEND_ID}-${AGENT_OWNER}`,
@@ -34,8 +36,12 @@ initOtelIfEnabled({
 const CONVERSATION_LOG = process.env.CONVERSATION_LOG || "/home/agent/logs/conversation.jsonl";
 const TRACE_LOG = process.env.TRACE_LOG || "/home/agent/logs/tool-activity.jsonl";
 const CODEX_AGENT_MD = process.env.CODEX_AGENT_MD || "/home/agent/.codex/AGENTS.md";
-const CODEX_MODEL = process.env.CODEX_MODEL || process.env.OPENAI_MODEL || "gpt-5.5";
-const CODEX_REASONING_EFFORT = process.env.CODEX_REASONING_EFFORT || "xhigh";
+const CODEX_MODEL = configString([["model"], ["model", "name"]], ["CODEX_MODEL", "OPENAI_MODEL"], "gpt-5.5");
+const CODEX_REASONING_EFFORT = configString(
+  [["reasoning_effort"], ["model", "reasoning_effort"], ["model", "effort"]],
+  ["CODEX_REASONING_EFFORT"],
+  "xhigh",
+);
 const CODEX_RESPONSES_STREAMING =
   process.env.CODEX_RESPONSES_STREAMING === undefined ? true : parseBool(process.env.CODEX_RESPONSES_STREAMING);
 const MAX_PROMPT_BYTES = Number.parseInt(process.env.MAX_PROMPT_BYTES || String(10 * 1024 * 1024), 10);
@@ -44,19 +50,38 @@ const METRICS_PORT = Number.parseInt(process.env.METRICS_PORT || "9000", 10);
 const CONVERSATIONS_AUTH_TOKEN = process.env.CONVERSATIONS_AUTH_TOKEN || "";
 const CONVERSATIONS_AUTH_DISABLED = parseBool(process.env.CONVERSATIONS_AUTH_DISABLED);
 const LOG_REDACT = parseBool(process.env.LOG_REDACT);
-const CODEX_SHELL_ENABLED = parseBool(process.env.CODEX_SHELL_ENABLED);
-const CODEX_SHELL_TIMEOUT_SECONDS = Number.parseInt(process.env.CODEX_SHELL_TIMEOUT_SECONDS || "30", 10);
-const CODEX_SHELL_MAX_OUTPUT_BYTES = Number.parseInt(process.env.CODEX_SHELL_MAX_OUTPUT_BYTES || "12000", 10);
-const CODEX_MAX_TOOL_ITERATIONS = Number.parseInt(process.env.CODEX_MAX_TOOL_ITERATIONS || "6", 10);
-const CODEX_MEMORY_ENABLED = parseBool(process.env.CODEX_MEMORY_ENABLED ?? "true");
-const CODEX_MEMORY_ROOT = process.env.CODEX_MEMORY_ROOT || "/home/agent/.codex/memory";
-const CODEX_MEMORY_MAX_BYTES = Number.parseInt(process.env.CODEX_MEMORY_MAX_BYTES || "65536", 10);
-const CODEX_MEMORY_MAX_LIST_ENTRIES = Number.parseInt(process.env.CODEX_MEMORY_MAX_LIST_ENTRIES || "200", 10);
-const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH || "/home/agent/.codex/mcp.json";
+const CODEX_SHELL_ENABLED = configBool([["tools", "shell"]], "CODEX_SHELL_ENABLED", false);
+const CODEX_SHELL_TIMEOUT_SECONDS = configInteger(
+  [["tools", "shell_timeout_seconds"], ["runtime", "shell_timeout_seconds"]],
+  "CODEX_SHELL_TIMEOUT_SECONDS",
+  30,
+);
+const CODEX_SHELL_MAX_OUTPUT_BYTES = configInteger(
+  [["tools", "shell_max_output_bytes"], ["runtime", "shell_max_output_bytes"]],
+  "CODEX_SHELL_MAX_OUTPUT_BYTES",
+  12000,
+);
+const CODEX_MAX_TOOL_ITERATIONS = configInteger(
+  [["runtime", "max_tool_iterations"], ["tools", "max_iterations"]],
+  "CODEX_MAX_TOOL_ITERATIONS",
+  6,
+);
+const CODEX_MEMORY_ENABLED = configBool([["tools", "memory"]], "CODEX_MEMORY_ENABLED", true);
+const CODEX_MEMORY_ROOT = configString([["paths", "memory_root"], ["memory", "root"]], ["CODEX_MEMORY_ROOT"], "/home/agent/.codex/memory");
+const CODEX_MEMORY_MAX_BYTES = configInteger([["memory", "max_bytes"]], "CODEX_MEMORY_MAX_BYTES", 65536);
+const CODEX_MEMORY_MAX_LIST_ENTRIES = configInteger(
+  [["memory", "max_list_entries"]],
+  "CODEX_MEMORY_MAX_LIST_ENTRIES",
+  200,
+);
+const CODEX_MCP_ENABLED = configBool([["tools", "mcp"]], "CODEX_MCP_ENABLED", true);
+const MCP_CONFIG_PATH = configString([["paths", "mcp_config"], ["mcp", "config_path"]], ["MCP_CONFIG_PATH"], "/home/agent/.codex/mcp.json");
 const MCP_TOOL_AUTH_TOKEN = process.env.MCP_TOOL_AUTH_TOKEN || "";
-const HOOKS_CONFIG_PATH = process.env.HOOKS_CONFIG_PATH || "/home/agent/.codex/hooks.yaml";
+const HOOKS_CONFIG_PATH = configString([["paths", "hooks_config"], ["hooks", "config_path"]], ["HOOKS_CONFIG_PATH"], "/home/agent/.codex/hooks.yaml");
 const HOOKS_BASELINE_ENABLED =
-  process.env.HOOKS_BASELINE_ENABLED === undefined ? true : parseBool(process.env.HOOKS_BASELINE_ENABLED);
+  process.env.HOOKS_BASELINE_ENABLED === undefined
+    ? configBool([["hooks", "baseline_enabled"]], "HOOKS_BASELINE_ENABLED", true)
+    : parseBool(process.env.HOOKS_BASELINE_ENABLED);
 const CODEX_MCP_CLIENT_TIMEOUT_MS = Math.max(
   1000,
   Math.round(Number.parseFloat(process.env.CODEX_MCP_CLIENT_TIMEOUT_SECONDS || "30") * 1000) || 30000,
@@ -65,7 +90,11 @@ const CODEX_MCP_MAX_OUTPUT_BYTES = Math.max(
   1,
   Number.parseInt(process.env.CODEX_MCP_MAX_OUTPUT_BYTES || "12000", 10) || 12000,
 );
-const CODEX_SESSION_STORE_PATH = process.env.CODEX_SESSION_STORE_PATH || "/home/agent/.codex/sessions/responses.json";
+const CODEX_SESSION_STORE_PATH = configString(
+  [["paths", "session_store"], ["sessions", "store_path"]],
+  ["CODEX_SESSION_STORE_PATH"],
+  "/home/agent/.codex/sessions/responses.json",
+);
 const MAX_SESSIONS = Math.max(1, Number.parseInt(process.env.MAX_SESSIONS || "10000", 10) || 10000);
 const CONVERSATION_STREAM_KEEPALIVE_SEC = Number.parseFloat(process.env.CONVERSATION_STREAM_KEEPALIVE_SEC || "15");
 const CONVERSATION_STREAM_GRACE_SEC = Number.parseFloat(process.env.CONVERSATION_STREAM_GRACE_SEC || "60");
@@ -172,6 +201,137 @@ function parseBool(value) {
     return false;
   }
   return ["1", "true", "yes", "on"].includes(String(value).trim().toLowerCase());
+}
+
+function stripTomlComment(line) {
+  let quote = "";
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if ((char === '"' || char === "'") && line[i - 1] !== "\\") {
+      quote = quote === char ? "" : quote || char;
+      continue;
+    }
+    if (char === "#" && !quote) {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
+
+function parseTomlValue(rawValue) {
+  const raw = String(rawValue || "").trim();
+  if (/^(true|false)$/i.test(raw)) {
+    return raw.toLowerCase() === "true";
+  }
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+    return raw.slice(1, -1);
+  }
+  if (/^-?\d+$/.test(raw)) {
+    return Number.parseInt(raw, 10);
+  }
+  return raw;
+}
+
+export function loadCodexConfigFromText(text) {
+  const root = {};
+  let current = root;
+  for (const rawLine of String(text || "").split(/\r?\n/)) {
+    const line = stripTomlComment(rawLine).trim();
+    if (!line) {
+      continue;
+    }
+    const tableMatch = line.match(/^\[([A-Za-z0-9_.-]+)\]$/);
+    if (tableMatch) {
+      current = root;
+      for (const part of tableMatch[1].split(".")) {
+        if (!current[part] || typeof current[part] !== "object" || Array.isArray(current[part])) {
+          current[part] = {};
+        }
+        current = current[part];
+      }
+      continue;
+    }
+    const assignmentMatch = line.match(/^([A-Za-z0-9_.-]+)\s*=\s*(.*)$/);
+    if (!assignmentMatch) {
+      continue;
+    }
+    current[assignmentMatch[1]] = parseTomlValue(assignmentMatch[2]);
+  }
+  return root;
+}
+
+function loadCodexConfig(filePath) {
+  const raw = readTextIfExists(filePath);
+  if (!raw.trim()) {
+    return {};
+  }
+  try {
+    return loadCodexConfigFromText(raw);
+  } catch (error) {
+    console.warn(`codex backend: failed to parse config at ${filePath}: ${error?.message || error}`);
+    return {};
+  }
+}
+
+function configValue(pathParts) {
+  let current = CODEX_CONFIG;
+  for (const part of pathParts) {
+    if (!current || typeof current !== "object" || Array.isArray(current) || !(part in current)) {
+      return undefined;
+    }
+    current = current[part];
+  }
+  return current;
+}
+
+function configString(paths, envNames, defaultValue) {
+  for (const envName of envNames) {
+    const envValue = process.env[envName];
+    if (typeof envValue === "string" && envValue.trim()) {
+      return envValue.trim();
+    }
+  }
+  for (const pathParts of paths) {
+    const value = configValue(pathParts);
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return defaultValue;
+}
+
+function configBool(paths, envName, defaultValue) {
+  if (process.env[envName] !== undefined) {
+    return parseBool(process.env[envName]);
+  }
+  for (const pathParts of paths) {
+    const value = configValue(pathParts);
+    if (typeof value === "boolean") {
+      return value;
+    }
+  }
+  return defaultValue;
+}
+
+function configInteger(paths, envName, defaultValue) {
+  const envValue = process.env[envName];
+  if (envValue !== undefined && envValue !== "") {
+    const parsed = Number.parseInt(String(envValue), 10);
+    return Number.isFinite(parsed) ? parsed : defaultValue;
+  }
+  for (const pathParts of paths) {
+    const value = configValue(pathParts);
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  return defaultValue;
 }
 
 function splitList(value) {
@@ -1432,7 +1592,9 @@ async function codexToolDefinitions() {
   if (CODEX_MEMORY_ENABLED) {
     tools.push(...memoryToolDefinitions());
   }
-  tools.push(...(await discoverMcpFunctionTools()));
+  if (CODEX_MCP_ENABLED) {
+    tools.push(...(await discoverMcpFunctionTools()));
+  }
   return tools;
 }
 

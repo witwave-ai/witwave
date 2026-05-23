@@ -39,6 +39,7 @@ the OpenAI Responses API.
 
 | Variable                            | Default                                      | Purpose                                                         |
 | ----------------------------------- | -------------------------------------------- | --------------------------------------------------------------- |
+| `CODEX_CONFIG_TOML`                 | `/home/agent/.codex/config.toml`             | Optional runtime config loaded before env defaults              |
 | `CODEX_MODEL`                       | `gpt-5.5`                                    | Responses API model used when A2A metadata does not override it |
 | `CODEX_REASONING_EFFORT`            | `xhigh`                                      | Reasoning effort sent to supported Codex models                 |
 | `CODEX_RESPONSES_STREAMING`         | `true`                                       | Streams Responses API text deltas into session SSE updates      |
@@ -81,6 +82,25 @@ the OpenAI Responses API.
 A2A metadata may set `model`, `reasoning_effort`, `max_output_tokens`, or `max_tokens` for a single request. Invalid or
 non-positive token values are ignored. `max_output_tokens` is sent to the Responses API as an output cap; `max_tokens`
 is Witwave's per-dispatch total-token budget and is checked against Responses API usage.
+
+`CODEX_CONFIG_TOML` gives mounted `.codex/config.toml` files a real runtime role. Environment variables still win, then
+config values, then built-in defaults. The supported shape is intentionally small:
+
+```toml
+model = "gpt-5.5"
+reasoning_effort = "xhigh"
+
+[tools]
+shell = true
+memory = true
+mcp = true
+
+[runtime]
+max_tool_iterations = 6
+```
+
+Additional path overrides are available under `[paths]`: `memory_root`, `mcp_config`, `hooks_config`, and
+`session_store`. Memory caps can be set under `[memory]` with `max_bytes` and `max_list_entries`.
 
 The backend stores the final `response.id` for each A2A session in `CODEX_SESSION_STORE_PATH` and sends it back as
 `previous_response_id` on the next turn. The harness also sends `metadata.session_id` on first-turn A2A calls so Codex

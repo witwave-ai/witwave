@@ -12,8 +12,22 @@ process.env.CODEX_STUB_MODE = "true";
 process.env.CODEX_MEMORY_ROOT = path.join(tmp, "memory");
 process.env.CONVERSATIONS_AUTH_DISABLED = "true";
 process.env.LOG_REDACT = "true";
+process.env.CODEX_CONFIG_TOML = path.join(tmp, "config.toml");
 process.env.HOOKS_CONFIG_PATH = path.join(tmp, "hooks.yaml");
 process.env.HOOKS_BASELINE_ENABLED = "true";
+fs.writeFileSync(
+  process.env.CODEX_CONFIG_TOML,
+  `
+model = "gpt-5.5"
+reasoning_effort = "xhigh"
+
+[tools]
+shell = true
+memory = true
+mcp = true
+`,
+  "utf8",
+);
 
 const {
   buildAgentCard,
@@ -28,6 +42,7 @@ const {
   handleRequest,
   isShellCommandAllowed,
   evaluatePreToolUse,
+  loadCodexConfigFromText,
   loadHookExtensionRulesFromText,
   mcpFunctionName,
   mcpServerEntriesFromConfig,
@@ -181,6 +196,28 @@ test("mcpFunctionName and mcpToolResultText create Responses-safe function outpu
     }),
     'pods are healthy\n{"ready":true}',
   );
+});
+
+test("loadCodexConfigFromText parses supported Codex runtime config", () => {
+  const config = loadCodexConfigFromText(`
+model = "gpt-5.5"
+reasoning_effort = "xhigh"
+
+[tools]
+shell = true
+memory = false
+mcp = true
+
+[runtime]
+max_tool_iterations = 4
+`);
+
+  assert.equal(config.model, "gpt-5.5");
+  assert.equal(config.reasoning_effort, "xhigh");
+  assert.equal(config.tools.shell, true);
+  assert.equal(config.tools.memory, false);
+  assert.equal(config.tools.mcp, true);
+  assert.equal(config.runtime.max_tool_iterations, 4);
 });
 
 test("extractPrompt reads the A2A message/send text parts shape", () => {
