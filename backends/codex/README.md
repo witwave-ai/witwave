@@ -151,6 +151,10 @@ Codex writes Claude-shaped tool trace rows for every function tool it executes. 
 `tool_audit` rows carry `tool_name`, `tool_input`, `tool_response_preview`, and the final decision. This lets the
 dashboard's Tool Trace view pair Codex tool calls the same way it pairs Claude tool calls.
 
+Codex also mirrors Claude's core tool metric names for cross-backend dashboards: `backend_sdk_tool_calls_total`,
+`backend_sdk_tool_calls_per_query`, `backend_sdk_tool_duration_seconds`, tool input/result byte summaries,
+`backend_sdk_tool_errors_total`, and outbound MCP tool request/duration summaries.
+
 OpenTelemetry is active when either `OTEL_ENABLED=true` or `OTEL_IN_MEMORY_SPANS` is positive. OTLP export is opt-in;
 the in-memory ring is enabled by default so `/api/traces` can show recent backend spans without requiring a collector.
 Inbound `traceparent` values from A2A metadata or MCP HTTP headers are continued so Codex spans join the harness trace.

@@ -182,6 +182,19 @@ const metrics = {
   hookWarnings: new Map(),
   hookEvaluations: new Map(),
   hookConfigErrors: new Map(),
+  sdkToolCalls: new Map(),
+  sdkToolErrors: new Map(),
+  sdkToolDurationCounts: new Map(),
+  sdkToolDurationSums: new Map(),
+  sdkToolInputBytesCounts: new Map(),
+  sdkToolInputBytesSums: new Map(),
+  sdkToolResultBytesCounts: new Map(),
+  sdkToolResultBytesSums: new Map(),
+  sdkToolCallsPerQueryCount: 0,
+  sdkToolCallsPerQuerySum: 0,
+  mcpOutboundRequests: new Map(),
+  mcpOutboundDurationCounts: new Map(),
+  mcpOutboundDurationSums: new Map(),
   lastA2ARequestTimestamp: 0,
 };
 
@@ -357,6 +370,38 @@ function inc(map, key, amount = 1) {
 
 function byteLength(text) {
   return Buffer.byteLength(text || "", "utf8");
+}
+
+function jsonByteLength(value) {
+  try {
+    return byteLength(JSON.stringify(value ?? {}));
+  } catch {
+    return byteLength(String(value ?? ""));
+  }
+}
+
+function observeSummary(countMap, sumMap, key, value) {
+  const observed = Number.isFinite(value) ? value : 0;
+  inc(countMap, key);
+  sumMap.set(key, (sumMap.get(key) || 0) + observed);
+}
+
+function observeSdkToolCall(toolName, toolInput, result, durationSeconds) {
+  const name = toolName || "unknown";
+  const isError = result?.ok === false || result?.refused === true || result?.is_error === true;
+  inc(metrics.sdkToolCalls, name);
+  if (isError) {
+    inc(metrics.sdkToolErrors, name);
+  }
+  observeSummary(metrics.sdkToolDurationCounts, metrics.sdkToolDurationSums, name, durationSeconds);
+  observeSummary(metrics.sdkToolInputBytesCounts, metrics.sdkToolInputBytesSums, name, jsonByteLength(toolInput));
+  observeSummary(metrics.sdkToolResultBytesCounts, metrics.sdkToolResultBytesSums, name, jsonByteLength(result));
+}
+
+function observeMcpOutboundCall(serverName, toolName, outcome, durationSeconds) {
+  const key = mapKey(serverName || "unknown", toolName || "unknown", outcome || "error");
+  inc(metrics.mcpOutboundRequests, key);
+  observeSummary(metrics.mcpOutboundDurationCounts, metrics.mcpOutboundDurationSums, key, durationSeconds);
 }
 
 function sanitizeModelLabel(value) {
@@ -2065,15 +2110,18 @@ export async function handleFunctionCall(call, traceId, context = {}) {
     }
     const toolInput = { command: args.command };
     const toolContext = buildContext("run_shell_command");
+    const toolStarted = performance.now();
     appendToolUseEvent("run_shell_command", toolInput, traceId, toolContext);
     const denied = preToolUseGate("run_shell_command", toolInput, traceId, toolContext);
     if (denied) {
       appendToolResultEvent("run_shell_command", denied, traceId, toolContext);
+      observeSdkToolCall("run_shell_command", toolInput, denied, (performance.now() - toolStarted) / 1000);
       return denied;
     }
     const result = await withToolSpan(async () => await runShellCommand(args.command, traceId));
     appendToolResultEvent("run_shell_command", result, traceId, toolContext);
     appendToolAuditEvent("run_shell_command", toolInput, result, traceId, toolContext);
+    observeSdkToolCall("run_shell_command", toolInput, result, (performance.now() - toolStarted) / 1000);
     return result;
   }
 
@@ -2089,15 +2137,18 @@ export async function handleFunctionCall(call, traceId, context = {}) {
       };
     }
     const toolContext = buildContext(call.name);
+    const toolStarted = performance.now();
     appendToolUseEvent(call.name, args, traceId, toolContext);
     const denied = preToolUseGate(call.name, args, traceId, toolContext);
     if (denied) {
       appendToolResultEvent(call.name, denied, traceId, toolContext);
+      observeSdkToolCall(call.name, args, denied, (performance.now() - toolStarted) / 1000);
       return denied;
     }
     const result = await withToolSpan(async () => await runMemoryTool(call.name, args, traceId));
     appendToolResultEvent(call.name, result, traceId, toolContext);
     appendToolAuditEvent(call.name, args, result, traceId, toolContext);
+    observeSdkToolCall(call.name, args, result, (performance.now() - toolStarted) / 1000);
     return result;
   }
 
@@ -2115,6 +2166,7 @@ export async function handleFunctionCall(call, traceId, context = {}) {
     const tool = mcpToolCache.toolIndex.get(call.name);
     const toolInput = { ...args, mcp_server: tool?.serverName || "", mcp_tool: tool?.toolName || "" };
     const toolContext = buildContext(call.name);
+    const toolStarted = performance.now();
     appendToolUseEvent(call.name, toolInput, traceId, toolContext);
     const denied = preToolUseGate(
       call.name,
@@ -2124,11 +2176,14 @@ export async function handleFunctionCall(call, traceId, context = {}) {
     );
     if (denied) {
       appendToolResultEvent(call.name, denied, traceId, toolContext);
+      observeSdkToolCall(call.name, toolInput, denied, (performance.now() - toolStarted) / 1000);
       return denied;
     }
     const result = await withToolSpan(async () => await runMcpTool(call.name, args, traceId));
     appendToolResultEvent(call.name, result, traceId, toolContext);
     appendToolAuditEvent(call.name, toolInput, result, traceId, toolContext);
+    observeSdkToolCall(call.name, toolInput, result, (performance.now() - toolStarted) / 1000);
+    observeMcpOutboundCall(tool?.serverName, tool?.toolName, result?.ok === false ? "error" : "ok", result?.duration_seconds);
     return result;
   }
 
@@ -2329,6 +2384,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
     recordSessionResponse(sessionId, response.id, model);
   }
   let budget = budgetResult(response, maxTokens);
+  let toolCallsThisQuery = 0;
   if (budget.exceeded) {
     metrics.budgetExceededTotal += 1;
   }
@@ -2342,6 +2398,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
       if (calls.length === 0) {
         break;
       }
+      toolCallsThisQuery += calls.length;
       const input = [];
       for (const call of calls) {
         const output = await handleFunctionCall(call, traceId, { sessionId, model });
@@ -2375,6 +2432,8 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
       }
     }
   }
+  metrics.sdkToolCallsPerQueryCount += 1;
+  metrics.sdkToolCallsPerQuerySum += toolCallsThisQuery;
   const text = extractOutputText(response) || JSON.stringify(response.output || response);
   return {
     model,
@@ -3006,6 +3065,82 @@ export function renderMetrics() {
   for (const [key, value] of metrics.toolCalls.entries()) {
     const [tool, status] = key.split(":", 2);
     lines.push(metricLine("backend_tool_calls_total", value, labels({ tool, status })));
+  }
+  lines.push(
+    "# HELP backend_sdk_tool_calls_total Total Codex function-tool calls by tool name.",
+    "# TYPE backend_sdk_tool_calls_total counter",
+  );
+  for (const [tool, value] of metrics.sdkToolCalls.entries()) {
+    lines.push(metricLine("backend_sdk_tool_calls_total", value, labels({ tool })));
+  }
+  lines.push(
+    "# HELP backend_sdk_tool_calls_per_query Number of tool calls per Codex query.",
+    "# TYPE backend_sdk_tool_calls_per_query summary",
+    metricLine("backend_sdk_tool_calls_per_query_count", metrics.sdkToolCallsPerQueryCount, labels()),
+    metricLine("backend_sdk_tool_calls_per_query_sum", metrics.sdkToolCallsPerQuerySum, labels()),
+    "# HELP backend_sdk_tool_duration_seconds Wall-clock seconds per Codex function-tool call.",
+    "# TYPE backend_sdk_tool_duration_seconds summary",
+  );
+  for (const [tool, value] of metrics.sdkToolDurationCounts.entries()) {
+    lines.push(metricLine("backend_sdk_tool_duration_seconds_count", value, labels({ tool })));
+    lines.push(
+      metricLine("backend_sdk_tool_duration_seconds_sum", metrics.sdkToolDurationSums.get(tool) || 0, labels({ tool })),
+    );
+  }
+  lines.push(
+    "# HELP backend_sdk_tool_errors_total Total Codex function-tool calls that returned an error or refusal.",
+    "# TYPE backend_sdk_tool_errors_total counter",
+  );
+  for (const [tool, value] of metrics.sdkToolErrors.entries()) {
+    lines.push(metricLine("backend_sdk_tool_errors_total", value, labels({ tool })));
+  }
+  lines.push(
+    "# HELP backend_sdk_tool_call_input_size_bytes Byte length of Codex function-tool input payloads.",
+    "# TYPE backend_sdk_tool_call_input_size_bytes summary",
+  );
+  for (const [tool, value] of metrics.sdkToolInputBytesCounts.entries()) {
+    lines.push(metricLine("backend_sdk_tool_call_input_size_bytes_count", value, labels({ tool })));
+    lines.push(
+      metricLine(
+        "backend_sdk_tool_call_input_size_bytes_sum",
+        metrics.sdkToolInputBytesSums.get(tool) || 0,
+        labels({ tool }),
+      ),
+    );
+  }
+  lines.push(
+    "# HELP backend_sdk_tool_result_size_bytes Byte length of Codex function-tool result payloads.",
+    "# TYPE backend_sdk_tool_result_size_bytes summary",
+  );
+  for (const [tool, value] of metrics.sdkToolResultBytesCounts.entries()) {
+    lines.push(metricLine("backend_sdk_tool_result_size_bytes_count", value, labels({ tool })));
+    lines.push(
+      metricLine(
+        "backend_sdk_tool_result_size_bytes_sum",
+        metrics.sdkToolResultBytesSums.get(tool) || 0,
+        labels({ tool }),
+      ),
+    );
+  }
+  lines.push(
+    "# HELP backend_mcp_outbound_requests_total Total outbound MCP tool invocations issued by this backend.",
+    "# TYPE backend_mcp_outbound_requests_total counter",
+  );
+  for (const [key, value] of metrics.mcpOutboundRequests.entries()) {
+    const [server, tool, outcome] = mapKeyParts(key);
+    lines.push(metricLine("backend_mcp_outbound_requests_total", value, labels({ server, tool, outcome })));
+  }
+  lines.push(
+    "# HELP backend_mcp_outbound_duration_seconds Wall-clock duration of outbound MCP tool calls.",
+    "# TYPE backend_mcp_outbound_duration_seconds summary",
+  );
+  for (const [key, value] of metrics.mcpOutboundDurationCounts.entries()) {
+    const [server, tool, outcome] = mapKeyParts(key);
+    const labelSet = labels({ server, tool, outcome });
+    lines.push(metricLine("backend_mcp_outbound_duration_seconds_count", value, labelSet));
+    lines.push(
+      metricLine("backend_mcp_outbound_duration_seconds_sum", metrics.mcpOutboundDurationSums.get(key) || 0, labelSet),
+    );
   }
   lines.push(
     "# HELP backend_hooks_denials_total Total tool calls denied by a PreToolUse hook.",
