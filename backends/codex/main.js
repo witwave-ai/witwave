@@ -159,9 +159,15 @@ let openaiClientPromise = null;
 const metrics = {
   healthChecks: new Map(),
   a2aRequests: new Map(),
+  a2aDurationCount: 0,
+  a2aDurationSum: 0,
   mcpRequests: new Map(),
   mcpDurationCounts: new Map(),
   mcpDurations: new Map(),
+  logEntries: new Map(),
+  logBytes: new Map(),
+  logWriteErrorsTotal: 0,
+  logWriteErrorsByLogger: new Map(),
   toolCalls: new Map(),
   promptBytesCount: 0,
   promptBytesSum: 0,
@@ -1016,11 +1022,27 @@ function ensureParent(filePath) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 }
 
+function jsonlLoggerName(filePath) {
+  if (filePath === CONVERSATION_LOG) {
+    return "conversation";
+  }
+  if (filePath === TRACE_LOG) {
+    return "trace";
+  }
+  return "jsonl";
+}
+
 function appendJsonl(filePath, record) {
+  const loggerName = jsonlLoggerName(filePath);
   try {
     ensureParent(filePath);
-    fs.appendFileSync(filePath, `${JSON.stringify(record)}\n`, "utf8");
+    const line = JSON.stringify(record);
+    fs.appendFileSync(filePath, `${line}\n`, "utf8");
+    inc(metrics.logEntries, loggerName);
+    inc(metrics.logBytes, loggerName, byteLength(line));
   } catch (error) {
+    metrics.logWriteErrorsTotal += 1;
+    inc(metrics.logWriteErrorsByLogger, loggerName);
     console.error(`codex backend: failed to append ${filePath}:`, error);
   }
 }
@@ -2469,6 +2491,7 @@ export async function handleA2A(payload) {
     return a2aError(id, -32601, `Unsupported method: ${payload.method || ""}`);
   }
 
+  const requestStarted = performance.now();
   const { metadata, contextId, messageId } = extractRequestMetadata(payload);
   const { sessionId, candidateSessionIds } = sessionForRequest(metadata, contextId);
   const prompt = extractPrompt(payload).trim();
@@ -2534,6 +2557,8 @@ export async function handleA2A(payload) {
     responseText = `codex backend error: ${error?.message || String(error)}`;
   } finally {
     inc(metrics.a2aRequests, status);
+    metrics.a2aDurationCount += 1;
+    metrics.a2aDurationSum += (performance.now() - requestStarted) / 1000;
   }
 
   metrics.responseBytesCount += 1;
@@ -3013,6 +3038,34 @@ export function renderMetrics() {
     "# HELP backend_a2a_last_request_timestamp_seconds Unix timestamp of the most recent A2A request.",
     "# TYPE backend_a2a_last_request_timestamp_seconds gauge",
     metricLine("backend_a2a_last_request_timestamp_seconds", metrics.lastA2ARequestTimestamp || 0, labels()),
+    "# HELP backend_a2a_request_duration_seconds A2A request duration summary.",
+    "# TYPE backend_a2a_request_duration_seconds summary",
+    metricLine("backend_a2a_request_duration_seconds_count", metrics.a2aDurationCount, labels()),
+    metricLine("backend_a2a_request_duration_seconds_sum", metrics.a2aDurationSum, labels()),
+    "# HELP backend_log_entries_total Total entries written to backend JSONL logs.",
+    "# TYPE backend_log_entries_total counter",
+  );
+  for (const [logger, value] of metrics.logEntries.entries()) {
+    lines.push(metricLine("backend_log_entries_total", value, labels({ logger })));
+  }
+  lines.push(
+    "# HELP backend_log_bytes_total Total bytes written to backend JSONL logs.",
+    "# TYPE backend_log_bytes_total counter",
+  );
+  for (const [logger, value] of metrics.logBytes.entries()) {
+    lines.push(metricLine("backend_log_bytes_total", value, labels({ logger })));
+  }
+  lines.push(
+    "# HELP backend_log_write_errors_total Total I/O failures in the conversation/trace logging subsystem.",
+    "# TYPE backend_log_write_errors_total counter",
+    metricLine("backend_log_write_errors_total", metrics.logWriteErrorsTotal, labels()),
+    "# HELP backend_log_write_errors_by_logger_total Total log write errors grouped by logger.",
+    "# TYPE backend_log_write_errors_by_logger_total counter",
+  );
+  for (const [logger, value] of metrics.logWriteErrorsByLogger.entries()) {
+    lines.push(metricLine("backend_log_write_errors_by_logger_total", value, labels({ logger })));
+  }
+  lines.push(
     "# HELP backend_prompt_length_bytes Prompt byte length summary.",
     "# TYPE backend_prompt_length_bytes summary",
     metricLine("backend_prompt_length_bytes_count", metrics.promptBytesCount, labels()),
