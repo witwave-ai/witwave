@@ -6,6 +6,29 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.29.0] — 2026-05-23
+
+Codex-backend maturation minor: the JavaScript `backends/codex` scaffold introduced in v0.28.0 grows up. Sessions are
+now bound per-caller with stream-count caps, MCP protocol handling / metrics / trace-context propagation are aligned
+with the rest of the backend fleet, and configured MCP servers are bridged through as tools on the codex side. Two
+auth-path hardening fixes round out the cycle.
+
+### Added
+
+- **backends/codex**: Bridge configured MCP servers through as tools so the codex backend can call them on the model's
+  behalf — closes the MCP-as-tools parity gap with the other backends.
+- **backends/codex**: Bind response sessions to the calling identity so sessions can't be reused across callers, and cap
+  concurrent session streams per caller to bound resource use.
+- **backends/codex**: Propagate trace context across MCP calls, align MCP-emitted metrics with the fleet conventions,
+  and align MCP protocol handling so error envelopes / version negotiation match the other backends.
+- **backends/codex**: Initial session-stream parity work — the underlying scaffolding the per-caller binding and the
+  stream cap build on.
+
+### Fixed
+
+- **backends/codex**: Warn loudly when codex auth is misconfigured instead of silently degrading, and harden the bearer
+  auth check so malformed `Authorization` headers no longer slip through.
+
 ## [0.28.0] — 2026-05-23
 
 Backend-architecture minor: the Python backend that wrapped OpenAI's Responses API under the **codex** name is renamed
