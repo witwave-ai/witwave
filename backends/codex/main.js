@@ -1534,6 +1534,23 @@ export function constantTimeBearerTokenMatches(authorizationHeader, expectedToke
   return crypto.timingSafeEqual(expectedDigest, presentedDigest);
 }
 
+export function conversationsAuthConfigWarning(authToken = CONVERSATIONS_AUTH_TOKEN, authDisabled = CONVERSATIONS_AUTH_DISABLED) {
+  if (authToken) {
+    return "";
+  }
+  if (authDisabled) {
+    return (
+      "codex backend: CONVERSATIONS_AUTH_DISABLED=true - authentication is DISABLED and " +
+      "logs are readable by any caller. Use only for local development."
+    );
+  }
+  return (
+    "codex backend: CONVERSATIONS_AUTH_TOKEN is unset or empty and CONVERSATIONS_AUTH_DISABLED " +
+    "is not set - protected endpoints will fail closed (503). Set a non-empty token, or set " +
+    "CONVERSATIONS_AUTH_DISABLED=true to acknowledge disabled auth for local dev."
+  );
+}
+
 function authOk(req) {
   if (CONVERSATIONS_AUTH_DISABLED) {
     return true;
@@ -2048,6 +2065,10 @@ function startMetricsServer() {
 export function start() {
   ensureParent(CONVERSATION_LOG);
   ensureParent(TRACE_LOG);
+  const authWarning = conversationsAuthConfigWarning();
+  if (authWarning) {
+    console.error(authWarning);
+  }
   const appServer = http.createServer((req, res) => {
     handleRequest(req, res).catch((error) => {
       console.error("codex backend request error:", error);

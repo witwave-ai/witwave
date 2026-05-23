@@ -16,6 +16,7 @@ process.env.LOG_REDACT = "true";
 const {
   buildAgentCard,
   constantTimeBearerTokenMatches,
+  conversationsAuthConfigWarning,
   deriveSessionId,
   extractRequestMetadata,
   extractPrompt,
@@ -112,6 +113,12 @@ test("constantTimeBearerTokenMatches requires an exact bearer token match", () =
   assert.equal(constantTimeBearerTokenMatches("Bearer expected-token ", "expected-token"), false);
   assert.equal(constantTimeBearerTokenMatches(undefined, "expected-token"), false);
   assert.equal(constantTimeBearerTokenMatches("Bearer expected-token", ""), false);
+});
+
+test("conversationsAuthConfigWarning mirrors protected endpoint auth posture", () => {
+  assert.equal(conversationsAuthConfigWarning("configured-token", false), "");
+  assert.match(conversationsAuthConfigWarning("", true), /authentication is DISABLED/);
+  assert.match(conversationsAuthConfigWarning("", false), /protected endpoints will fail closed/);
 });
 
 test("extractPrompt reads the A2A message/send text parts shape", () => {
