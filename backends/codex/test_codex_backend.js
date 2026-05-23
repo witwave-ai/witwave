@@ -210,6 +210,10 @@ mcp = true
 
 [runtime]
 max_tool_iterations = 4
+
+[paths]
+memory_root = "/workspaces/witwave-self/memory/agents/mira"
+mcp_config = "/home/agent/.codex/mcp.json"
 `);
 
   assert.equal(config.model, "gpt-5.5");
@@ -218,6 +222,8 @@ max_tool_iterations = 4
   assert.equal(config.tools.memory, false);
   assert.equal(config.tools.mcp, true);
   assert.equal(config.runtime.max_tool_iterations, 4);
+  assert.equal(config.paths.memory_root, "/workspaces/witwave-self/memory/agents/mira");
+  assert.equal(config.paths.mcp_config, "/home/agent/.codex/mcp.json");
 });
 
 test("extractPrompt reads the A2A message/send text parts shape", () => {

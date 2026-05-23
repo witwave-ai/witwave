@@ -97,6 +97,9 @@ mcp = true
 
 [runtime]
 max_tool_iterations = 6
+
+[paths]
+memory_root = "/workspaces/witwave-self/memory/agents/mira"
 ```
 
 Additional path overrides are available under `[paths]`: `memory_root`, `mcp_config`, `hooks_config`, and
