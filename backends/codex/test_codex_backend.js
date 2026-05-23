@@ -15,6 +15,7 @@ process.env.LOG_REDACT = "true";
 
 const {
   buildAgentCard,
+  deriveSessionId,
   extractRequestMetadata,
   extractPrompt,
   handleA2A,
@@ -54,6 +55,16 @@ test("extractPrompt reads the A2A message/send text parts shape", () => {
   assert.equal(extractPrompt(payload), "first\nsecond");
 });
 
+test("deriveSessionId binds the same raw session to different callers when secret is set", () => {
+  const raw = "shared-session";
+  const alice = deriveSessionId(raw, "alice", "secret");
+  const aliceAgain = deriveSessionId(raw, "alice", "secret");
+  const bob = deriveSessionId(raw, "bob", "secret");
+  assert.equal(alice, aliceAgain);
+  assert.notEqual(alice, bob);
+  assert.match(alice, /^[0-9a-f-]{36}$/);
+});
+
 test("handleA2A returns the message response shape harness and ww extract", async () => {
   const response = await handleA2A({
     jsonrpc: "2.0",
@@ -88,7 +99,7 @@ test("session stream endpoint publishes user and final assistant chunks", async 
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
     const { port } = server.address();
-    const sessionId = "stream-session";
+    const sessionId = "00000000-0000-4000-8000-000000000001";
     const received = [];
     const streamReq = http.get(`http://127.0.0.1:${port}/api/sessions/${sessionId}/stream`);
     let streamReadyResolve;
@@ -153,6 +164,51 @@ test("session stream endpoint publishes user and final assistant chunks", async 
     assert.equal(received[0].payload.content, "stream hello");
     assert.equal(received[1].payload.role, "assistant");
     assert.match(received[1].payload.content, /codex backend scaffold/i);
+  } finally {
+    server.closeAllConnections?.();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("MCP tools/list advertises the backend-neutral ask_agent tool name", async () => {
+  const server = http.createServer((req, res) => {
+    handleRequest(req, res).catch((error) => {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: error?.message || String(error) }));
+    });
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address();
+    const body = JSON.stringify({ jsonrpc: "2.0", id: "tools", method: "tools/list" });
+    const result = await new Promise((resolve, reject) => {
+      const req = http.request(
+        `http://127.0.0.1:${port}/mcp`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "content-length": Buffer.byteLength(body),
+          },
+        },
+        (res) => {
+          let data = "";
+          res.setEncoding("utf8");
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
+          res.on("end", () => resolve(JSON.parse(data)));
+        },
+      );
+      req.on("error", reject);
+      req.end(body);
+    });
+
+    const tool = result.result.tools[0];
+    assert.equal(tool.name, "ask_agent");
+    assert.ok(tool.inputSchema.properties.session_id);
+    assert.ok(tool.inputSchema.properties.max_tokens);
   } finally {
     server.closeAllConnections?.();
     await new Promise((resolve) => server.close(resolve));

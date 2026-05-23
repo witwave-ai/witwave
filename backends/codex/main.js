@@ -46,6 +46,8 @@ const CONVERSATION_STREAM_RING_MAX = Math.max(
   1,
   Number.parseInt(process.env.CONVERSATION_STREAM_RING_MAX || "200", 10) || 200,
 );
+const SESSION_ID_SECRET = process.env.SESSION_ID_SECRET || "";
+const SESSION_ID_SECRET_PREV = process.env.SESSION_ID_SECRET_PREV || "";
 const CODEX_SHELL_ALLOWED_PREFIXES = splitList(
   process.env.CODEX_SHELL_ALLOWED_PREFIXES ||
     [
@@ -146,6 +148,86 @@ function sessionHash(sessionId) {
   return crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 12);
 }
 
+function uuidBytes(uuid) {
+  const hex = String(uuid || "").replace(/-/g, "");
+  return Buffer.from(hex, "hex");
+}
+
+function formatUuid(bytes) {
+  const hex = Buffer.from(bytes).toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function uuid5(namespace, name) {
+  const hash = crypto
+    .createHash("sha1")
+    .update(uuidBytes(namespace))
+    .update(String(name || ""))
+    .digest();
+  const bytes = Buffer.from(hash.subarray(0, 16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  return formatUuid(bytes);
+}
+
+function legacySessionId(rawSessionId) {
+  const raw = String(rawSessionId || "").trim();
+  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(raw)) {
+    return raw.toLowerCase();
+  }
+  return uuid5("6ba7b811-9dad-11d1-80b4-00c04fd430c8", raw);
+}
+
+function sanitizeRawSessionId(raw) {
+  return String(raw || "")
+    .trim()
+    .slice(0, 256)
+    .split("")
+    .filter((char) => char >= " ")
+    .join("");
+}
+
+export function deriveSessionId(rawSessionId, callerIdentity, secret = SESSION_ID_SECRET) {
+  const raw = sanitizeRawSessionId(rawSessionId);
+  if (!raw) {
+    return crypto.randomUUID();
+  }
+  if (!secret) {
+    return legacySessionId(raw);
+  }
+  if (!callerIdentity) {
+    console.warn(
+      "codex backend: SESSION_ID_SECRET is set but no caller identity is available; using legacy session derivation",
+    );
+    return legacySessionId(raw);
+  }
+  const callerHash = crypto.createHash("sha256").update(String(callerIdentity)).digest("hex");
+  const mac = crypto
+    .createHmac("sha256", secret)
+    .update(`${callerHash}\0${raw}`)
+    .digest("hex");
+  return uuid5("6ba7b811-9dad-11d1-80b4-00c04fd430c8", mac);
+}
+
+function deriveSessionCandidates(rawSessionId, callerIdentity) {
+  const current = deriveSessionId(rawSessionId, callerIdentity, SESSION_ID_SECRET);
+  const candidates = [current];
+  const raw = sanitizeRawSessionId(rawSessionId);
+  if (raw && callerIdentity && SESSION_ID_SECRET_PREV && SESSION_ID_SECRET_PREV !== SESSION_ID_SECRET) {
+    const previous = deriveSessionId(raw, callerIdentity, SESSION_ID_SECRET_PREV);
+    if (!candidates.includes(previous)) {
+      candidates.push(previous);
+    }
+  }
+  return candidates;
+}
+
+function callerIdentityFromRequest(req) {
+  const header = req?.headers?.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
+  return token ? crypto.createHash("sha256").update(token).digest("hex") : undefined;
+}
+
 function nowIsoMs() {
   return new Date().toISOString();
 }
@@ -204,7 +286,7 @@ function sseSerialize(envelope) {
 }
 
 export function publishSessionChunk(sessionId, { role, seq, content, final }) {
-  const stream = getSessionStream(sessionId);
+  const stream = getSessionStream(sessionId, { create: true });
   if (!stream) {
     return undefined;
   }
@@ -315,12 +397,25 @@ function saveSessionStore() {
 
 function sessionForRequest(metadata, contextId) {
   const raw = metadata?.session_id || metadata?.sessionId || contextId;
-  const sessionId = String(raw || "").trim();
-  return sessionId || crypto.randomUUID();
+  const rawSessionId = sanitizeRawSessionId(raw);
+  const callerIdentity =
+    typeof metadata?.caller_id === "string" && metadata.caller_id.trim() ? metadata.caller_id.trim() : undefined;
+  const candidateSessionIds = deriveSessionCandidates(rawSessionId, callerIdentity);
+  return {
+    sessionId: candidateSessionIds[0],
+    candidateSessionIds,
+  };
 }
 
-function getStoredSession(sessionId) {
-  return loadSessionStore().get(sessionId);
+function getStoredSessionFromCandidates(sessionIds = []) {
+  const sessions = loadSessionStore();
+  for (const sessionId of sessionIds) {
+    const stored = sessions.get(sessionId);
+    if (stored) {
+      return { sessionId, stored };
+    }
+  }
+  return { sessionId: sessionIds[0], stored: undefined };
 }
 
 function recordSessionResponse(sessionId, responseId, model) {
@@ -1215,7 +1310,7 @@ async function createResponseWithSessionFallback(client, request, sessionId) {
   }
 }
 
-async function runCodex(prompt, metadata, sessionId) {
+async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sessionId]) {
   const model = modelForRequest(metadata);
   const instructions = loadInstructions();
   const traceId = traceIdForMetadata(metadata);
@@ -1247,7 +1342,7 @@ async function runCodex(prompt, metadata, sessionId) {
   if (maxOutputTokens !== undefined) {
     request.max_output_tokens = maxOutputTokens;
   }
-  const storedSession = getStoredSession(sessionId);
+  const { sessionId: storedSessionId, stored: storedSession } = getStoredSessionFromCandidates(candidateSessionIds);
   if (storedSession?.previous_response_id) {
     request.previous_response_id = storedSession.previous_response_id;
   }
@@ -1257,7 +1352,7 @@ async function runCodex(prompt, metadata, sessionId) {
     request.parallel_tool_calls = false;
   }
 
-  let response = await createResponseWithSessionFallback(client, request, sessionId);
+  let response = await createResponseWithSessionFallback(client, request, storedSessionId || sessionId);
   if (response?.id) {
     recordSessionResponse(sessionId, response.id, model);
   }
@@ -1322,7 +1417,7 @@ export async function handleA2A(payload) {
   }
 
   const { metadata, contextId, messageId } = extractRequestMetadata(payload);
-  const sessionId = sessionForRequest(metadata, contextId);
+  const { sessionId, candidateSessionIds } = sessionForRequest(metadata, contextId);
   const prompt = extractPrompt(payload).trim();
   const promptBytes = byteLength(prompt);
   const traceId = traceIdForMetadata(metadata);
@@ -1346,7 +1441,7 @@ export async function handleA2A(payload) {
       metrics.promptTooLargeTotal += 1;
       responseText = `codex backend — prompt of ${promptBytes} bytes exceeds MAX_PROMPT_BYTES=${MAX_PROMPT_BYTES}.`;
     } else {
-      const result = await runCodex(prompt, metadata, sessionId);
+      const result = await runCodex(prompt, metadata, sessionId, candidateSessionIds);
       model = result.model;
       responseText = result.text;
       if (result.budget_exceeded) {
@@ -1470,11 +1565,22 @@ async function handleMcp(req, res) {
       result = {
         tools: [
           {
-            name: "ask_codex",
+            name: "ask_agent",
             description: "Ask the Codex backend to respond to a prompt.",
             inputSchema: {
               type: "object",
-              properties: { prompt: { type: "string" } },
+              properties: {
+                prompt: { type: "string" },
+                session_id: {
+                  type: "string",
+                  description: "Optional session identifier for conversation continuity.",
+                },
+                max_tokens: {
+                  type: "integer",
+                  minimum: 1,
+                  description: "Optional per-call total-token budget.",
+                },
+              },
               required: ["prompt"],
             },
           },
@@ -1482,11 +1588,23 @@ async function handleMcp(req, res) {
       };
     } else if (method === "tools/call") {
       const name = payload.params?.name;
-      if (name !== "ask_codex") {
-        throw new Error(`unknown tool: ${name || ""}`);
+      if (!["ask_agent", "ask_codex"].includes(name)) {
+        jsonResponse(res, 200, {
+          jsonrpc: "2.0",
+          id: payload.id ?? null,
+          result: {
+            isError: true,
+            content: [{ type: "text", text: `Unknown tool: ${name || ""}` }],
+          },
+        });
+        return;
       }
       const prompt = payload.params?.arguments?.prompt || "";
-      const resultText = await runCodex(String(prompt), payload.params?.arguments || {});
+      const args = payload.params?.arguments || {};
+      const rawSessionId = sanitizeRawSessionId(args.session_id || "");
+      const callerIdentity = callerIdentityFromRequest(req);
+      const candidateSessionIds = deriveSessionCandidates(rawSessionId, callerIdentity);
+      const resultText = await runCodex(String(prompt), args, candidateSessionIds[0], candidateSessionIds);
       result = { content: [{ type: "text", text: resultText.text }] };
     } else {
       jsonResponse(res, 200, {

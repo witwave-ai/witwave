@@ -20,8 +20,9 @@ The first implementation is contract-first:
 - per-session SSE updates at `/api/sessions/<session_id>/stream`
 - bounded memory tools rooted at `CODEX_MEMORY_ROOT`
 - persisted Responses API session continuity via `previous_response_id`
+- caller-bound session derivation when `SESSION_ID_SECRET` is set
 - per-dispatch `max_tokens` budget checks from Responses API usage
-- a minimal `/mcp` surface for parity smoke tests
+- a minimal `/mcp` surface with the backend-neutral `ask_agent` tool name
 
 When `OPENAI_API_KEY` is unset, the backend runs in stub mode by default so CI and image smoke tests can verify the
 runtime contract without spending tokens. Set `OPENAI_API_KEY` and `CODEX_STUB_MODE=false` to execute prompts through
@@ -51,6 +52,8 @@ the OpenAI Responses API.
 | `CONVERSATION_STREAM_KEEPALIVE_SEC` | `15`                                         | Per-session SSE keepalive interval                              |
 | `CONVERSATION_STREAM_GRACE_SEC`     | `60`                                         | Idle session stream cleanup grace period                        |
 | `CONVERSATION_STREAM_RING_MAX`      | `200`                                        | Replay buffer size per live session stream                      |
+| `SESSION_ID_SECRET`                 | unset                                        | HMAC key for caller-bound session IDs                           |
+| `SESSION_ID_SECRET_PREV`            | unset                                        | Previous HMAC key for session-secret rotation                   |
 | `MAX_PROMPT_BYTES`                  | `10485760`                                   | Inbound prompt byte ceiling                                     |
 | `METRICS_ENABLED`                   | unset                                        | Enables the dedicated metrics listener                          |
 | `METRICS_PORT`                      | `9000`                                       | Dedicated Prometheus listener port                              |
@@ -62,6 +65,11 @@ is Witwave's per-dispatch total-token budget and is checked against Responses AP
 The backend stores the final `response.id` for each A2A session in `CODEX_SESSION_STORE_PATH` and sends it back as
 `previous_response_id` on the next turn. The harness also sends `metadata.session_id` on first-turn A2A calls so Codex
 has a stable session key before `contextId` is present.
+
+When `SESSION_ID_SECRET` is set, caller-supplied session IDs are HMAC-bound to `metadata.caller_id` on A2A requests and
+to the bearer-token fingerprint on `/mcp` requests. This matches the Claude/Gemini posture: two callers presenting the
+same raw `session_id` do not collide into the same backend session. `SESSION_ID_SECRET_PREV` enables a rotation window
+for existing sessions.
 
 When `CODEX_SHELL_ENABLED=true`, the backend exposes one function tool: `run_shell_command`. It only accepts a single
 allowlisted diagnostic command at a time, rejects shell metacharacters and secret-like terms, redacts common token
