@@ -128,6 +128,36 @@ func TestBuildTeamStatusRowsAggregatesPerAgent(t *testing.T) {
 	}
 }
 
+func TestBuildTeamStatusRowsUsesLegacyTimestampFallback(t *testing.T) {
+	now := time.Date(2026, 5, 15, 12, 0, 0, 0, time.UTC)
+	agents := []agent.AgentSummary{
+		{Namespace: "witwave", Name: "mira", Phase: "Ready", Ready: 1, Backends: []string{"codex"}},
+	}
+	results := []conversation.FanOutResult{
+		{
+			Target: conversation.AgentTarget{Namespace: "witwave", Agent: "mira"},
+			Entries: []conversation.Entry{
+				{
+					Timestamp: now.Add(-3 * time.Minute).Format(time.RFC3339),
+					Agent:     "mira",
+					SessionID: "legacy-codex",
+					Role:      "agent",
+				},
+			},
+		},
+	}
+
+	rows, _ := buildTeamStatusRows(agents, results, teamStatusBuildOptions{Now: now, Window: time.Hour})
+
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(rows))
+	}
+	if rows[0].LastTurn != "3m ago" || rows[0].State != "RECENT" {
+		t.Fatalf("legacy timestamp fallback row = LastTurn %q State %q, want 3m ago/RECENT",
+			rows[0].LastTurn, rows[0].State)
+	}
+}
+
 func TestRenderTeamStatusTable(t *testing.T) {
 	rows := []teamStatusRow{
 		{

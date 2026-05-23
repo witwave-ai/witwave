@@ -1905,6 +1905,23 @@ function logText(text) {
   return LOG_REDACT ? "[REDACTED]" : redactText(text);
 }
 
+function conversationBaseRecord({ ts, sessionId, contextId, messageId, model, status, traceId }) {
+  return {
+    ts,
+    timestamp: ts,
+    agent: AGENT_OWNER,
+    agent_id: AGENT_ID,
+    backend: BACKEND_ID,
+    session_id_hash: sessionHash(sessionId),
+    session_id: sessionId,
+    context_id: contextId,
+    message_id: messageId,
+    model,
+    status,
+    ...(traceId ? { trace_id: traceId } : {}),
+  };
+}
+
 function truncateBytes(text, maxBytes = CODEX_SHELL_MAX_OUTPUT_BYTES) {
   const raw = String(text || "");
   const bytes = Buffer.byteLength(raw, "utf8");
@@ -2471,6 +2488,7 @@ export async function handleA2A(payload) {
   let status = "ok";
   let responseText = "";
   let model = modelForRequest(metadata);
+  let totalTokens = 0;
   let assistantSeq = 1;
   const publishAssistantDelta = (content) => {
     publishSessionChunk(sessionId, { role: "assistant", seq: assistantSeq, content, final: false, model });
@@ -2506,6 +2524,7 @@ export async function handleA2A(payload) {
       );
       model = result.model;
       responseText = result.text;
+      totalTokens = result.total_tokens || 0;
       if (result.budget_exceeded) {
         status = "budget_exceeded";
       }
@@ -2519,19 +2538,20 @@ export async function handleA2A(payload) {
 
   metrics.responseBytesCount += 1;
   metrics.responseBytesSum += byteLength(responseText);
+  const ts = new Date().toISOString();
+  const baseRecord = conversationBaseRecord({ ts, sessionId, contextId, messageId, model, status, traceId });
   appendJsonl(CONVERSATION_LOG, {
-    timestamp: new Date().toISOString(),
-    agent: AGENT_OWNER,
-    agent_id: AGENT_ID,
-    backend: BACKEND_ID,
-    session_id_hash: sessionHash(sessionId),
-    session_id: sessionId,
-    context_id: contextId,
-    message_id: messageId,
-    model,
-    status,
-    ...(traceId ? { trace_id: traceId } : {}),
+    ...baseRecord,
+    role: "user",
+    tokens: null,
+    text: logText(prompt),
     prompt: logText(prompt),
+  });
+  appendJsonl(CONVERSATION_LOG, {
+    ...baseRecord,
+    role: "agent",
+    tokens: totalTokens > 0 ? totalTokens : null,
+    text: logText(responseText),
     response: logText(responseText),
   });
   if (responseText) {

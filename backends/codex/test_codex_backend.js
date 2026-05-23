@@ -587,9 +587,17 @@ test("handleA2A honors LOG_REDACT for conversation logs", async () => {
     .trim()
     .split("\n")
     .map((line) => JSON.parse(line));
-  const entry = entries.find((item) => item.message_id === "msg-redact");
-  assert.equal(entry.prompt, "[REDACTED]");
-  assert.equal(entry.response, "[REDACTED]");
+  const turns = entries.filter((item) => item.message_id === "msg-redact");
+  assert.equal(turns.length, 2);
+  assert.deepEqual(
+    turns.map((turn) => turn.role),
+    ["user", "agent"],
+  );
+  assert.ok(turns.every((turn) => turn.ts && turn.timestamp === turn.ts));
+  assert.equal(turns[0].text, "[REDACTED]");
+  assert.equal(turns[0].prompt, "[REDACTED]");
+  assert.equal(turns[1].text, "[REDACTED]");
+  assert.equal(turns[1].response, "[REDACTED]");
 });
 
 test("maxOutputTokensForRequest accepts positive max_output_tokens metadata", () => {

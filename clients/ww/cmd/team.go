@@ -337,7 +337,7 @@ func buildTeamStatusRows(
 			if e.Tokens != nil && *e.Tokens > 0 {
 				acc.row.Tokens += *e.Tokens
 			}
-			if ts, ok := parseTeamEntryTime(e.TS); ok {
+			if ts, ok := parseTeamEntryTime(teamEntryTimestamp(e)); ok {
 				acc.entryTimes = append(acc.entryTimes, ts)
 				if acc.last.IsZero() || ts.After(acc.last) {
 					acc.last = ts
@@ -503,6 +503,13 @@ func parseTeamEntryTime(ts string) (time.Time, bool) {
 		return time.Unix(sec, nsec).UTC(), true
 	}
 	return time.Time{}, false
+}
+
+func teamEntryTimestamp(e conversation.Entry) string {
+	if e.TS != "" {
+		return e.TS
+	}
+	return e.Timestamp
 }
 
 func renderTeamActivity(times []time.Time, now time.Time, window time.Duration) string {

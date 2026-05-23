@@ -22,6 +22,7 @@ import (
 // JSON unmarshal lines up byte-for-byte with what the harness emits.
 type Entry struct {
 	TS        string  `json:"ts"`
+	Timestamp string  `json:"timestamp,omitempty"`
 	Agent     string  `json:"agent"`
 	SessionID string  `json:"session_id,omitempty"`
 	Role      string  `json:"role"`
