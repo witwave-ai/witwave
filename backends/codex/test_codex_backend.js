@@ -23,6 +23,9 @@ const {
   handleA2A,
   handleRequest,
   isShellCommandAllowed,
+  mcpFunctionName,
+  mcpServerEntriesFromConfig,
+  mcpToolResultText,
   maxOutputTokensForRequest,
   maxTokensForRequest,
   renderMetrics,
@@ -121,6 +124,42 @@ test("conversationsAuthConfigWarning mirrors protected endpoint auth posture", (
   assert.match(conversationsAuthConfigWarning("", false), /protected endpoints will fail closed/);
 });
 
+test("mcpServerEntriesFromConfig loads URL-shaped MCP servers with bearer headers", () => {
+  const entries = mcpServerEntriesFromConfig(
+    {
+      mcpServers: {
+        kubernetes: { url: " http://witwave-mcp-kubernetes:8000 ", headers: { "X-Witwave": "yes" } },
+        stdioOnly: { command: "mcp-kubernetes" },
+      },
+    },
+    "tool-token",
+  );
+
+  assert.deepEqual(entries, [
+    {
+      name: "kubernetes",
+      url: "http://witwave-mcp-kubernetes:8000",
+      headers: { "X-Witwave": "yes", Authorization: "Bearer tool-token" },
+    },
+  ]);
+});
+
+test("mcpFunctionName and mcpToolResultText create Responses-safe function outputs", () => {
+  assert.equal(mcpFunctionName("kubernetes", "list_resources"), "mcp__kubernetes__list_resources");
+  assert.match(
+    mcpFunctionName("server with spaces", "tool/with/slashes"),
+    /^mcp__server_with_spaces__tool_with_slashes/,
+  );
+  assert.ok(mcpFunctionName("a".repeat(80), "b".repeat(80)).length <= 64);
+  assert.equal(
+    mcpToolResultText({
+      content: [{ type: "text", text: "pods are healthy" }],
+      structuredContent: { ready: true },
+    }),
+    'pods are healthy\n{"ready":true}',
+  );
+});
+
 test("extractPrompt reads the A2A message/send text parts shape", () => {
   const payload = {
     jsonrpc: "2.0",
@@ -204,9 +243,7 @@ test("session stream endpoint publishes user and final assistant chunks", async 
         const frames = buffer.split("\n\n");
         buffer = frames.pop() || "";
         for (const frame of frames) {
-          const dataLine = frame
-            .split("\n")
-            .find((line) => line.startsWith("data: "));
+          const dataLine = frame.split("\n").find((line) => line.startsWith("data: "));
           if (dataLine) {
             received.push(JSON.parse(dataLine.slice("data: ".length)));
           }

@@ -23,6 +23,7 @@ The first implementation is contract-first:
 - caller-bound session derivation when `SESSION_ID_SECRET` is set
 - per-dispatch `max_tokens` budget checks from Responses API usage
 - a minimal `/mcp` surface with the backend-neutral `ask_agent` tool name
+- backend-local MCP client bridging for URL-shaped `.codex/mcp.json` entries
 
 When `OPENAI_API_KEY` is unset, the backend runs in stub mode by default so CI and image smoke tests can verify the
 runtime contract without spending tokens. Set `OPENAI_API_KEY` and `CODEX_STUB_MODE=false` to execute prompts through
@@ -44,6 +45,10 @@ the OpenAI Responses API.
 | `CODEX_MEMORY_ROOT`                 | `/home/agent/.codex/memory`                  | Root directory for memory file tools                            |
 | `CODEX_MEMORY_MAX_BYTES`            | `65536`                                      | Maximum bytes per memory read/write/append payload              |
 | `CODEX_MEMORY_MAX_LIST_ENTRIES`     | `200`                                        | Maximum file paths returned by `list_memory_files`              |
+| `MCP_CONFIG_PATH`                   | `/home/agent/.codex/mcp.json`                | URL-shaped MCP server config loaded as backend-local tools      |
+| `MCP_TOOL_AUTH_TOKEN`               | unset                                        | Bearer token auto-stamped onto MCP server calls                 |
+| `CODEX_MCP_CLIENT_TIMEOUT_SECONDS`  | `30`                                         | Timeout for MCP connect/list/call operations                    |
+| `CODEX_MCP_MAX_OUTPUT_BYTES`        | `12000`                                      | Maximum bytes returned to the model from one MCP tool call      |
 | `CODEX_SESSION_STORE_PATH`          | `/home/agent/.codex/sessions/responses.json` | Persistent session → `previous_response_id` map                 |
 | `MAX_SESSIONS`                      | `10000`                                      | Maximum persisted Codex response sessions before LRU eviction   |
 | `CODEX_AGENT_MD`                    | `/home/agent/.codex/AGENTS.md`               | Primary identity/instruction document                           |
@@ -81,6 +86,11 @@ When `CODEX_MEMORY_ENABLED=true`, the backend exposes `read_memory_file`, `write
 `list_memory_files`. All memory paths must be relative to `CODEX_MEMORY_ROOT`; absolute paths and `..` escapes are
 refused. Write and append calls reject over-large payloads and raw credential-shaped content, then record activity to
 `TRACE_LOG`.
+
+When `MCP_CONFIG_PATH` points at a `.codex/mcp.json` file, URL-shaped entries are loaded as backend-local function tools
+named `mcp__<server>__<tool>`. The Codex container connects to the MCP server directly, so in-cluster service URLs such
+as `http://witwave-mcp-kubernetes:8000` remain private to the cluster. Command/stdio MCP entries are ignored by this
+backend for now; use URL-shaped streamable-http MCP servers for parity with the Kubernetes deployment model.
 
 ## Local Test
 

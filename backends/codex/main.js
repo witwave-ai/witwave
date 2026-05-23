@@ -4,6 +4,9 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { Client as McpClient } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const STARTED_AT = new Date();
 const START_MONO = performance.now();
@@ -36,11 +39,19 @@ const CODEX_MEMORY_ENABLED = parseBool(process.env.CODEX_MEMORY_ENABLED ?? "true
 const CODEX_MEMORY_ROOT = process.env.CODEX_MEMORY_ROOT || "/home/agent/.codex/memory";
 const CODEX_MEMORY_MAX_BYTES = Number.parseInt(process.env.CODEX_MEMORY_MAX_BYTES || "65536", 10);
 const CODEX_MEMORY_MAX_LIST_ENTRIES = Number.parseInt(process.env.CODEX_MEMORY_MAX_LIST_ENTRIES || "200", 10);
+const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH || "/home/agent/.codex/mcp.json";
+const MCP_TOOL_AUTH_TOKEN = process.env.MCP_TOOL_AUTH_TOKEN || "";
+const CODEX_MCP_CLIENT_TIMEOUT_MS = Math.max(
+  1000,
+  Math.round(Number.parseFloat(process.env.CODEX_MCP_CLIENT_TIMEOUT_SECONDS || "30") * 1000) || 30000,
+);
+const CODEX_MCP_MAX_OUTPUT_BYTES = Math.max(
+  1,
+  Number.parseInt(process.env.CODEX_MCP_MAX_OUTPUT_BYTES || "12000", 10) || 12000,
+);
 const CODEX_SESSION_STORE_PATH = process.env.CODEX_SESSION_STORE_PATH || "/home/agent/.codex/sessions/responses.json";
 const MAX_SESSIONS = Math.max(1, Number.parseInt(process.env.MAX_SESSIONS || "10000", 10) || 10000);
-const CONVERSATION_STREAM_KEEPALIVE_SEC = Number.parseFloat(
-  process.env.CONVERSATION_STREAM_KEEPALIVE_SEC || "15",
-);
+const CONVERSATION_STREAM_KEEPALIVE_SEC = Number.parseFloat(process.env.CONVERSATION_STREAM_KEEPALIVE_SEC || "15");
 const CONVERSATION_STREAM_GRACE_SEC = Number.parseFloat(process.env.CONVERSATION_STREAM_GRACE_SEC || "60");
 const CONVERSATION_STREAM_RING_MAX = Math.max(
   1,
@@ -126,6 +137,13 @@ const metrics = {
 let codexSessions = null;
 const sessionStreams = new Map();
 const sessionStreamCallerCounts = new Map();
+let mcpToolCache = {
+  fingerprint: "",
+  clients: new Map(),
+  tools: [],
+  toolIndex: new Map(),
+};
+let mcpDiscoveryPromise = null;
 
 function parseBool(value) {
   if (value === undefined || value === null || value === "") {
@@ -215,10 +233,7 @@ export function deriveSessionId(rawSessionId, callerIdentity, secret = SESSION_I
     return legacySessionId(raw);
   }
   const callerHash = crypto.createHash("sha256").update(String(callerIdentity)).digest("hex");
-  const mac = crypto
-    .createHmac("sha256", secret)
-    .update(`${callerHash}\0${raw}`)
-    .digest("hex");
+  const mac = crypto.createHmac("sha256", secret).update(`${callerHash}\0${raw}`).digest("hex");
   return uuid5("6ba7b811-9dad-11d1-80b4-00c04fd430c8", mac);
 }
 
@@ -774,7 +789,193 @@ function memoryToolDefinitions() {
   ];
 }
 
-function codexToolDefinitions() {
+function mcpHeadersForConfig(config, authToken = MCP_TOOL_AUTH_TOKEN) {
+  const headers = {};
+  const configured = config && typeof config === "object" ? config.headers : undefined;
+  if (configured && typeof configured === "object" && !Array.isArray(configured)) {
+    for (const [key, value] of Object.entries(configured)) {
+      if (typeof key === "string" && typeof value === "string") {
+        headers[key] = value;
+      }
+    }
+  }
+  const hasAuth = Object.keys(headers).some((key) => key.toLowerCase() === "authorization");
+  if (authToken && !hasAuth) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+  return headers;
+}
+
+export function mcpServerEntriesFromConfig(data, authToken = MCP_TOOL_AUTH_TOKEN) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return [];
+  }
+  const servers =
+    data.mcpServers && typeof data.mcpServers === "object" && !Array.isArray(data.mcpServers) ? data.mcpServers : data;
+  const entries = [];
+  for (const [name, config] of Object.entries(servers)) {
+    if (!config || typeof config !== "object" || Array.isArray(config)) {
+      continue;
+    }
+    const url = typeof config.url === "string" ? config.url.trim() : "";
+    if (!url) {
+      continue;
+    }
+    entries.push({
+      name,
+      url,
+      headers: mcpHeadersForConfig(config, authToken),
+    });
+  }
+  return entries;
+}
+
+function mcpConfigEntriesFromDisk() {
+  const raw = readTextIfExists(MCP_CONFIG_PATH);
+  if (!raw.trim()) {
+    return [];
+  }
+  try {
+    return mcpServerEntriesFromConfig(JSON.parse(raw));
+  } catch (error) {
+    console.warn(`codex backend: failed to parse MCP config at ${MCP_CONFIG_PATH}: ${error?.message || error}`);
+    return undefined;
+  }
+}
+
+function hashObject(value) {
+  return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function sanitizeToolNamePart(value, fallback) {
+  const cleaned = String(value || "")
+    .replace(/[^A-Za-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return cleaned || fallback;
+}
+
+export function mcpFunctionName(serverName, toolName) {
+  const base = `mcp__${sanitizeToolNamePart(serverName, "server")}__${sanitizeToolNamePart(toolName, "tool")}`;
+  if (base.length <= 64) {
+    return base;
+  }
+  const suffix = crypto.createHash("sha256").update(`${serverName}\0${toolName}`).digest("hex").slice(0, 8);
+  return `${base.slice(0, 55)}_${suffix}`;
+}
+
+function mcpInputSchemaToParameters(inputSchema) {
+  if (inputSchema && typeof inputSchema === "object" && inputSchema.type === "object") {
+    return inputSchema;
+  }
+  return { type: "object", properties: {}, additionalProperties: true };
+}
+
+function mcpFunctionToolDefinition(entry, tool, functionName) {
+  return {
+    type: "function",
+    name: functionName,
+    description:
+      tool?.description ||
+      `Call the ${tool?.name || "selected"} tool on the ${entry.name} MCP server from inside the Codex backend.`,
+    parameters: mcpInputSchemaToParameters(tool?.inputSchema),
+  };
+}
+
+async function closeMcpClients(clients) {
+  await Promise.allSettled(
+    [...clients.values()].map(async (client) => {
+      await client.close();
+    }),
+  );
+}
+
+async function connectMcpServer(entry) {
+  const client = new McpClient({ name: "witwave-codex-backend", version: AGENT_VERSION }, { capabilities: {} });
+  const options = Object.keys(entry.headers || {}).length > 0 ? { requestInit: { headers: entry.headers } } : {};
+  const transport = new StreamableHTTPClientTransport(new URL(entry.url), options);
+  try {
+    await client.connect(transport, { timeout: CODEX_MCP_CLIENT_TIMEOUT_MS });
+    return client;
+  } catch (streamableError) {
+    await client.close().catch(() => undefined);
+    const fallback = new McpClient({ name: "witwave-codex-backend", version: AGENT_VERSION }, { capabilities: {} });
+    const sseOptions =
+      Object.keys(entry.headers || {}).length > 0
+        ? { requestInit: { headers: entry.headers }, eventSourceInit: { headers: entry.headers } }
+        : {};
+    const sseTransport = new SSEClientTransport(new URL(entry.url), sseOptions);
+    try {
+      await fallback.connect(sseTransport, { timeout: CODEX_MCP_CLIENT_TIMEOUT_MS });
+      return fallback;
+    } catch (sseError) {
+      await fallback.close().catch(() => undefined);
+      throw new Error(
+        `streamable-http failed (${streamableError?.message || streamableError}); ` +
+          `sse fallback failed (${sseError?.message || sseError})`,
+      );
+    }
+  }
+}
+
+async function discoverMcpFunctionToolsInner() {
+  const entries = mcpConfigEntriesFromDisk();
+  if (entries === undefined) {
+    return mcpToolCache.tools;
+  }
+  const fingerprint = hashObject(entries);
+  if (fingerprint === mcpToolCache.fingerprint) {
+    return mcpToolCache.tools;
+  }
+
+  const previousClients = mcpToolCache.clients;
+  const clients = new Map();
+  const tools = [];
+  const toolIndex = new Map();
+  for (const entry of entries) {
+    let client;
+    try {
+      client = await connectMcpServer(entry);
+      clients.set(entry.name, client);
+      const listed = await client.listTools({}, { timeout: CODEX_MCP_CLIENT_TIMEOUT_MS });
+      for (const tool of listed.tools || []) {
+        const functionName = mcpFunctionName(entry.name, tool.name);
+        if (toolIndex.has(functionName)) {
+          console.warn(
+            `codex backend: duplicate MCP function name ${functionName}; skipping ${entry.name}/${tool.name}`,
+          );
+          continue;
+        }
+        toolIndex.set(functionName, {
+          client,
+          serverName: entry.name,
+          toolName: tool.name,
+        });
+        tools.push(mcpFunctionToolDefinition(entry, tool, functionName));
+      }
+    } catch (error) {
+      if (client) {
+        await client.close().catch(() => undefined);
+      }
+      clients.delete(entry.name);
+      console.warn(`codex backend: MCP server ${entry.name} (${entry.url}) unavailable: ${error?.message || error}`);
+    }
+  }
+
+  mcpToolCache = { fingerprint, clients, tools, toolIndex };
+  await closeMcpClients(previousClients);
+  return tools;
+}
+
+async function discoverMcpFunctionTools() {
+  if (!mcpDiscoveryPromise) {
+    mcpDiscoveryPromise = discoverMcpFunctionToolsInner().finally(() => {
+      mcpDiscoveryPromise = null;
+    });
+  }
+  return await mcpDiscoveryPromise;
+}
+
+async function codexToolDefinitions() {
   const tools = [];
   if (CODEX_SHELL_ENABLED) {
     tools.push(shellToolDefinition());
@@ -782,6 +983,7 @@ function codexToolDefinitions() {
   if (CODEX_MEMORY_ENABLED) {
     tools.push(...memoryToolDefinitions());
   }
+  tools.push(...(await discoverMcpFunctionTools()));
   return tools;
 }
 
@@ -1196,6 +1398,77 @@ function traceList(limit = 20, offset = 0) {
   };
 }
 
+export function mcpToolResultText(result) {
+  const chunks = [];
+  for (const item of result?.content || []) {
+    if (item?.type === "text" && typeof item.text === "string") {
+      chunks.push(item.text);
+    } else if (item?.type === "resource" && typeof item.resource?.text === "string") {
+      chunks.push(item.resource.text);
+    } else if (item) {
+      chunks.push(JSON.stringify(item));
+    }
+  }
+  if (result?.structuredContent !== undefined) {
+    chunks.push(JSON.stringify(result.structuredContent));
+  }
+  if (chunks.length === 0) {
+    chunks.push(JSON.stringify(result || {}));
+  }
+  return truncateBytes(chunks.join("\n"), CODEX_MCP_MAX_OUTPUT_BYTES);
+}
+
+async function runMcpTool(functionName, args = {}, traceId) {
+  const started = performance.now();
+  try {
+    await discoverMcpFunctionTools();
+    const tool = mcpToolCache.toolIndex.get(functionName);
+    if (!tool) {
+      throw new Error(`unknown MCP function: ${functionName}`);
+    }
+    const result = await tool.client.callTool({ name: tool.toolName, arguments: args }, undefined, {
+      timeout: CODEX_MCP_CLIENT_TIMEOUT_MS,
+    });
+    const output = mcpToolResultText(result);
+    const response = {
+      ok: !result?.isError,
+      server: tool.serverName,
+      tool: tool.toolName,
+      ...(traceId ? { trace_id: traceId } : {}),
+      output,
+      duration_seconds: (performance.now() - started) / 1000,
+    };
+    appendJsonl(TRACE_LOG, {
+      timestamp: new Date().toISOString(),
+      backend: BACKEND_ID,
+      tool: functionName,
+      mcp_server: tool.serverName,
+      mcp_tool: tool.toolName,
+      ok: response.ok,
+      ...(traceId ? { trace_id: traceId } : {}),
+      duration_seconds: response.duration_seconds,
+    });
+    inc(metrics.toolCalls, `${functionName}:${response.ok ? "ok" : "error"}`);
+    return response;
+  } catch (error) {
+    const response = {
+      ok: false,
+      tool: functionName,
+      ...(traceId ? { trace_id: traceId } : {}),
+      error: error?.message || String(error),
+      duration_seconds: (performance.now() - started) / 1000,
+    };
+    appendJsonl(TRACE_LOG, {
+      timestamp: new Date().toISOString(),
+      backend: BACKEND_ID,
+      tool: functionName,
+      ...response,
+    });
+    inc(metrics.toolCalls, `${functionName}:error`);
+    return response;
+  }
+}
+
 async function handleFunctionCall(call, traceId) {
   if (call?.name === "run_shell_command") {
     let args = {};
@@ -1223,6 +1496,20 @@ async function handleFunctionCall(call, traceId) {
       };
     }
     return await runMemoryTool(call.name, args, traceId);
+  }
+
+  if (mcpToolCache.toolIndex.has(call?.name)) {
+    let args = {};
+    try {
+      args = JSON.parse(call.arguments || "{}");
+    } catch (error) {
+      return {
+        ok: false,
+        refused: true,
+        reason: `invalid function arguments: ${error?.message || String(error)}`,
+      };
+    }
+    return await runMcpTool(call.name, args, traceId);
   }
 
   {
@@ -1364,7 +1651,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
   if (storedSession?.previous_response_id) {
     request.previous_response_id = storedSession.previous_response_id;
   }
-  const tools = codexToolDefinitions();
+  const tools = await codexToolDefinitions();
   if (tools.length > 0) {
     request.tools = tools;
     request.parallel_tool_calls = false;
@@ -1534,7 +1821,10 @@ export function constantTimeBearerTokenMatches(authorizationHeader, expectedToke
   return crypto.timingSafeEqual(expectedDigest, presentedDigest);
 }
 
-export function conversationsAuthConfigWarning(authToken = CONVERSATIONS_AUTH_TOKEN, authDisabled = CONVERSATIONS_AUTH_DISABLED) {
+export function conversationsAuthConfigWarning(
+  authToken = CONVERSATIONS_AUTH_TOKEN,
+  authDisabled = CONVERSATIONS_AUTH_DISABLED,
+) {
   if (authToken) {
     return "";
   }
@@ -1846,9 +2136,7 @@ function handleSessionStream(req, res, sessionId) {
 
   const stream = getSessionStream(cleanSessionId, { create: true });
   const lastEventId = req.headers["last-event-id"] || url.searchParams.get("last_event_id");
-  const replay = lastEventId
-    ? stream.ring.filter((envelope) => Number(envelope.id) > Number(lastEventId))
-    : [];
+  const replay = lastEventId ? stream.ring.filter((envelope) => Number(envelope.id) > Number(lastEventId)) : [];
   const keepaliveMs = Math.max(1, CONVERSATION_STREAM_KEEPALIVE_SEC) * 1000;
 
   res.writeHead(200, {
