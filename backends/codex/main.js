@@ -103,6 +103,8 @@ const metrics = {
   healthChecks: new Map(),
   a2aRequests: new Map(),
   mcpRequests: new Map(),
+  mcpDurationCounts: new Map(),
+  mcpDurations: new Map(),
   toolCalls: new Map(),
   promptBytesCount: 0,
   promptBytesSum: 0,
@@ -1554,6 +1556,7 @@ async function handleMcp(req, res) {
   }
   const started = performance.now();
   let status = "ok";
+  let methodLabel = "unknown";
   let rpcId = null;
   try {
     const declaredLength = Number.parseInt(String(req.headers["content-length"] || "-1"), 10);
@@ -1569,6 +1572,9 @@ async function handleMcp(req, res) {
     const payload = JSON.parse(raw || "{}");
     rpcId = payload.id ?? null;
     const method = payload.method || "";
+    if (typeof method === "string" && method) {
+      methodLabel = method;
+    }
     let result;
     if (method === "initialize") {
       const supportedVersions = ["2024-11-05", "2025-03-26"];
@@ -1609,6 +1615,7 @@ async function handleMcp(req, res) {
     } else if (method === "tools/call") {
       const name = payload.params?.name;
       if (!["ask_agent", "ask_codex"].includes(name)) {
+        status = "unknown_tool";
         jsonResponse(res, 200, {
           jsonrpc: "2.0",
           id: payload.id ?? null,
@@ -1621,6 +1628,7 @@ async function handleMcp(req, res) {
       }
       const prompt = payload.params?.arguments?.prompt || "";
       if (!prompt) {
+        status = "missing_prompt";
         jsonResponse(res, 200, {
           jsonrpc: "2.0",
           id: rpcId,
@@ -1635,6 +1643,7 @@ async function handleMcp(req, res) {
       const resultText = await runCodex(String(prompt), args, candidateSessionIds[0], candidateSessionIds);
       result = { content: [{ type: "text", text: resultText.text }] };
     } else {
+      status = "method_not_found";
       jsonResponse(res, 200, {
         jsonrpc: "2.0",
         id: rpcId,
@@ -1644,7 +1653,7 @@ async function handleMcp(req, res) {
     }
     jsonResponse(res, 200, { jsonrpc: "2.0", id: rpcId, result });
   } catch (error) {
-    status = "error";
+    status = error?.code === "BODY_TOO_LARGE" ? "body_too_large" : "error";
     jsonResponse(res, error?.code === "BODY_TOO_LARGE" ? 413 : 400, {
       jsonrpc: "2.0",
       id: rpcId,
@@ -1654,7 +1663,9 @@ async function handleMcp(req, res) {
       },
     });
   } finally {
-    inc(metrics.mcpRequests, status);
+    inc(metrics.mcpRequests, `${methodLabel}:${status}`);
+    inc(metrics.mcpDurationCounts, methodLabel);
+    inc(metrics.mcpDurations, methodLabel, (performance.now() - started) / 1000);
     appendJsonl(TRACE_LOG, {
       timestamp: new Date().toISOString(),
       agent: AGENT_OWNER,
@@ -1891,7 +1902,18 @@ export function renderMetrics() {
     "# TYPE backend_mcp_requests_total counter",
   );
   for (const [status, value] of metrics.mcpRequests.entries()) {
-    lines.push(metricLine("backend_mcp_requests_total", value, labels({ status })));
+    const [method, terminalStatus] = status.split(":", 2);
+    lines.push(metricLine("backend_mcp_requests_total", value, labels({ method, status: terminalStatus })));
+  }
+  lines.push(
+    "# HELP backend_mcp_request_duration_seconds MCP request duration summary.",
+    "# TYPE backend_mcp_request_duration_seconds summary",
+  );
+  for (const [method, value] of metrics.mcpDurationCounts.entries()) {
+    lines.push(metricLine("backend_mcp_request_duration_seconds_count", value, labels({ method })));
+    lines.push(
+      metricLine("backend_mcp_request_duration_seconds_sum", metrics.mcpDurations.get(method) || 0, labels({ method })),
+    );
   }
   lines.push(
     "# HELP backend_tool_calls_total Total backend tool calls by tool and status.",

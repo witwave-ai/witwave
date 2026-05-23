@@ -227,6 +227,9 @@ test("MCP tools/list advertises the backend-neutral ask_agent tool name", async 
     assert.equal(tool.name, "ask_agent");
     assert.ok(tool.inputSchema.properties.session_id);
     assert.ok(tool.inputSchema.properties.max_tokens);
+    const metricsBody = renderMetrics();
+    assert.match(metricsBody, /backend_mcp_requests_total\{.*method="tools\/list".*status="ok"/);
+    assert.match(metricsBody, /backend_mcp_request_duration_seconds_count\{.*method="tools\/list"/);
   });
 });
 
