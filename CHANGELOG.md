@@ -6,6 +6,36 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.28.0] — 2026-05-23
+
+Backend-architecture minor: the Python backend that wrapped OpenAI's Responses API under the **codex** name is renamed
+to its truer name **openai**, freeing the **codex** slot for a new JavaScript-based parity scaffold that targets the
+actual `codex` CLI. The new JS backend ships with response-session persistence and a CI workflow. Also continues the
+content-cycle work on the social website's blog and whitepaper presentation.
+
+### Added
+
+- **backends/codex**: New JavaScript-based codex backend — `backends/codex/{main.js,package.json,test_codex_backend.js}`
+  plus Dockerfile, README, and `.github/workflows/ci-codex-backend.yml`. Includes session persistence so codex response
+  sessions survive across invocations.
+- **backends/openai**: New `openai` backend home (renamed from the former `backends/codex/` Python tree) — same
+  executor, metrics, task store, and test suite, now correctly named for the OpenAI Responses API it wraps. Adds
+  `test_gpt55_tool_support.py` and a dedicated Dockerfile.
+
+### Changed
+
+- **backends**: Rename the Python `codex` backend → `openai`. The previous `backends/codex/` Python implementation moves
+  to `backends/openai/` (executor, main, metrics, sqlite_task_store, tests all preserved); the new `backends/codex/` is
+  the JavaScript scaffold described above. Memory test renamed `tests/025.b-memory-codex.md` →
+  `tests/025.b-memory-openai.md`.
+- **website**: Whitepaper presentation refresh — rows on `whitepapers/index.html` now generate from the catalog via
+  `scripts/render-social-whitepaper-lists.mjs`; blog authorship and summary formatting polished; blog script cache
+  busted.
+
+### Documentation
+
+- **backends**: New `agent.md` and `README.md` for both `backends/codex/` (JS) and `backends/openai/` (Python).
+
 ## [0.27.8] — 2026-05-22
 
 Content-cycle patch publishing the **Autonomy Boundary** whitepaper through the social website, with supporting
