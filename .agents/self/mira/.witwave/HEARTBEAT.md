@@ -9,8 +9,8 @@ enabled: true
 
 Run your `platform-health` skill in bounded heartbeat mode.
 
-Goal: finish one lightweight platform observation tick, record a compact JSONL snapshot, and return a concise status.
-Do not turn this into a broad investigation unless the snapshot shows a restart delta or a clearly degraded object.
+Goal: finish one lightweight platform observation tick, record a compact JSONL snapshot, and return a concise status. Do
+not turn this into a broad investigation unless the snapshot shows a restart delta or a clearly degraded object.
 
 Hard limits:
 
@@ -40,5 +40,5 @@ Evidence: <two or three short bullets>
 Handoff: none | sent-to-zora | recommended
 ```
 
-Do not mutate cluster state from the heartbeat. No restarts, patches, upgrades, rollbacks, tag pushes, release reruns, or
-source changes unless a human explicitly approves that action in the triggering request.
+Do not mutate cluster state from the heartbeat. No restarts, patches, upgrades, rollbacks, tag pushes, release reruns,
+or source changes unless a human explicitly approves that action in the triggering request.
