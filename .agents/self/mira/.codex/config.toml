@@ -7,7 +7,7 @@ memory = true
 mcp = true
 
 [runtime]
-max_tool_iterations = 6
+max_tool_iterations = 20
 
 [paths]
 memory_root = "/workspaces/witwave-self/memory/agents/mira"

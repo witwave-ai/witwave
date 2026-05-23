@@ -40,6 +40,7 @@ const {
   handleA2A,
   handleFunctionCall,
   handleRequest,
+  isRecoverableSessionResumeError,
   isShellCommandAllowed,
   evaluatePreToolUse,
   loadCodexConfigFromText,
@@ -51,6 +52,7 @@ const {
   maxTokensForRequest,
   publishSessionChunk,
   renderMetrics,
+  responseFunctionCalls,
   resolveMemoryPath,
   runMemoryTool,
 } = await import("./main.js");
@@ -280,6 +282,27 @@ test("collectStreamingResponse fails closed when the stream has no completed res
     () => collectStreamingResponse(brokenStream(), () => undefined),
     /ended without a completed response/,
   );
+});
+
+test("isRecoverableSessionResumeError catches stale and orphaned Responses sessions", () => {
+  assert.equal(isRecoverableSessionResumeError("previous_response_id not found"), true);
+  assert.equal(
+    isRecoverableSessionResumeError("400 No tool output found for function call call_yX7dn0aGDFEHe1yjG9CjRZJc."),
+    true,
+  );
+  assert.equal(isRecoverableSessionResumeError("quota exceeded"), false);
+});
+
+test("responseFunctionCalls identifies pending Responses function calls", () => {
+  const response = {
+    output: [
+      { type: "reasoning", summary: [] },
+      { type: "function_call", name: "run_shell_command", call_id: "call_123" },
+      { type: "message", content: [] },
+    ],
+  };
+  assert.equal(responseFunctionCalls(response).length, 1);
+  assert.deepEqual(responseFunctionCalls({ output: [{ type: "message", content: [] }] }), []);
 });
 
 test("streaming delta metrics use bounded model labels", () => {

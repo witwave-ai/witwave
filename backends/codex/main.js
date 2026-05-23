@@ -2360,7 +2360,7 @@ async function createResponseWithSessionFallback(client, request, sessionId, onT
       throw error;
     }
     const message = String(error?.message || error);
-    if (!/previous[_ ]response|previous_response_id|not found|expired/i.test(message)) {
+    if (!isRecoverableSessionResumeError(message)) {
       throw error;
     }
     loadSessionStore().delete(sessionId);
@@ -2368,6 +2368,22 @@ async function createResponseWithSessionFallback(client, request, sessionId, onT
     const retry = { ...request };
     delete retry.previous_response_id;
     return await createResponse(client, retry, onTextDelta, { ...spanAttributes, "llm.request.session_retry": "true" });
+  }
+}
+
+export function isRecoverableSessionResumeError(message) {
+  return /previous[_ ]response|previous_response_id|not found|expired|no tool output found for function call/i.test(
+    String(message || ""),
+  );
+}
+
+export function responseFunctionCalls(response) {
+  return (response?.output || []).filter((item) => item?.type === "function_call");
+}
+
+function recordSessionIfComplete(sessionId, response, model) {
+  if (response?.id && responseFunctionCalls(response).length === 0) {
+    recordSessionResponse(sessionId, response.id, model);
   }
 }
 
@@ -2420,9 +2436,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
     hooks.onAssistantDelta,
     { "session.id_hash": sessionHash(sessionId), "response.previous_id": request.previous_response_id || "" },
   );
-  if (response?.id) {
-    recordSessionResponse(sessionId, response.id, model);
-  }
+  recordSessionIfComplete(sessionId, response, model);
   let budget = budgetResult(response, maxTokens);
   let toolCallsThisQuery = 0;
   if (budget.exceeded) {
@@ -2434,7 +2448,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
       if (budget.exceeded) {
         break;
       }
-      const calls = (response.output || []).filter((item) => item?.type === "function_call");
+      const calls = responseFunctionCalls(response);
       if (calls.length === 0) {
         break;
       }
@@ -2463,9 +2477,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
         hooks.onAssistantDelta,
         { "session.id_hash": sessionHash(sessionId), "response.previous_id": response.id || "", "tool.loop": "true" },
       );
-      if (response?.id) {
-        recordSessionResponse(sessionId, response.id, model);
-      }
+      recordSessionIfComplete(sessionId, response, model);
       budget = budgetResult(response, maxTokens);
       if (budget.exceeded) {
         metrics.budgetExceededTotal += 1;
@@ -2474,6 +2486,12 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
   }
   metrics.sdkToolCallsPerQueryCount += 1;
   metrics.sdkToolCallsPerQuerySum += toolCallsThisQuery;
+  const pendingCalls = responseFunctionCalls(response);
+  if (pendingCalls.length > 0) {
+    throw new Error(
+      `tool iteration limit exceeded after ${toolCallsThisQuery} tool call(s); ${pendingCalls.length} tool call(s) still pending`,
+    );
+  }
   const text = extractOutputText(response) || JSON.stringify(response.output || response);
   return {
     model,
