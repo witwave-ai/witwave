@@ -161,6 +161,7 @@ const metrics = {
   a2aRequests: new Map(),
   a2aDurationCount: 0,
   a2aDurationSum: 0,
+  modelRequests: new Map(),
   mcpRequests: new Map(),
   mcpDurationCounts: new Map(),
   mcpDurations: new Map(),
@@ -2511,6 +2512,7 @@ export async function handleA2A(payload) {
   let status = "ok";
   let responseText = "";
   let model = modelForRequest(metadata);
+  inc(metrics.modelRequests, sanitizeModelLabel(model));
   let totalTokens = 0;
   let assistantSeq = 1;
   const publishAssistantDelta = (content) => {
@@ -3032,6 +3034,14 @@ export function renderMetrics() {
   );
   for (const [status, value] of metrics.a2aRequests.entries()) {
     lines.push(metricLine("backend_a2a_requests_total", value, labels({ status })));
+  }
+
+  lines.push(
+    "# HELP backend_model_requests_total Total requests per resolved model.",
+    "# TYPE backend_model_requests_total counter",
+  );
+  for (const [model, value] of metrics.modelRequests.entries()) {
+    lines.push(metricLine("backend_model_requests_total", value, labels({ model })));
   }
 
   lines.push(

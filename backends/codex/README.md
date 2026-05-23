@@ -28,7 +28,7 @@ The first implementation is contract-first:
 - a minimal `/mcp` surface with the backend-neutral `ask_agent` tool name
 - backend-local MCP client bridging for URL-shaped `.codex/mcp.json` entries
 - streaming-delta Prometheus counters with bounded `model` labels
-- common request-duration and JSONL log-write metrics for cross-backend dashboards
+- common model request, request-duration, and JSONL log-write metrics for cross-backend dashboards
 - OpenTelemetry spans for A2A execution, MCP `tools/call`, Responses API calls, and function tools
 - Claude-shaped tool trace rows for Codex-owned function tools (`tool_use`, `tool_result`, and `tool_audit`)
 

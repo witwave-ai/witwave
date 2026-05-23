@@ -754,6 +754,7 @@ test("renderMetrics exposes the common backend label shape", async () => {
   const body = renderMetrics();
   assert.match(body, /backend_up/);
   assert.match(body, /backend_a2a_requests_total/);
+  assert.match(body, /backend_model_requests_total\{.*model="gpt-5.5".*\} [1-9]/);
   assert.match(body, /backend_a2a_request_duration_seconds_count\{.*backend="codex".*\} [1-9]/);
   assert.match(body, /backend_log_entries_total\{.*logger="conversation".*\} [1-9]/);
   assert.match(body, /backend_log_bytes_total\{.*logger="conversation".*\} [1-9]/);
