@@ -265,6 +265,31 @@ test("MCP tools/call rejects missing prompt and oversized bodies", async () => {
   });
 });
 
+test("MCP tools/call carries inbound traceparent into trace records", async () => {
+  const traceId = "11111111111111111111111111111111";
+  await withTestServer(async (port) => {
+    const result = await postJson(
+      port,
+      "/mcp",
+      {
+        jsonrpc: "2.0",
+        id: "trace",
+        method: "tools/call",
+        params: { name: "ask_agent", arguments: { prompt: "trace me" } },
+      },
+      { traceparent: `00-${traceId}-2222222222222222-01` },
+    );
+    assert.equal(result.status, 200);
+  });
+
+  const entries = fs
+    .readFileSync(process.env.TRACE_LOG, "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  assert.ok(entries.some((entry) => entry.endpoint === "/mcp" && entry.trace_id === traceId));
+});
+
 test("extractRequestMetadata falls back to metadata.session_id for first-turn context", () => {
   const extracted = extractRequestMetadata({
     jsonrpc: "2.0",

@@ -1558,6 +1558,7 @@ async function handleMcp(req, res) {
   let status = "ok";
   let methodLabel = "unknown";
   let rpcId = null;
+  const inboundTraceId = traceIdForMetadata({ traceparent: req.headers.traceparent });
   try {
     const declaredLength = Number.parseInt(String(req.headers["content-length"] || "-1"), 10);
     if (Number.isFinite(declaredLength) && declaredLength > MCP_MAX_BODY_BYTES) {
@@ -1636,7 +1637,10 @@ async function handleMcp(req, res) {
         });
         return;
       }
-      const args = payload.params?.arguments || {};
+      const args = { ...(payload.params?.arguments || {}) };
+      if (req.headers.traceparent && !args.traceparent) {
+        args.traceparent = req.headers.traceparent;
+      }
       const rawSessionId = sanitizeRawSessionId(args.session_id || "");
       const callerIdentity = callerIdentityFromRequest(req);
       const candidateSessionIds = deriveSessionCandidates(rawSessionId, callerIdentity);
@@ -1673,6 +1677,7 @@ async function handleMcp(req, res) {
       backend: BACKEND_ID,
       endpoint: "/mcp",
       status,
+      ...(inboundTraceId ? { trace_id: inboundTraceId } : {}),
       duration_seconds: (performance.now() - started) / 1000,
     });
   }
