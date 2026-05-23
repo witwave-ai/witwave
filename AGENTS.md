@@ -134,9 +134,9 @@ Each backend:
   warning (#517) and the shared guard refuses to serve protected endpoints unless the operator opts in with
   `CONVERSATIONS_AUTH_DISABLED=true` (documented escape hatch for local dev, loud startup log)
 - On `/mcp`, `session_id` is routed through `shared/session_binding.derive_session_id` with a bearer-token fingerprint
-  before lookup/insert — parity across the Python SDK backends (#867 claude, #929 openai, #935 gemini, #941 shared
-  path). When `SESSION_ID_SECRET` is set the bound ID is HMAC-derived from the caller identity so one caller cannot
-  hijack another's session. Leave unset only in single-tenant dev
+  before lookup/insert — parity across the LLM-backed backends (#867 claude, #929 openai, #935 gemini, #941 shared path;
+  codex mirrors the same binding behavior in Node). When `SESSION_ID_SECRET` is set the bound ID is HMAC-derived from
+  the caller identity so one caller cannot hijack another's session. Leave unset only in single-tenant dev
 - Manages its own session state, conversation log (`conversation.jsonl`), and memory (`/memory/`)
 - Receives behavioral instructions via a mounted file (`CLAUDE.md` for claude, `AGENTS.md` for openai/codex, `GEMINI.md`
   for gemini). Backend-specific `agent-card.md` files are optional; the named agent's public card is served by harness
@@ -501,12 +501,11 @@ bound agents see it at `/workspaces/<workspace-name>/memory`; self-team identity
 ## Metrics landscape
 
 The LLM-backed services expose a common `backend_*` metric label shape so cross-backend dashboards can union on
-`(agent, agent_id, backend)` without backend-specific series names. **Claude is the Python SDK superset** — any metric
-that exists on one Python SDK backend exists on claude; peers fill in placeholders where a series doesn't apply (e.g.
-openai's `backend_sdk_subprocess_spawn_duration_seconds` is a zero-value placeholder because the Agents SDK runs
-in-process). The Node-based `codex` backend exposes the core `backend_*` process/request counters plus Codex-specific
-streaming, function-tool, hook, and OTel metrics from `main.js`. Look at each backend's `metrics.py` or `main.js` for
-the live catalog; look at `charts/witwave/dashboards/*.json` for the rendered Grafana views; look at
+`(agent, agent_id, backend)` without backend-specific series names. **Claude is still the broadest metric superset**,
+while OpenAI, Codex, and Gemini fill in the shared process, request, session, hook, MCP, and tool families they can
+observe natively. Some backend-specific series remain intentionally different where the underlying SDK/runtime differs
+(for example, subprocess metrics on Claude vs. in-process OpenAI/Codex execution). Look at each backend's `metrics.py`
+or `main.js` for the live catalog; look at `charts/witwave/dashboards/*.json` for the rendered Grafana views; look at
 `charts/witwave/templates/prometheusrule.yaml` for the default alert set.
 
 Harness, operator, and MCP tool metrics use their own prefixes (`harness_*`, `witwaveagent_*`, `witwaveprompt_*`,

@@ -38,7 +38,6 @@ var defaultExpectedEnvVars = map[string][]string{
 		"AZURE_OPENAI_ENDPOINT",
 		"AZURE_OPENAI_API_VERSION",
 	},
-	// Legacy alias for the pre-rename OpenAI Agents SDK backend.
 	"codex": {
 		"OPENAI_API_KEY",
 		"OPENAI_ORG",

@@ -240,7 +240,7 @@ func TestResolvePersistDefaults(t *testing.T) {
 		if mounts := got["claude"].Mounts; len(mounts) != 6 {
 			t.Errorf("claude mounts = %d, want 6", len(mounts))
 		}
-		for _, typ := range []string{"claude", "openai", "gemini"} {
+		for _, typ := range []string{"claude", "openai", "codex", "gemini"} {
 			if !hasMount(got[typ].Mounts, "logs", "/home/agent/logs") {
 				t.Errorf("%s preset missing logs mount: %+v", typ, got[typ].Mounts)
 			}

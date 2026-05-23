@@ -186,7 +186,7 @@ func newSendCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&sf.promptFile, "prompt-file", "", "read prompt text from this file (- for stdin)")
-	cmd.Flags().StringVar(&sf.backendID, "backend", "", "route to a specific backend (claude|openai|gemini)")
+	cmd.Flags().StringVar(&sf.backendID, "backend", "", "route to a specific backend (claude|openai|codex|gemini)")
 	cmd.Flags().StringVar(&sf.contextID, "context", "", "reuse this A2A contextId (default: random)")
 	cmd.Flags().StringVarP(&sf.namespace, "namespace", "n", "",
 		"Agent's namespace (default: kubeconfig context's namespace, falling back to 'witwave')")

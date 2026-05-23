@@ -11,7 +11,7 @@ import (
 )
 
 func TestResolvedExpectedEnvVars_BuiltinShape(t *testing.T) {
-	for _, backend := range []string{"claude", "openai", "gemini"} {
+	for _, backend := range []string{"claude", "openai", "codex", "gemini"} {
 		got := resolvedExpectedEnvVars(backend, nil)
 		if len(got) == 0 {
 			t.Errorf("%s: expected non-empty built-in catalog", backend)
