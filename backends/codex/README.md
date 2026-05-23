@@ -52,6 +52,7 @@ the OpenAI Responses API.
 | `CONVERSATION_STREAM_KEEPALIVE_SEC` | `15`                                         | Per-session SSE keepalive interval                              |
 | `CONVERSATION_STREAM_GRACE_SEC`     | `60`                                         | Idle session stream cleanup grace period                        |
 | `CONVERSATION_STREAM_RING_MAX`      | `200`                                        | Replay buffer size per live session stream                      |
+| `SESSION_STREAM_MAX_PER_CALLER`     | `8`                                          | Concurrent session stream cap per bearer fingerprint            |
 | `SESSION_ID_SECRET`                 | unset                                        | HMAC key for caller-bound session IDs                           |
 | `SESSION_ID_SECRET_PREV`            | unset                                        | Previous HMAC key for session-secret rotation                   |
 | `MCP_MAX_BODY_BYTES`                | `4194304`                                    | Maximum accepted `/mcp` request body size                       |

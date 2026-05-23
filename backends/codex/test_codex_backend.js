@@ -73,6 +73,29 @@ async function postJson(port, path, payload, headers = {}) {
   });
 }
 
+async function openSessionStream(port, sessionId, headers = {}) {
+  return await new Promise((resolve, reject) => {
+    const req = http.get(`http://127.0.0.1:${port}/api/sessions/${sessionId}/stream`, { headers }, (res) => {
+      req.on("error", () => {
+        // Tests intentionally close long-lived SSE requests.
+      });
+      resolve({ req, res });
+    });
+    req.on("error", reject);
+  });
+}
+
+async function readResponseBody(res) {
+  return await new Promise((resolve) => {
+    let body = "";
+    res.setEncoding("utf8");
+    res.on("data", (chunk) => {
+      body += chunk;
+    });
+    res.on("end", () => resolve(body));
+  });
+}
+
 test("buildAgentCard advertises a non-streaming Codex backend", () => {
   const card = buildAgentCard();
   assert.equal(card.name, process.env.AGENT_NAME || "codex");
@@ -213,6 +236,36 @@ test("session stream endpoint publishes user and final assistant chunks", async 
     server.closeAllConnections?.();
     await new Promise((resolve) => server.close(resolve));
   }
+});
+
+test("session stream caps concurrent streams per caller and releases on close", async () => {
+  await withTestServer(async (port) => {
+    const opened = [];
+    const headers = { Authorization: "Bearer cap-test" };
+    try {
+      for (let i = 0; i < 8; i += 1) {
+        const sessionId = `00000000-0000-4000-8000-00000000010${i}`;
+        const stream = await openSessionStream(port, sessionId, headers);
+        assert.equal(stream.res.statusCode, 200);
+        opened.push(stream);
+      }
+
+      const capped = await openSessionStream(port, "00000000-0000-4000-8000-000000000199", headers);
+      assert.equal(capped.res.statusCode, 429);
+      assert.match(await readResponseBody(capped.res), /too many concurrent streams/);
+    } finally {
+      for (const { req, res } of opened) {
+        req.destroy();
+        res.destroy();
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    const released = await openSessionStream(port, "00000000-0000-4000-8000-0000000001aa", headers);
+    assert.equal(released.res.statusCode, 200);
+    released.req.destroy();
+    released.res.destroy();
+  });
 });
 
 test("MCP tools/list advertises the backend-neutral ask_agent tool name", async () => {

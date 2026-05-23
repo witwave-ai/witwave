@@ -46,6 +46,7 @@ const CONVERSATION_STREAM_RING_MAX = Math.max(
   1,
   Number.parseInt(process.env.CONVERSATION_STREAM_RING_MAX || "200", 10) || 200,
 );
+const SESSION_STREAM_MAX_PER_CALLER = parseNonNegativeInt(process.env.SESSION_STREAM_MAX_PER_CALLER, 8);
 const SESSION_ID_SECRET = process.env.SESSION_ID_SECRET || "";
 const SESSION_ID_SECRET_PREV = process.env.SESSION_ID_SECRET_PREV || "";
 const MCP_MAX_BODY_BYTES = Math.max(
@@ -124,6 +125,7 @@ const metrics = {
 
 let codexSessions = null;
 const sessionStreams = new Map();
+const sessionStreamCallerCounts = new Map();
 
 function parseBool(value) {
   if (value === undefined || value === null || value === "") {
@@ -137,6 +139,11 @@ function splitList(value) {
     .split(/[\n,]+/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function parseNonNegativeInt(value, defaultValue) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultValue;
 }
 
 function inc(map, key, amount = 1) {
@@ -232,6 +239,11 @@ function callerIdentityFromRequest(req) {
   const header = req?.headers?.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
   return token ? crypto.createHash("sha256").update(token).digest("hex") : undefined;
+}
+
+function sessionStreamCallerFingerprint(req) {
+  const bearer = String(req?.headers?.authorization || "").slice(0, 128);
+  return crypto.createHash("sha256").update(bearer).digest("hex").slice(0, 16);
 }
 
 function nowIsoMs() {
@@ -1782,6 +1794,28 @@ function handleSessionStream(req, res, sessionId) {
   }
 
   const url = new URL(req.url || "/", "http://localhost");
+  const callerFingerprint = sessionStreamCallerFingerprint(req);
+  let released = false;
+  const releaseCallerSlot = () => {
+    if (SESSION_STREAM_MAX_PER_CALLER <= 0 || released) {
+      return;
+    }
+    released = true;
+    const current = sessionStreamCallerCounts.get(callerFingerprint) || 0;
+    if (current <= 1) {
+      sessionStreamCallerCounts.delete(callerFingerprint);
+    } else {
+      sessionStreamCallerCounts.set(callerFingerprint, current - 1);
+    }
+  };
+  if (SESSION_STREAM_MAX_PER_CALLER > 0) {
+    const current = sessionStreamCallerCounts.get(callerFingerprint) || 0;
+    if (current >= SESSION_STREAM_MAX_PER_CALLER) {
+      return jsonResponse(res, 429, { error: "too many concurrent streams for this caller" });
+    }
+    sessionStreamCallerCounts.set(callerFingerprint, current + 1);
+  }
+
   const stream = getSessionStream(cleanSessionId, { create: true });
   const lastEventId = req.headers["last-event-id"] || url.searchParams.get("last_event_id");
   const replay = lastEventId
@@ -1807,6 +1841,7 @@ function handleSessionStream(req, res, sessionId) {
     } catch {
       clearInterval(keepalive);
       stream.subscribers.delete(res);
+      releaseCallerSlot();
       scheduleSessionStreamCleanup(stream);
     }
   }, keepaliveMs);
@@ -1815,6 +1850,7 @@ function handleSessionStream(req, res, sessionId) {
   req.on("close", () => {
     clearInterval(keepalive);
     stream.subscribers.delete(res);
+    releaseCallerSlot();
     scheduleSessionStreamCleanup(stream);
   });
   return undefined;
