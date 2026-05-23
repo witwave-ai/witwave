@@ -28,6 +28,51 @@ const {
   runMemoryTool,
 } = await import("./main.js");
 
+async function withTestServer(fn) {
+  const server = http.createServer((req, res) => {
+    handleRequest(req, res).catch((error) => {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: error?.message || String(error) }));
+    });
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    return await fn(server.address().port);
+  } finally {
+    server.closeAllConnections?.();
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+async function postJson(port, path, payload, headers = {}) {
+  const body = typeof payload === "string" ? payload : JSON.stringify(payload);
+  return await new Promise((resolve, reject) => {
+    const req = http.request(
+      `http://127.0.0.1:${port}${path}`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(body),
+          ...headers,
+        },
+      },
+      (res) => {
+        let data = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => {
+          resolve({ status: res.statusCode, body: data ? JSON.parse(data) : undefined });
+        });
+      },
+    );
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
 test("buildAgentCard advertises a non-streaming Codex backend", () => {
   const card = buildAgentCard();
   assert.equal(card.name, process.env.AGENT_NAME || "codex");
@@ -171,48 +216,50 @@ test("session stream endpoint publishes user and final assistant chunks", async 
 });
 
 test("MCP tools/list advertises the backend-neutral ask_agent tool name", async () => {
-  const server = http.createServer((req, res) => {
-    handleRequest(req, res).catch((error) => {
-      res.writeHead(500, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: error?.message || String(error) }));
-    });
-  });
-
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  try {
-    const { port } = server.address();
-    const body = JSON.stringify({ jsonrpc: "2.0", id: "tools", method: "tools/list" });
-    const result = await new Promise((resolve, reject) => {
-      const req = http.request(
-        `http://127.0.0.1:${port}/mcp`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "content-length": Buffer.byteLength(body),
-          },
-        },
-        (res) => {
-          let data = "";
-          res.setEncoding("utf8");
-          res.on("data", (chunk) => {
-            data += chunk;
-          });
-          res.on("end", () => resolve(JSON.parse(data)));
-        },
-      );
-      req.on("error", reject);
-      req.end(body);
+  await withTestServer(async (port) => {
+    const { body: result } = await postJson(port, "/mcp", {
+      jsonrpc: "2.0",
+      id: "tools",
+      method: "tools/list",
     });
 
     const tool = result.result.tools[0];
     assert.equal(tool.name, "ask_agent");
     assert.ok(tool.inputSchema.properties.session_id);
     assert.ok(tool.inputSchema.properties.max_tokens);
-  } finally {
-    server.closeAllConnections?.();
-    await new Promise((resolve) => server.close(resolve));
-  }
+  });
+});
+
+test("MCP initialize negotiates supported protocol version", async () => {
+  await withTestServer(async (port) => {
+    const { body: result } = await postJson(port, "/mcp", {
+      jsonrpc: "2.0",
+      id: "init",
+      method: "initialize",
+      params: { protocolVersion: "2024-11-05" },
+    });
+    assert.equal(result.result.protocolVersion, "2024-11-05");
+    assert.equal(result.result.capabilities.tools.listChanged, false);
+  });
+});
+
+test("MCP tools/call rejects missing prompt and oversized bodies", async () => {
+  await withTestServer(async (port) => {
+    const missingPrompt = await postJson(port, "/mcp", {
+      jsonrpc: "2.0",
+      id: "missing",
+      method: "tools/call",
+      params: { name: "ask_agent", arguments: {} },
+    });
+    assert.equal(missingPrompt.status, 200);
+    assert.equal(missingPrompt.body.error.code, -32602);
+
+    const oversized = await postJson(port, "/mcp", "", {
+      "content-length": String(4 * 1024 * 1024 + 1),
+    });
+    assert.equal(oversized.status, 413);
+    assert.equal(oversized.body.error.message, "body too large");
+  });
 });
 
 test("extractRequestMetadata falls back to metadata.session_id for first-turn context", () => {

@@ -48,6 +48,10 @@ const CONVERSATION_STREAM_RING_MAX = Math.max(
 );
 const SESSION_ID_SECRET = process.env.SESSION_ID_SECRET || "";
 const SESSION_ID_SECRET_PREV = process.env.SESSION_ID_SECRET_PREV || "";
+const MCP_MAX_BODY_BYTES = Math.max(
+  1,
+  Number.parseInt(process.env.MCP_MAX_BODY_BYTES || String(4 * 1024 * 1024), 10) || 4 * 1024 * 1024,
+);
 const CODEX_SHELL_ALLOWED_PREFIXES = splitList(
   process.env.CODEX_SHELL_ALLOWED_PREFIXES ||
     [
@@ -1550,15 +1554,31 @@ async function handleMcp(req, res) {
   }
   const started = performance.now();
   let status = "ok";
+  let rpcId = null;
   try {
-    const raw = await readBody(req);
+    const declaredLength = Number.parseInt(String(req.headers["content-length"] || "-1"), 10);
+    if (Number.isFinite(declaredLength) && declaredLength > MCP_MAX_BODY_BYTES) {
+      status = "body_too_large";
+      return jsonResponse(res, 413, {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32600, message: "body too large" },
+      });
+    }
+    const raw = await readBody(req, MCP_MAX_BODY_BYTES);
     const payload = JSON.parse(raw || "{}");
+    rpcId = payload.id ?? null;
     const method = payload.method || "";
     let result;
     if (method === "initialize") {
+      const supportedVersions = ["2024-11-05", "2025-03-26"];
+      const clientVersion = payload.params?.protocolVersion;
+      const protocolVersion = supportedVersions.includes(clientVersion)
+        ? clientVersion
+        : supportedVersions[supportedVersions.length - 1];
       result = {
-        protocolVersion: "2024-11-05",
-        capabilities: { tools: {} },
+        protocolVersion,
+        capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "witwave-codex-backend", version: AGENT_VERSION },
       };
     } else if (method === "tools/list") {
@@ -1600,6 +1620,14 @@ async function handleMcp(req, res) {
         return;
       }
       const prompt = payload.params?.arguments?.prompt || "";
+      if (!prompt) {
+        jsonResponse(res, 200, {
+          jsonrpc: "2.0",
+          id: rpcId,
+          error: { code: -32602, message: "Missing required argument: prompt" },
+        });
+        return;
+      }
       const args = payload.params?.arguments || {};
       const rawSessionId = sanitizeRawSessionId(args.session_id || "");
       const callerIdentity = callerIdentityFromRequest(req);
@@ -1609,18 +1637,21 @@ async function handleMcp(req, res) {
     } else {
       jsonResponse(res, 200, {
         jsonrpc: "2.0",
-        id: payload.id ?? null,
+        id: rpcId,
         error: { code: -32601, message: `Unsupported method: ${method}` },
       });
       return;
     }
-    jsonResponse(res, 200, { jsonrpc: "2.0", id: payload.id ?? null, result });
+    jsonResponse(res, 200, { jsonrpc: "2.0", id: rpcId, result });
   } catch (error) {
     status = "error";
     jsonResponse(res, error?.code === "BODY_TOO_LARGE" ? 413 : 400, {
       jsonrpc: "2.0",
-      id: null,
-      error: { code: -32600, message: error?.message || String(error) },
+      id: rpcId,
+      error: {
+        code: error?.code === "BODY_TOO_LARGE" ? -32600 : -32700,
+        message: error?.code === "BODY_TOO_LARGE" ? "body too large" : error?.message || "Parse error",
+      },
     });
   } finally {
     inc(metrics.mcpRequests, status);
@@ -1903,7 +1934,7 @@ export async function handleRequest(req, res) {
   if (req.method === "GET" && sessionStreamMatch) {
     return handleSessionStream(req, res, decodeURIComponent(sessionStreamMatch[1]));
   }
-  if (req.method === "POST" && url.pathname === "/mcp") {
+  if ((req.method === "GET" || req.method === "POST") && url.pathname === "/mcp") {
     return handleMcp(req, res);
   }
   if (req.method === "POST" && url.pathname === "/") {

@@ -86,7 +86,8 @@ jobs:
           done
 
           curl -fsS http://127.0.0.1:18081/health/ready >/dev/null
-          timeout 5 curl -fsS -N http://127.0.0.1:18081/api/sessions/ci-session/stream > /tmp/codex-sse.txt &
+          session_id="00000000-0000-4000-8000-0000000000c1"
+          timeout 5 curl -fsS -N "http://127.0.0.1:18081/api/sessions/${session_id}/stream" > /tmp/codex-sse.txt &
           sse_pid=$!
           for _ in $(seq 1 20); do
             if grep 'stream-start' /tmp/codex-sse.txt >/dev/null 2>&1; then
@@ -97,7 +98,7 @@ jobs:
           grep 'stream-start' /tmp/codex-sse.txt >/dev/null
           curl -fsS -X POST http://127.0.0.1:18081/ \
             -H "content-type: application/json" \
-            --data '{"jsonrpc":"2.0","id":"ci","method":"message/send","params":{"message":{"metadata":{"session_id":"ci-session"},"parts":[{"kind":"text","text":"hello"}]}}}' \
+            --data "{\"jsonrpc\":\"2.0\",\"id\":\"ci\",\"method\":\"message/send\",\"params\":{\"message\":{\"metadata\":{\"session_id\":\"${session_id}\"},\"parts\":[{\"kind\":\"text\",\"text\":\"hello\"}]}}}" \
             | node -e 'let data=""; process.stdin.on("data", c => data += c); process.stdin.on("end", () => { const j = JSON.parse(data); const text = j.result?.parts?.[0]?.text || ""; if (!text.includes("CODEX_STUB_MODE")) process.exit(1); });'
           wait "$sse_pid" || true
           grep 'event: conversation.chunk' /tmp/codex-sse.txt >/dev/null

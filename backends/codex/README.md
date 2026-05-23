@@ -54,6 +54,7 @@ the OpenAI Responses API.
 | `CONVERSATION_STREAM_RING_MAX`      | `200`                                        | Replay buffer size per live session stream                      |
 | `SESSION_ID_SECRET`                 | unset                                        | HMAC key for caller-bound session IDs                           |
 | `SESSION_ID_SECRET_PREV`            | unset                                        | Previous HMAC key for session-secret rotation                   |
+| `MCP_MAX_BODY_BYTES`                | `4194304`                                    | Maximum accepted `/mcp` request body size                       |
 | `MAX_PROMPT_BYTES`                  | `10485760`                                   | Inbound prompt byte ceiling                                     |
 | `METRICS_ENABLED`                   | unset                                        | Enables the dedicated metrics listener                          |
 | `METRICS_PORT`                      | `9000`                                       | Dedicated Prometheus listener port                              |
