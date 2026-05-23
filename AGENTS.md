@@ -142,9 +142,9 @@ Each backend:
   for gemini). Backend-specific `agent-card.md` files are optional; the named agent's public card is served by harness
   from `.witwave/agent-card.md`
 
-Codex-owned function tools (`run_shell_command`, memory tools, and URL-shaped MCP tools) pass through a
-PreToolUse-style gate before execution. The gate supports the shared baseline rule names plus optional `.codex/hooks.yaml`
-extension rules and emits `backend_hooks_*` metrics. Claude remains the full SDK hook reference; Gemini still has an AFC
+Codex-owned function tools (`run_shell_command`, memory tools, and URL-shaped MCP tools) pass through a PreToolUse-style
+gate before execution. The gate supports the shared baseline rule names plus optional `.codex/hooks.yaml` extension
+rules and emits `backend_hooks_*` metrics. Claude remains the full SDK hook reference; Gemini still has an AFC
 interposition gap for pre-tool enforcement.
 
 Each named agent has its own dedicated backend instances. For example, iris can have `iris-claude`, `iris-openai`,
@@ -506,8 +506,7 @@ that exists on one Python SDK backend exists on claude; peers fill in placeholde
 openai's `backend_sdk_subprocess_spawn_duration_seconds` is a zero-value placeholder because the Agents SDK runs
 in-process). The Node-based `codex` backend exposes the core `backend_*` process/request counters plus Codex-specific
 streaming, function-tool, hook, and OTel metrics from `main.js`. Look at each backend's `metrics.py` or `main.js` for
-the live catalog; look at
-`charts/witwave/dashboards/*.json` for the rendered Grafana views; look at
+the live catalog; look at `charts/witwave/dashboards/*.json` for the rendered Grafana views; look at
 `charts/witwave/templates/prometheusrule.yaml` for the default alert set.
 
 Harness, operator, and MCP tool metrics use their own prefixes (`harness_*`, `witwaveagent_*`, `witwaveprompt_*`,
