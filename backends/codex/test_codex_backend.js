@@ -15,6 +15,7 @@ process.env.LOG_REDACT = "true";
 
 const {
   buildAgentCard,
+  constantTimeBearerTokenMatches,
   deriveSessionId,
   extractRequestMetadata,
   extractPrompt,
@@ -102,6 +103,15 @@ test("buildAgentCard advertises a non-streaming Codex backend", () => {
   assert.equal(card.capabilities.streaming, false);
   assert.equal(card.skills[0].id, "general");
   assert.deepEqual(card.defaultInputModes, ["text/plain"]);
+});
+
+test("constantTimeBearerTokenMatches requires an exact bearer token match", () => {
+  assert.equal(constantTimeBearerTokenMatches("Bearer expected-token", "expected-token"), true);
+  assert.equal(constantTimeBearerTokenMatches("Bearer wrong-token", "expected-token"), false);
+  assert.equal(constantTimeBearerTokenMatches("bearer expected-token", "expected-token"), false);
+  assert.equal(constantTimeBearerTokenMatches("Bearer expected-token ", "expected-token"), false);
+  assert.equal(constantTimeBearerTokenMatches(undefined, "expected-token"), false);
+  assert.equal(constantTimeBearerTokenMatches("Bearer expected-token", ""), false);
 });
 
 test("extractPrompt reads the A2A message/send text parts shape", () => {

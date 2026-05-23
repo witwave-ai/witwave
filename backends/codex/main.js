@@ -1523,6 +1523,17 @@ function textResponse(res, status, body, contentType = "text/plain; charset=utf-
   res.end(body);
 }
 
+export function constantTimeBearerTokenMatches(authorizationHeader, expectedToken) {
+  if (!expectedToken) {
+    return false;
+  }
+  const expected = `Bearer ${expectedToken}`;
+  const presented = String(authorizationHeader || "");
+  const expectedDigest = crypto.createHash("sha256").update(expected).digest();
+  const presentedDigest = crypto.createHash("sha256").update(presented).digest();
+  return crypto.timingSafeEqual(expectedDigest, presentedDigest);
+}
+
 function authOk(req) {
   if (CONVERSATIONS_AUTH_DISABLED) {
     return true;
@@ -1530,7 +1541,7 @@ function authOk(req) {
   if (!CONVERSATIONS_AUTH_TOKEN) {
     return false;
   }
-  return req.headers.authorization === `Bearer ${CONVERSATIONS_AUTH_TOKEN}`;
+  return constantTimeBearerTokenMatches(req.headers.authorization, CONVERSATIONS_AUTH_TOKEN);
 }
 
 function protectedRoute(req, res) {
