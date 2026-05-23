@@ -468,7 +468,97 @@ function safeToolInputPreview(input) {
   return truncateBytes(redactText(hookInputHaystack(input)), 4096);
 }
 
-function recordHookDecision(toolName, toolInput, traceId) {
+function safeTraceValue(value, maxBytes = 8192) {
+  const redacted = redactText(hookInputHaystack(value));
+  if (byteLength(redacted) > maxBytes) {
+    return {
+      preview: truncateBytes(redacted, maxBytes),
+      truncated: true,
+    };
+  }
+  try {
+    return JSON.parse(redacted);
+  } catch {
+    return redacted;
+  }
+}
+
+function toolTraceContext(context = {}) {
+  return {
+    toolUseId: context.toolUseId || `codex-${crypto.randomUUID()}`,
+    sessionId: context.sessionId || "",
+    model: context.model || "",
+  };
+}
+
+function appendToolUseEvent(toolName, toolInput, traceId, context = {}) {
+  const ctx = toolTraceContext(context);
+  appendJsonl(TRACE_LOG, {
+    ts: new Date().toISOString(),
+    agent: AGENT_NAME,
+    agent_id: AGENT_ID,
+    session_id: ctx.sessionId,
+    event_type: "tool_use",
+    model: ctx.model,
+    id: ctx.toolUseId,
+    name: toolName,
+    input: safeTraceValue(toolInput, 4096),
+    ...(traceId ? { trace_id: traceId } : {}),
+  });
+}
+
+function toolResultContent(result) {
+  if (result?.output !== undefined) {
+    return result.output;
+  }
+  if (result?.stdout !== undefined || result?.stderr !== undefined) {
+    return {
+      stdout: result.stdout || "",
+      stderr: result.stderr || "",
+      exit_code: result.exit_code,
+      signal: result.signal,
+      timed_out: Boolean(result.timed_out),
+    };
+  }
+  return result;
+}
+
+function appendToolResultEvent(toolName, result, traceId, context = {}) {
+  const ctx = toolTraceContext(context);
+  appendJsonl(TRACE_LOG, {
+    ts: new Date().toISOString(),
+    agent: AGENT_NAME,
+    agent_id: AGENT_ID,
+    session_id: ctx.sessionId,
+    event_type: "tool_result",
+    model: ctx.model,
+    tool_use_id: ctx.toolUseId,
+    content: safeTraceValue(toolResultContent(result), 8192),
+    is_error: result?.ok === false || result?.refused === true || result?.is_error === true,
+    ...(traceId ? { trace_id: traceId } : {}),
+  });
+}
+
+function appendToolAuditEvent(toolName, toolInput, result, traceId, context = {}) {
+  const ctx = toolTraceContext(context);
+  const isError = result?.ok === false || result?.refused === true || result?.is_error === true;
+  appendJsonl(TRACE_LOG, {
+    ts: new Date().toISOString(),
+    agent: AGENT_NAME,
+    agent_id: AGENT_ID,
+    session_id: ctx.sessionId,
+    event_type: "tool_audit",
+    model: ctx.model,
+    tool_use_id: ctx.toolUseId,
+    tool_name: toolName,
+    tool_input: safeTraceValue(toolInput, 4096),
+    tool_response_preview: truncateBytes(redactText(hookInputHaystack(result)), 2048),
+    decision: isError ? "error" : "allow",
+    ...(traceId ? { trace_id: traceId } : {}),
+  });
+}
+
+function recordHookDecision(toolName, toolInput, traceId, context = {}) {
   const { decision, rule } = evaluatePreToolUse(toolName, toolInput);
   inc(metrics.hookEvaluations, mapKey(toolName, decision));
   if (!rule) {
@@ -481,10 +571,17 @@ function recordHookDecision(toolName, toolInput, traceId) {
     inc(metrics.hookWarnings, metricKey);
   }
   appendJsonl(TRACE_LOG, {
-    timestamp: new Date().toISOString(),
+    ts: new Date().toISOString(),
     backend: BACKEND_ID,
     event_type: "tool_audit",
+    agent: AGENT_NAME,
+    agent_id: AGENT_ID,
+    session_id: context.sessionId || "",
+    model: context.model || "",
+    tool_use_id: context.toolUseId || "",
+    tool_name: toolName,
     tool: toolName,
+    tool_input: safeTraceValue(toolInput, 4096),
     decision,
     rule: rule.name,
     source: rule.source,
@@ -495,8 +592,8 @@ function recordHookDecision(toolName, toolInput, traceId) {
   return { decision, rule };
 }
 
-function preToolUseGate(toolName, toolInput, traceId) {
-  const decision = recordHookDecision(toolName, toolInput, traceId);
+function preToolUseGate(toolName, toolInput, traceId, context = {}) {
+  const decision = recordHookDecision(toolName, toolInput, traceId, context);
   if (!decision || decision.decision !== "deny") {
     return undefined;
   }
@@ -1772,7 +1869,7 @@ async function runMcpTool(functionName, args = {}, traceId) {
   }
 }
 
-export async function handleFunctionCall(call, traceId) {
+export async function handleFunctionCall(call, traceId, context = {}) {
   const withToolSpan = async (fn) =>
     await runWithSpan(
       call?.name === "run_shell_command" ? "shell" : "tool.call",
@@ -1787,6 +1884,11 @@ export async function handleFunctionCall(call, traceId) {
       },
       fn,
     );
+  const buildContext = (toolName) =>
+    toolTraceContext({
+      ...context,
+      toolUseId: call?.call_id || call?.id || context.toolUseId || `${toolName}-${crypto.randomUUID()}`,
+    });
 
   if (call?.name === "run_shell_command") {
     let args = {};
@@ -1799,11 +1901,18 @@ export async function handleFunctionCall(call, traceId) {
         reason: `invalid function arguments: ${error?.message || String(error)}`,
       };
     }
-    const denied = preToolUseGate("run_shell_command", { command: args.command }, traceId);
+    const toolInput = { command: args.command };
+    const toolContext = buildContext("run_shell_command");
+    appendToolUseEvent("run_shell_command", toolInput, traceId, toolContext);
+    const denied = preToolUseGate("run_shell_command", toolInput, traceId, toolContext);
     if (denied) {
+      appendToolResultEvent("run_shell_command", denied, traceId, toolContext);
       return denied;
     }
-    return await withToolSpan(async () => await runShellCommand(args.command, traceId));
+    const result = await withToolSpan(async () => await runShellCommand(args.command, traceId));
+    appendToolResultEvent("run_shell_command", result, traceId, toolContext);
+    appendToolAuditEvent("run_shell_command", toolInput, result, traceId, toolContext);
+    return result;
   }
 
   if (["read_memory_file", "write_memory_file", "append_memory_file", "list_memory_files"].includes(call?.name)) {
@@ -1817,11 +1926,17 @@ export async function handleFunctionCall(call, traceId) {
         reason: `invalid function arguments: ${error?.message || String(error)}`,
       };
     }
-    const denied = preToolUseGate(call.name, args, traceId);
+    const toolContext = buildContext(call.name);
+    appendToolUseEvent(call.name, args, traceId, toolContext);
+    const denied = preToolUseGate(call.name, args, traceId, toolContext);
     if (denied) {
+      appendToolResultEvent(call.name, denied, traceId, toolContext);
       return denied;
     }
-    return await withToolSpan(async () => await runMemoryTool(call.name, args, traceId));
+    const result = await withToolSpan(async () => await runMemoryTool(call.name, args, traceId));
+    appendToolResultEvent(call.name, result, traceId, toolContext);
+    appendToolAuditEvent(call.name, args, result, traceId, toolContext);
+    return result;
   }
 
   if (mcpToolCache.toolIndex.has(call?.name)) {
@@ -1836,15 +1951,23 @@ export async function handleFunctionCall(call, traceId) {
       };
     }
     const tool = mcpToolCache.toolIndex.get(call.name);
+    const toolInput = { ...args, mcp_server: tool?.serverName || "", mcp_tool: tool?.toolName || "" };
+    const toolContext = buildContext(call.name);
+    appendToolUseEvent(call.name, toolInput, traceId, toolContext);
     const denied = preToolUseGate(
       call.name,
-      { ...args, mcp_server: tool?.serverName || "", mcp_tool: tool?.toolName || "" },
+      toolInput,
       traceId,
+      toolContext,
     );
     if (denied) {
+      appendToolResultEvent(call.name, denied, traceId, toolContext);
       return denied;
     }
-    return await withToolSpan(async () => await runMcpTool(call.name, args, traceId));
+    const result = await withToolSpan(async () => await runMcpTool(call.name, args, traceId));
+    appendToolResultEvent(call.name, result, traceId, toolContext);
+    appendToolAuditEvent(call.name, toolInput, result, traceId, toolContext);
+    return result;
   }
 
   {
@@ -2059,7 +2182,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
       }
       const input = [];
       for (const call of calls) {
-        const output = await handleFunctionCall(call, traceId);
+        const output = await handleFunctionCall(call, traceId, { sessionId, model });
         input.push({
           type: "function_call_output",
           call_id: call.call_id,

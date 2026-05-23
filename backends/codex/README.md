@@ -29,6 +29,7 @@ The first implementation is contract-first:
 - backend-local MCP client bridging for URL-shaped `.codex/mcp.json` entries
 - streaming-delta Prometheus counters with bounded `model` labels
 - OpenTelemetry spans for A2A execution, MCP `tools/call`, Responses API calls, and function tools
+- Claude-shaped tool trace rows for Codex-owned function tools (`tool_use`, `tool_result`, and `tool_audit`)
 
 When `OPENAI_API_KEY` is unset, the backend runs in stub mode by default so CI and image smoke tests can verify the
 runtime contract without spending tokens. Set `OPENAI_API_KEY` and `CODEX_STUB_MODE=false` to execute prompts through
@@ -118,9 +119,14 @@ extensions:
 ```
 
 Tool aliases keep common cross-backend rules useful: `run_shell_command` also matches `tool: Bash`, and memory writes
-also match `tool: Write`. Denied calls return a refused function result to the model, emit `tool_audit` rows in
-`TRACE_LOG`, and increment `backend_hooks_*` metrics. This gate covers Codex-owned function tools; it does not make the
-Node backend a drop-in clone of Claude's SDK hook surface.
+also match `tool: Write`. Denied calls return a refused function result to the model, emit paired `tool_use`,
+`tool_result`, and `tool_audit` rows in `TRACE_LOG`, and increment `backend_hooks_*` metrics. This gate covers
+Codex-owned function tools; it does not make the Node backend a drop-in clone of Claude's SDK hook surface.
+
+Codex writes Claude-shaped tool trace rows for every function tool it executes. `tool_use` rows carry `id`, `name`,
+`input`, `session_id`, and `model`; `tool_result` rows carry the matching `tool_use_id`, `content`, and `is_error`;
+`tool_audit` rows carry `tool_name`, `tool_input`, `tool_response_preview`, and the final decision. This lets the
+dashboard's Tool Trace view pair Codex tool calls the same way it pairs Claude tool calls.
 
 OpenTelemetry is active when either `OTEL_ENABLED=true` or `OTEL_IN_MEMORY_SPANS` is positive. OTLP export is opt-in;
 the in-memory ring is enabled by default so `/api/traces` can show recent backend spans without requiring a collector.

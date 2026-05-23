@@ -612,15 +612,36 @@ extensions:
   const result = await handleFunctionCall(
     {
       name: "write_memory_file",
+      call_id: "call-deny-memory-marker",
       arguments: JSON.stringify({ path: "platform-health/hook.md", content: "DO_NOT_WRITE" }),
     },
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    { sessionId: "session-hook-trace", model: "gpt-5.5" },
   );
 
   assert.equal(result.ok, false);
   assert.equal(result.refused, true);
   assert.equal(result.hook_denied, true);
   assert.equal(result.rule, "deny-memory-marker");
+
+  const traceRows = fs
+    .readFileSync(process.env.TRACE_LOG, "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  const useRow = traceRows.find((row) => row.event_type === "tool_use" && row.id === "call-deny-memory-marker");
+  const resultRow = traceRows.find(
+    (row) => row.event_type === "tool_result" && row.tool_use_id === "call-deny-memory-marker",
+  );
+  const auditRow = traceRows.find(
+    (row) => row.event_type === "tool_audit" && row.tool_use_id === "call-deny-memory-marker",
+  );
+  assert.equal(useRow.name, "write_memory_file");
+  assert.equal(useRow.session_id, "session-hook-trace");
+  assert.equal(useRow.model, "gpt-5.5");
+  assert.equal(resultRow.is_error, true);
+  assert.equal(auditRow.tool_name, "write_memory_file");
+  assert.equal(auditRow.decision, "deny");
 
   const body = renderMetrics();
   assert.match(body, /backend_hooks_denials_total\{.*tool="write_memory_file".*source="extension".*rule="deny-memory-marker".*\} 1/);
