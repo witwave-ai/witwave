@@ -38,6 +38,14 @@ const CODEX_MEMORY_MAX_BYTES = Number.parseInt(process.env.CODEX_MEMORY_MAX_BYTE
 const CODEX_MEMORY_MAX_LIST_ENTRIES = Number.parseInt(process.env.CODEX_MEMORY_MAX_LIST_ENTRIES || "200", 10);
 const CODEX_SESSION_STORE_PATH = process.env.CODEX_SESSION_STORE_PATH || "/home/agent/.codex/sessions/responses.json";
 const MAX_SESSIONS = Math.max(1, Number.parseInt(process.env.MAX_SESSIONS || "10000", 10) || 10000);
+const CONVERSATION_STREAM_KEEPALIVE_SEC = Number.parseFloat(
+  process.env.CONVERSATION_STREAM_KEEPALIVE_SEC || "15",
+);
+const CONVERSATION_STREAM_GRACE_SEC = Number.parseFloat(process.env.CONVERSATION_STREAM_GRACE_SEC || "60");
+const CONVERSATION_STREAM_RING_MAX = Math.max(
+  1,
+  Number.parseInt(process.env.CONVERSATION_STREAM_RING_MAX || "200", 10) || 200,
+);
 const CODEX_SHELL_ALLOWED_PREFIXES = splitList(
   process.env.CODEX_SHELL_ALLOWED_PREFIXES ||
     [
@@ -107,6 +115,7 @@ const metrics = {
 };
 
 let codexSessions = null;
+const sessionStreams = new Map();
 
 function parseBool(value) {
   if (value === undefined || value === null || value === "") {
@@ -135,6 +144,90 @@ function sessionHash(sessionId) {
     return "000000000000";
   }
   return crypto.createHash("sha256").update(sessionId).digest("hex").slice(0, 12);
+}
+
+function nowIsoMs() {
+  return new Date().toISOString();
+}
+
+function getSessionStream(sessionId, { create = false } = {}) {
+  const cleanSessionId = String(sessionId || "").trim();
+  if (!cleanSessionId) {
+    return undefined;
+  }
+  let stream = sessionStreams.get(cleanSessionId);
+  if (!stream && create) {
+    stream = {
+      sessionId: cleanSessionId,
+      nextId: 0,
+      ring: [],
+      subscribers: new Set(),
+      cleanupTimer: null,
+    };
+    sessionStreams.set(cleanSessionId, stream);
+  }
+  if (stream?.cleanupTimer) {
+    clearTimeout(stream.cleanupTimer);
+    stream.cleanupTimer = null;
+  }
+  return stream;
+}
+
+function scheduleSessionStreamCleanup(stream) {
+  if (!stream || stream.subscribers.size > 0 || stream.cleanupTimer) {
+    return;
+  }
+  const graceMs = Math.max(0, CONVERSATION_STREAM_GRACE_SEC) * 1000;
+  stream.cleanupTimer = setTimeout(() => {
+    if (stream.subscribers.size === 0) {
+      sessionStreams.delete(stream.sessionId);
+    }
+  }, graceMs);
+  stream.cleanupTimer.unref?.();
+}
+
+function sessionStreamEnvelope(stream, type, payload) {
+  const id = String(stream.nextId);
+  stream.nextId += 1;
+  return {
+    type,
+    version: 1,
+    id,
+    ts: nowIsoMs(),
+    agent_id: AGENT_OWNER,
+    payload,
+  };
+}
+
+function sseSerialize(envelope) {
+  return `event: ${envelope.type}\nid: ${envelope.id}\ndata: ${JSON.stringify(envelope)}\n\n`;
+}
+
+export function publishSessionChunk(sessionId, { role, seq, content, final }) {
+  const stream = getSessionStream(sessionId);
+  if (!stream) {
+    return undefined;
+  }
+  const envelope = sessionStreamEnvelope(stream, "conversation.chunk", {
+    session_id_hash: sessionHash(sessionId),
+    role: String(role || "assistant"),
+    seq: Number.isFinite(Number(seq)) ? Number(seq) : 0,
+    content: String(content || ""),
+    final: Boolean(final),
+  });
+  stream.ring.push(envelope);
+  while (stream.ring.length > CONVERSATION_STREAM_RING_MAX) {
+    stream.ring.shift();
+  }
+  for (const res of [...stream.subscribers]) {
+    try {
+      res.write(sseSerialize(envelope));
+    } catch {
+      stream.subscribers.delete(res);
+    }
+  }
+  scheduleSessionStreamCleanup(stream);
+  return envelope;
 }
 
 function traceIdForMetadata(metadata) {
@@ -1236,6 +1329,9 @@ export async function handleA2A(payload) {
   metrics.promptBytesCount += 1;
   metrics.promptBytesSum += promptBytes;
   metrics.lastA2ARequestTimestamp = Date.now() / 1000;
+  if (prompt) {
+    publishSessionChunk(sessionId, { role: "user", seq: 0, content: prompt, final: true });
+  }
 
   let status = "ok";
   let responseText = "";
@@ -1281,6 +1377,9 @@ export async function handleA2A(payload) {
     prompt: logText(prompt),
     response: logText(responseText),
   });
+  if (responseText) {
+    publishSessionChunk(sessionId, { role: "assistant", seq: 1, content: responseText, final: true });
+  }
 
   return {
     status: 200,
@@ -1508,6 +1607,54 @@ function handleApiTraces(req, res) {
   }
 }
 
+function handleSessionStream(req, res, sessionId) {
+  if (protectedRoute(req, res)) {
+    return;
+  }
+  const cleanSessionId = String(sessionId || "").trim();
+  if (!cleanSessionId) {
+    return jsonResponse(res, 400, { error: "missing session_id" });
+  }
+
+  const url = new URL(req.url || "/", "http://localhost");
+  const stream = getSessionStream(cleanSessionId, { create: true });
+  const lastEventId = req.headers["last-event-id"] || url.searchParams.get("last_event_id");
+  const replay = lastEventId
+    ? stream.ring.filter((envelope) => Number(envelope.id) > Number(lastEventId))
+    : [];
+  const keepaliveMs = Math.max(1, CONVERSATION_STREAM_KEEPALIVE_SEC) * 1000;
+
+  res.writeHead(200, {
+    "content-type": "text/event-stream",
+    "cache-control": "no-cache",
+    "x-accel-buffering": "no",
+    connection: "keep-alive",
+  });
+  res.write(": stream-start\n\n");
+  for (const envelope of replay) {
+    res.write(sseSerialize(envelope));
+  }
+
+  stream.subscribers.add(res);
+  const keepalive = setInterval(() => {
+    try {
+      res.write(": keepalive\n\n");
+    } catch {
+      clearInterval(keepalive);
+      stream.subscribers.delete(res);
+      scheduleSessionStreamCleanup(stream);
+    }
+  }, keepaliveMs);
+  keepalive.unref?.();
+
+  req.on("close", () => {
+    clearInterval(keepalive);
+    stream.subscribers.delete(res);
+    scheduleSessionStreamCleanup(stream);
+  });
+  return undefined;
+}
+
 function labels(extra = {}) {
   return { agent: AGENT_OWNER, agent_id: AGENT_ID, backend: BACKEND_ID, ...extra };
 }
@@ -1608,7 +1755,7 @@ export function renderMetrics() {
   return `${lines.join("\n")}\n`;
 }
 
-async function handleRequest(req, res) {
+export async function handleRequest(req, res) {
   const url = new URL(req.url || "/", "http://localhost");
   if (req.method === "GET" && (url.pathname === "/health" || url.pathname === "/health/live")) {
     return handleHealth("health", res);
@@ -1633,6 +1780,10 @@ async function handleRequest(req, res) {
   }
   if (req.method === "GET" && url.pathname.startsWith("/api/traces")) {
     return handleApiTraces(req, res);
+  }
+  const sessionStreamMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/stream$/);
+  if (req.method === "GET" && sessionStreamMatch) {
+    return handleSessionStream(req, res, decodeURIComponent(sessionStreamMatch[1]));
   }
   if (req.method === "POST" && url.pathname === "/mcp") {
     return handleMcp(req, res);

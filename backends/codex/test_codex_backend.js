@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -9,6 +10,7 @@ process.env.CONVERSATION_LOG = path.join(tmp, "conversation.jsonl");
 process.env.TRACE_LOG = path.join(tmp, "tool-activity.jsonl");
 process.env.CODEX_STUB_MODE = "true";
 process.env.CODEX_MEMORY_ROOT = path.join(tmp, "memory");
+process.env.CONVERSATIONS_AUTH_DISABLED = "true";
 process.env.LOG_REDACT = "true";
 
 const {
@@ -16,6 +18,7 @@ const {
   extractRequestMetadata,
   extractPrompt,
   handleA2A,
+  handleRequest,
   isShellCommandAllowed,
   maxOutputTokensForRequest,
   maxTokensForRequest,
@@ -72,6 +75,88 @@ test("handleA2A returns the message response shape harness and ww extract", asyn
   assert.equal(response.body.result.role, "agent");
   assert.equal(response.body.result.contextId, "ctx-1");
   assert.match(response.body.result.parts[0].text, /codex backend scaffold/i);
+});
+
+test("session stream endpoint publishes user and final assistant chunks", async () => {
+  const server = http.createServer((req, res) => {
+    handleRequest(req, res).catch((error) => {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: error?.message || String(error) }));
+    });
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address();
+    const sessionId = "stream-session";
+    const received = [];
+    const streamReq = http.get(`http://127.0.0.1:${port}/api/sessions/${sessionId}/stream`);
+    let streamReadyResolve;
+    const streamReady = new Promise((resolve) => {
+      streamReadyResolve = resolve;
+    });
+    streamReq.on("error", () => {
+      // The test closes the long-lived SSE request once both expected chunks arrive.
+    });
+
+    streamReq.on("response", (res) => {
+      streamReadyResolve();
+      res.setEncoding("utf8");
+      let buffer = "";
+      res.on("data", (chunk) => {
+        buffer += chunk;
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop() || "";
+        for (const frame of frames) {
+          const dataLine = frame
+            .split("\n")
+            .find((line) => line.startsWith("data: "));
+          if (dataLine) {
+            received.push(JSON.parse(dataLine.slice("data: ".length)));
+          }
+        }
+        if (received.length >= 2) {
+          streamReq.destroy();
+        }
+      });
+    });
+
+    await streamReady;
+    await handleA2A({
+      jsonrpc: "2.0",
+      id: "stream",
+      method: "message/send",
+      params: {
+        message: {
+          role: "user",
+          metadata: { session_id: sessionId },
+          parts: [{ kind: "text", text: "stream hello" }],
+        },
+      },
+    });
+
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("timed out waiting for session stream chunks")), 1000);
+      const poll = () => {
+        if (received.length >= 2) {
+          clearTimeout(timeout);
+          resolve();
+          return;
+        }
+        setTimeout(poll, 25);
+      };
+      poll();
+    });
+
+    assert.equal(received[0].type, "conversation.chunk");
+    assert.equal(received[0].payload.role, "user");
+    assert.equal(received[0].payload.content, "stream hello");
+    assert.equal(received[1].payload.role, "assistant");
+    assert.match(received[1].payload.content, /codex backend scaffold/i);
+  } finally {
+    server.closeAllConnections?.();
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test("extractRequestMetadata falls back to metadata.session_id for first-turn context", () => {
