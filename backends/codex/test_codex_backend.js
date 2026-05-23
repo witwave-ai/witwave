@@ -15,6 +15,7 @@ process.env.LOG_REDACT = "true";
 
 const {
   buildAgentCard,
+  collectStreamingResponse,
   constantTimeBearerTokenMatches,
   conversationsAuthConfigWarning,
   deriveSessionId,
@@ -187,6 +188,33 @@ test("deriveSessionId binds the same raw session to different callers when secre
   assert.equal(alice, aliceAgain);
   assert.notEqual(alice, bob);
   assert.match(alice, /^[0-9a-f-]{36}$/);
+});
+
+test("collectStreamingResponse publishes text deltas and returns the completed response", async () => {
+  async function* fakeStream() {
+    yield { type: "response.created", response: { id: "resp_1", output: [] } };
+    yield { type: "response.output_text.delta", delta: "hello " };
+    yield { type: "response.output_text.delta", delta: "codex" };
+    yield { type: "response.completed", response: { id: "resp_1", output_text: "hello codex" } };
+  }
+
+  const deltas = [];
+  const response = await collectStreamingResponse(fakeStream(), (delta) => deltas.push(delta));
+
+  assert.deepEqual(deltas, ["hello ", "codex"]);
+  assert.deepEqual(response, { id: "resp_1", output_text: "hello codex" });
+});
+
+test("collectStreamingResponse fails closed when the stream has no completed response", async () => {
+  async function* brokenStream() {
+    yield { type: "response.created", response: { id: "resp_1", output: [] } };
+    yield { type: "response.output_text.delta", delta: "partial" };
+  }
+
+  await assert.rejects(
+    () => collectStreamingResponse(brokenStream(), () => undefined),
+    /ended without a completed response/,
+  );
 });
 
 test("handleA2A returns the message response shape harness and ww extract", async () => {

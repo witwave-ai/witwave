@@ -18,6 +18,7 @@ The first implementation is contract-first:
 - a dedicated Prometheus listener on `METRICS_PORT` when `METRICS_ENABLED` is set
 - conversation and trace inspection surfaces guarded by `CONVERSATIONS_AUTH_TOKEN`
 - per-session SSE updates at `/api/sessions/<session_id>/stream`
+- Responses API text deltas streamed into the session SSE feed before the final A2A response
 - bounded memory tools rooted at `CODEX_MEMORY_ROOT`
 - persisted Responses API session continuity via `previous_response_id`
 - caller-bound session derivation when `SESSION_ID_SECRET` is set
@@ -35,6 +36,7 @@ the OpenAI Responses API.
 | ----------------------------------- | -------------------------------------------- | --------------------------------------------------------------- |
 | `CODEX_MODEL`                       | `gpt-5.5`                                    | Responses API model used when A2A metadata does not override it |
 | `CODEX_REASONING_EFFORT`            | `xhigh`                                      | Reasoning effort sent to supported Codex models                 |
+| `CODEX_RESPONSES_STREAMING`         | `true`                                       | Streams Responses API text deltas into session SSE updates      |
 | `CODEX_STUB_MODE`                   | auto (`true` without API key)                | Force stub mode on/off                                          |
 | `CODEX_SHELL_ENABLED`               | unset                                        | Enables the bounded `run_shell_command` function tool           |
 | `CODEX_SHELL_CWD`                   | `/workspaces/witwave-self/source/witwave`    | Working directory for shell tool calls                          |

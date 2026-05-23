@@ -25,6 +25,8 @@ const TRACE_LOG = process.env.TRACE_LOG || "/home/agent/logs/tool-activity.jsonl
 const CODEX_AGENT_MD = process.env.CODEX_AGENT_MD || "/home/agent/.codex/AGENTS.md";
 const CODEX_MODEL = process.env.CODEX_MODEL || process.env.OPENAI_MODEL || "gpt-5.5";
 const CODEX_REASONING_EFFORT = process.env.CODEX_REASONING_EFFORT || "xhigh";
+const CODEX_RESPONSES_STREAMING =
+  process.env.CODEX_RESPONSES_STREAMING === undefined ? true : parseBool(process.env.CODEX_RESPONSES_STREAMING);
 const MAX_PROMPT_BYTES = Number.parseInt(process.env.MAX_PROMPT_BYTES || String(10 * 1024 * 1024), 10);
 const METRICS_ENABLED = parseBool(process.env.METRICS_ENABLED);
 const METRICS_PORT = Number.parseInt(process.env.METRICS_PORT || "9000", 10);
@@ -1596,9 +1598,35 @@ function shouldUseStub() {
   return !process.env.OPENAI_API_KEY;
 }
 
-async function createResponseWithSessionFallback(client, request, sessionId) {
+export async function collectStreamingResponse(stream, onTextDelta) {
+  let completedResponse;
+  for await (const event of stream) {
+    if (event?.type === "response.output_text.delta" && typeof event.delta === "string" && event.delta) {
+      onTextDelta?.(event.delta);
+    } else if (event?.type === "response.completed") {
+      completedResponse = event.response;
+    } else if (event?.type === "response.failed") {
+      const message = event?.response?.error?.message || event?.error?.message || "Responses stream failed";
+      throw new Error(message);
+    }
+  }
+  if (!completedResponse) {
+    throw new Error("Responses stream ended without a completed response");
+  }
+  return completedResponse;
+}
+
+async function createResponse(client, request, onTextDelta) {
+  if (CODEX_RESPONSES_STREAMING && onTextDelta) {
+    const stream = await client.responses.create({ ...request, stream: true });
+    return await collectStreamingResponse(stream, onTextDelta);
+  }
+  return await client.responses.create(request);
+}
+
+async function createResponseWithSessionFallback(client, request, sessionId, onTextDelta) {
   try {
-    return await client.responses.create(request);
+    return await createResponse(client, request, onTextDelta);
   } catch (error) {
     if (!request.previous_response_id) {
       throw error;
@@ -1611,11 +1639,11 @@ async function createResponseWithSessionFallback(client, request, sessionId) {
     saveSessionStore();
     const retry = { ...request };
     delete retry.previous_response_id;
-    return await client.responses.create(retry);
+    return await createResponse(client, retry, onTextDelta);
   }
 }
 
-async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sessionId]) {
+async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sessionId], hooks = {}) {
   const model = modelForRequest(metadata);
   const instructions = loadInstructions();
   const traceId = traceIdForMetadata(metadata);
@@ -1657,7 +1685,12 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
     request.parallel_tool_calls = false;
   }
 
-  let response = await createResponseWithSessionFallback(client, request, storedSessionId || sessionId);
+  let response = await createResponseWithSessionFallback(
+    client,
+    request,
+    storedSessionId || sessionId,
+    hooks.onAssistantDelta,
+  );
   if (response?.id) {
     recordSessionResponse(sessionId, response.id, model);
   }
@@ -1684,16 +1717,20 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
           output: JSON.stringify(output),
         });
       }
-      response = await client.responses.create({
-        model,
-        input,
-        previous_response_id: response.id,
-        tools,
-        parallel_tool_calls: false,
-        ...(instructions ? { instructions } : {}),
-        ...(reasoning ? { reasoning } : {}),
-        ...(maxOutputTokens !== undefined ? { max_output_tokens: maxOutputTokens } : {}),
-      });
+      response = await createResponse(
+        client,
+        {
+          model,
+          input,
+          previous_response_id: response.id,
+          tools,
+          parallel_tool_calls: false,
+          ...(instructions ? { instructions } : {}),
+          ...(reasoning ? { reasoning } : {}),
+          ...(maxOutputTokens !== undefined ? { max_output_tokens: maxOutputTokens } : {}),
+        },
+        hooks.onAssistantDelta,
+      );
       if (response?.id) {
         recordSessionResponse(sessionId, response.id, model);
       }
@@ -1736,6 +1773,11 @@ export async function handleA2A(payload) {
   let status = "ok";
   let responseText = "";
   let model = modelForRequest(metadata);
+  let assistantSeq = 1;
+  const publishAssistantDelta = (content) => {
+    publishSessionChunk(sessionId, { role: "assistant", seq: assistantSeq, content, final: false });
+    assistantSeq += 1;
+  };
   try {
     if (!prompt) {
       status = "error";
@@ -1746,7 +1788,9 @@ export async function handleA2A(payload) {
       metrics.promptTooLargeTotal += 1;
       responseText = `codex backend — prompt of ${promptBytes} bytes exceeds MAX_PROMPT_BYTES=${MAX_PROMPT_BYTES}.`;
     } else {
-      const result = await runCodex(prompt, metadata, sessionId, candidateSessionIds);
+      const result = await runCodex(prompt, metadata, sessionId, candidateSessionIds, {
+        onAssistantDelta: publishAssistantDelta,
+      });
       model = result.model;
       responseText = result.text;
       if (result.budget_exceeded) {
@@ -1778,7 +1822,7 @@ export async function handleA2A(payload) {
     response: logText(responseText),
   });
   if (responseText) {
-    publishSessionChunk(sessionId, { role: "assistant", seq: 1, content: responseText, final: true });
+    publishSessionChunk(sessionId, { role: "assistant", seq: assistantSeq, content: responseText, final: true });
   }
 
   return {
