@@ -1623,6 +1623,7 @@ async function createResponse(client, request, onTextDelta, spanAttributes = {})
       attributes: {
         "llm.provider": "openai",
         "llm.request.model": request.model,
+        "llm.request.reasoning_effort": request.reasoning?.effort || "",
         "llm.request.streaming": CODEX_RESPONSES_STREAMING && onTextDelta ? "true" : "false",
         ...spanAttributes,
       },
@@ -1817,6 +1818,7 @@ export async function handleA2A(payload) {
             "session.id_hash": sessionHash(sessionId),
             "a2a.method": payload.method,
             "llm.request.model": model,
+            "llm.request.reasoning_effort": reasoningForRequest(metadata)?.effort || "",
           },
         },
         async () =>

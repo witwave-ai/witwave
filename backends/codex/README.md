@@ -103,6 +103,8 @@ backend for now; use URL-shaped streamable-http MCP servers for parity with the 
 OpenTelemetry is active when either `OTEL_ENABLED=true` or `OTEL_IN_MEMORY_SPANS` is positive. OTLP export is opt-in;
 the in-memory ring is enabled by default so `/api/traces` can show recent backend spans without requiring a collector.
 Inbound `traceparent` values from A2A metadata or MCP HTTP headers are continued so Codex spans join the harness trace.
+Responses API spans include `llm.request.model`, `llm.request.reasoning_effort`, and `llm.request.streaming`, making the
+live trace surface the quickest way to verify which model and reasoning tier a deployed Codex backend actually used.
 
 ## Local Test
 

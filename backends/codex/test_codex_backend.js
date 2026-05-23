@@ -301,10 +301,10 @@ test("A2A calls emit OpenTelemetry spans visible through /api/traces", async () 
     const result = await getJson(port, `/api/traces/${traceId}`);
     assert.equal(result.status, 200);
     assert.equal(result.body.data[0].traceID, traceId);
-    assert.ok(
-      result.body.data[0].spans.some((span) => span.operationName === "backend.a2a.execute"),
-      "expected backend.a2a.execute span",
-    );
+    const backendSpan = result.body.data[0].spans.find((span) => span.operationName === "backend.a2a.execute");
+    assert.ok(backendSpan, "expected backend.a2a.execute span");
+    const backendTags = Object.fromEntries(backendSpan.tags.map((tag) => [tag.key, tag.value]));
+    assert.equal(backendTags["llm.request.reasoning_effort"], "xhigh");
   });
 });
 

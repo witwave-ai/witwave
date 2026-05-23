@@ -6,6 +6,19 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.29.2] — 2026-05-23
+
+Codex observability proof patch: deployed Codex backends now include the effective Responses API reasoning effort in
+their OpenTelemetry traces, giving operators a live, non-secret way to verify that a Codex agent is actually running at
+the intended reasoning tier.
+
+### Added
+
+- **backends/codex**: Add `llm.request.reasoning_effort` to the top-level A2A execution span and each Responses API
+  request span.
+- **backends/codex**: Extend trace coverage tests so the default `xhigh` reasoning effort is asserted through
+  `/api/traces`.
+
 ## [0.29.1] — 2026-05-23
 
 Codex-backend parity patch: the JavaScript codex backend now exposes live response deltas to the same session stream
