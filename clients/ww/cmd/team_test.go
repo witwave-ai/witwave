@@ -457,6 +457,7 @@ func TestTeamStatusAgentReady(t *testing.T) {
 	}{
 		{"Ready+replica", agent.AgentSummary{Phase: "Ready", Ready: 1}, true},
 		{"ready lowercase ok", agent.AgentSummary{Phase: "ready", Ready: 2}, true},
+		{"disabled ignores stale ready status", agent.AgentSummary{Phase: "Ready", Ready: 1, Disabled: true}, false},
 		{"Ready but 0 replicas", agent.AgentSummary{Phase: "Ready", Ready: 0}, false},
 		{"Reconciling phase", agent.AgentSummary{Phase: "Reconciling", Ready: 1}, false},
 		{"empty phase", agent.AgentSummary{Phase: "", Ready: 1}, false},
@@ -478,6 +479,7 @@ func TestTeamStatusReadinessNote(t *testing.T) {
 		want string
 	}{
 		{"empty phase -> Pending", agent.AgentSummary{Phase: "", Ready: 0}, "phase=Pending ready=0"},
+		{"disabled", agent.AgentSummary{Phase: "Ready", Ready: 1, Disabled: true}, "disabled"},
 		{"Reconciling+0", agent.AgentSummary{Phase: "Reconciling", Ready: 0}, "phase=Reconciling ready=0"},
 		{"Ready+1", agent.AgentSummary{Phase: "Ready", Ready: 1}, "phase=Ready ready=1"},
 		{"Ready+3 replicas", agent.AgentSummary{Phase: "Ready", Ready: 3}, "phase=Ready ready=3"},

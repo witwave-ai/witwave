@@ -6,6 +6,18 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.30.3] — 2026-05-24
+
+Release Doctor clarity patch: disabled agents now show as parked instead of being counted as active Ready capacity when
+their CR status still contains the last running deployment state.
+
+### Changed
+
+- **ww**: `ww agent list` now includes an `ENABLED` column so scaled-down agents are obvious.
+- **ww**: `ww agent status` now prints the effective `spec.enabled` value.
+- **ww**: `ww team status` and `ww doctor release` now treat `spec.enabled=false` agents as disabled even when stale
+  status still says Ready.
+
 ## [0.30.2] — 2026-05-24
 
 Release Doctor patch: the harness-side health probe now skips backend sidecar entries advertised by `/agents`, avoiding

@@ -364,10 +364,16 @@ func buildTeamStatusRows(
 }
 
 func teamStatusAgentReady(s agent.AgentSummary) bool {
+	if s.Disabled {
+		return false
+	}
 	return strings.EqualFold(s.Phase, "Ready") && s.Ready > 0
 }
 
 func teamStatusReadinessNote(s agent.AgentSummary) string {
+	if s.Disabled {
+		return "disabled"
+	}
 	phase := s.Phase
 	if phase == "" {
 		phase = "Pending"

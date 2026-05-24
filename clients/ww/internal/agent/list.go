@@ -42,6 +42,9 @@ type AgentSummary struct {
 	Phase string
 	// Ready is .status.readyReplicas (0 when unset).
 	Ready int64
+	// Disabled is true when spec.enabled is explicitly false. Disabled
+	// agents may retain stale status from the last active Deployment.
+	Disabled bool
 	// Backends is the ordered list of spec.backends[*].name.
 	Backends []string
 	// Created is the CR's creation timestamp, raw. Callers format it.
@@ -92,6 +95,9 @@ func agentSummary(cr *unstructured.Unstructured) AgentSummary {
 	if v, found, err := unstructured.NestedInt64(cr.Object, "status", "readyReplicas"); err == nil && found {
 		s.Ready = v
 	}
+	if enabled, found, err := unstructured.NestedBool(cr.Object, "spec", "enabled"); err == nil && found && !enabled {
+		s.Disabled = true
+	}
 	if backends, found, err := unstructured.NestedSlice(cr.Object, "spec", "backends"); err == nil && found {
 		for _, b := range backends {
 			m, ok := b.(map[string]interface{})
@@ -128,18 +134,29 @@ func List(ctx context.Context, cfg *rest.Config, opts ListOptions) error {
 		}
 		return nil
 	}
-	tw := tabwriter.NewWriter(opts.Out, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "NAMESPACE\tNAME\tPHASE\tREADY\tBACKENDS\tAGE")
+	return renderList(opts.Out, summaries)
+}
+
+func renderList(out io.Writer, summaries []AgentSummary) error {
+	tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
+	fmt.Fprintln(tw, "NAMESPACE\tNAME\tENABLED\tPHASE\tREADY\tBACKENDS\tAGE")
 	for _, s := range summaries {
 		backends := strings.Join(s.Backends, ",")
 		if backends == "" {
 			backends = "-"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\n",
-			s.Namespace, s.Name, s.Phase, s.Ready, backends, FormatAge(s.Created),
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
+			s.Namespace, s.Name, enabledDisplay(s), s.Phase, s.Ready, backends, FormatAge(s.Created),
 		)
 	}
 	return tw.Flush()
+}
+
+func enabledDisplay(s AgentSummary) string {
+	if s.Disabled {
+		return "false"
+	}
+	return "true"
 }
 
 // FormatAge mirrors kubectl's age column: 10s, 5m, 2h, 3d. Intentionally

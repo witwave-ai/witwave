@@ -324,20 +324,27 @@ func evaluateAgentSummaries(summaries []agent.AgentSummary, f doctorFlags, expec
 		return append(checks, doctorCheck{Name: "WitwaveAgent readiness", Status: status, Details: details})
 	}
 
-	notReady := []string{}
-	for _, summary := range filtered {
-		if !agentReady(summary) {
-			notReady = append(notReady, fmt.Sprintf("%s/%s phase=%s ready=%d", summary.Namespace, summary.Name, summary.Phase, summary.Ready))
-		}
-	}
-	if len(notReady) > 0 {
-		status := doctorWarn
-		if f.requireAgentsReady || len(f.agents) > 0 {
+	active, disabled := splitAgentSummariesByEnabled(filtered)
+	if len(disabled) > 0 {
+		status := doctorSkip
+		if len(f.agents) > 0 || f.requireAgentsReady {
 			status = doctorFail
 		}
-		checks = append(checks, doctorCheck{Name: "WitwaveAgent readiness", Status: status, Details: strings.Join(notReady, "; ")})
+		checks = append(checks, doctorCheck{
+			Name:    "WitwaveAgent disabled",
+			Status:  status,
+			Details: fmt.Sprintf("%d disabled: %s", len(disabled), strings.Join(agentSummaryNames(disabled), ", ")),
+		})
+	}
+	if len(active) == 0 {
+		status := doctorSkip
+		details := "no enabled WitwaveAgents inspected"
+		if len(f.agents) > 0 || f.requireAgentsReady {
+			status = doctorFail
+		}
+		checks = append(checks, doctorCheck{Name: "WitwaveAgent readiness", Status: status, Details: details})
 	} else {
-		checks = append(checks, doctorCheck{Name: "WitwaveAgent readiness", Status: doctorPass, Details: fmt.Sprintf("%d Ready", len(filtered))})
+		checks = append(checks, evaluateActiveAgentReadiness(active, f)...)
 	}
 
 	if expectedTag != "" {
@@ -353,6 +360,48 @@ func evaluateAgentSummaries(summaries []agent.AgentSummary, f doctorFlags, expec
 		}
 	}
 	return checks
+}
+
+func evaluateActiveAgentReadiness(summaries []agent.AgentSummary, f doctorFlags) []doctorCheck {
+	checks := []doctorCheck{}
+	notReady := []string{}
+	for _, summary := range summaries {
+		if !agentReady(summary) {
+			notReady = append(notReady, fmt.Sprintf("%s/%s phase=%s ready=%d", summary.Namespace, summary.Name, summary.Phase, summary.Ready))
+		}
+	}
+	if len(notReady) > 0 {
+		status := doctorWarn
+		if f.requireAgentsReady || len(f.agents) > 0 {
+			status = doctorFail
+		}
+		checks = append(checks, doctorCheck{Name: "WitwaveAgent readiness", Status: status, Details: strings.Join(notReady, "; ")})
+	} else {
+		checks = append(checks, doctorCheck{Name: "WitwaveAgent readiness", Status: doctorPass, Details: fmt.Sprintf("%d enabled Ready", len(summaries))})
+	}
+	return checks
+}
+
+func splitAgentSummariesByEnabled(summaries []agent.AgentSummary) ([]agent.AgentSummary, []agent.AgentSummary) {
+	active := make([]agent.AgentSummary, 0, len(summaries))
+	disabled := []agent.AgentSummary{}
+	for _, summary := range summaries {
+		if summary.Disabled {
+			disabled = append(disabled, summary)
+			continue
+		}
+		active = append(active, summary)
+	}
+	return active, disabled
+}
+
+func agentSummaryNames(summaries []agent.AgentSummary) []string {
+	names := make([]string, 0, len(summaries))
+	for _, summary := range summaries {
+		names = append(names, fmt.Sprintf("%s/%s", summary.Namespace, summary.Name))
+	}
+	sort.Strings(names)
+	return names
 }
 
 func filterAgentSummaries(summaries []agent.AgentSummary, names []string) ([]agent.AgentSummary, []string) {
@@ -389,6 +438,9 @@ func filterAgentSummaries(summaries []agent.AgentSummary, names []string) ([]age
 }
 
 func agentReady(summary agent.AgentSummary) bool {
+	if summary.Disabled {
+		return false
+	}
 	return summary.Phase == "Ready" && summary.Ready > 0
 }
 

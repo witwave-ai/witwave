@@ -10,8 +10,11 @@
 package agent
 
 import (
+	"strings"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // TestFormatAge pins the `Age` column formatter. Contract:
@@ -59,5 +62,51 @@ func TestFormatAge(t *testing.T) {
 				t.Errorf("FormatAge(%v) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestAgentSummaryDetectsExplicitlyDisabledAgent(t *testing.T) {
+	cr := &unstructured.Unstructured{Object: map[string]interface{}{
+		"spec": map[string]interface{}{
+			"enabled": false,
+		},
+		"status": map[string]interface{}{
+			"phase":         "Ready",
+			"readyReplicas": int64(1),
+		},
+	}}
+
+	got := agentSummary(cr)
+	if !got.Disabled {
+		t.Fatalf("Disabled = false, want true")
+	}
+	if got.Phase != "Ready" || got.Ready != 1 {
+		t.Fatalf("status fields changed unexpectedly: %+v", got)
+	}
+}
+
+func TestEnabledDisplay(t *testing.T) {
+	if got := enabledDisplay(AgentSummary{}); got != "true" {
+		t.Fatalf("enabledDisplay(default) = %q, want true", got)
+	}
+	if got := enabledDisplay(AgentSummary{Disabled: true}); got != "false" {
+		t.Fatalf("enabledDisplay(disabled) = %q, want false", got)
+	}
+}
+
+func TestListRendererShowsEnabledColumn(t *testing.T) {
+	var out strings.Builder
+	summaries := []AgentSummary{
+		{Namespace: "witwave-self", Name: "zora", Phase: "Ready", Ready: 1},
+		{Namespace: "witwave-self", Name: "evan", Phase: "Ready", Ready: 1, Disabled: true},
+	}
+	if err := renderList(&out, summaries); err != nil {
+		t.Fatalf("renderList returned error: %v", err)
+	}
+	got := out.String()
+	for _, want := range []string{"ENABLED", "zora", "true", "evan", "false"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("rendered list missing %q:\n%s", want, got)
+		}
 	}
 }

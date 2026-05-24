@@ -56,6 +56,11 @@ func renderStatus(out io.Writer, cr *unstructured.Unstructured) {
 
 	fmt.Fprintf(out, "WitwaveAgent: %s\n", name)
 	fmt.Fprintf(out, "Namespace:    %s\n", ns)
+	if enabled, found, err := unstructured.NestedBool(cr.Object, "spec", "enabled"); err == nil && found {
+		fmt.Fprintf(out, "Enabled:      %t\n", enabled)
+	} else {
+		fmt.Fprintln(out, "Enabled:      true")
+	}
 	fmt.Fprintf(out, "Phase:        %s\n", phase)
 	if ts := cr.GetCreationTimestamp(); !ts.IsZero() {
 		fmt.Fprintf(out, "Age:          %s\n", FormatAge(ts.Time))

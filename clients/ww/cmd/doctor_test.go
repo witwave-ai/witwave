@@ -81,6 +81,49 @@ func TestEvaluateAgentSummariesTreatsNamedNotReadyAsFailure(t *testing.T) {
 	}
 }
 
+func TestEvaluateAgentSummariesSkipsDisabledByDefault(t *testing.T) {
+	checks := evaluateAgentSummaries([]agent.AgentSummary{
+		{Name: "evan", Namespace: "witwave-self", Phase: "Ready", Ready: 1, Disabled: true, Raw: agentWithImages("0.30.0", nil)},
+		{Name: "zora", Namespace: "witwave-self", Phase: "Ready", Ready: 1, Raw: agentWithImages("0.30.0", nil)},
+	}, doctorFlags{}, "0.30.0")
+
+	foundDisabled := false
+	foundReadiness := false
+	for _, check := range checks {
+		switch check.Name {
+		case "WitwaveAgent disabled":
+			foundDisabled = true
+			if check.Status != doctorSkip {
+				t.Fatalf("disabled status = %s, want SKIP", check.Status)
+			}
+			if !strings.Contains(check.Details, "evan") {
+				t.Fatalf("disabled details = %q, want agent name", check.Details)
+			}
+		case "WitwaveAgent readiness":
+			foundReadiness = true
+			if check.Status != doctorPass || check.Details != "1 enabled Ready" {
+				t.Fatalf("readiness check = %+v, want one enabled ready pass", check)
+			}
+		}
+	}
+	if !foundDisabled || !foundReadiness {
+		t.Fatalf("checks = %+v, want disabled and readiness checks", checks)
+	}
+}
+
+func TestEvaluateAgentSummariesTreatsRequiredDisabledAsFailure(t *testing.T) {
+	checks := evaluateAgentSummaries([]agent.AgentSummary{
+		{Name: "evan", Namespace: "witwave-self", Phase: "Ready", Ready: 1, Disabled: true, Raw: agentWithImages("0.30.0", nil)},
+	}, doctorFlags{agents: []string{"evan"}}, "0.30.0")
+
+	for _, check := range checks {
+		if check.Name == "WitwaveAgent disabled" && check.Status == doctorFail {
+			return
+		}
+	}
+	t.Fatalf("checks = %+v, want required disabled agent to fail", checks)
+}
+
 func TestReleaseDoctorHealthProbeTargetsSkipsBackendSidecars(t *testing.T) {
 	targets, skipped := releaseDoctorHealthProbeTargets([]agentEntry{
 		{ID: "zora", Role: "witwave", URL: "http://localhost:8000"},
