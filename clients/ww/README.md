@@ -169,6 +169,9 @@ ww heartbeat run
 
 # Validate a trigger file before committing it.
 ww validate .agents/self/iris/.witwave/triggers/notify.md
+
+# After a release or operator upgrade, check the rollout.
+ww doctor release --agent zora --agent iris
 ```
 
 ## Commands
@@ -188,10 +191,22 @@ Every command supports `--help`. Summary:
 | `ww continuations […]`       | Read `/continuations`.                                                                                                                                              |
 | `ww validate <file>`         | POST a file to `/validate` using `run_token`. Kind inferred from path or passed via `--kind`.                                                                       |
 | `ww version`                 | Print the version, commit, and build date. `--short` prints just the semver.                                                                                        |
+| `ww doctor release`          | Run read-only post-release checks against the local `ww` binary, harness, operator, CRDs, and WitwaveAgents.                                                        |
 | `ww operator [cmd]`          | Install / upgrade / inspect / uninstall the witwave-operator Helm release on a Kubernetes cluster; plus `logs` and `events` for diagnostics. See below.             |
 | `ww workspace [cmd]`         | Manage `WitwaveWorkspace` CRs: `create`, `list`, `get`, `status`, `delete`, `bind`, `unbind`. See [WitwaveWorkspace management](#witwaveworkspace-management).      |
 | `ww config [cmd]`            | Read, write, and inspect `ww` configuration values — `get`, `set`, `unset`, `list-keys`, `path`. See [Managing config from the CLI](#managing-config-from-the-cli). |
 | `ww update`                  | Check for and install a newer `ww` release. See [Staying up to date](#staying-up-to-date).                                                                          |
+
+### Release doctor
+
+`ww doctor release` is a read-only post-release gate. It checks the local `ww` build metadata, the configured harness
+(`/agents`, advertised agent health, heartbeat config), the operator Helm release, operator pods, CRDs, and WitwaveAgent
+CRs across namespaces.
+
+By default, intentionally scaled-down agents produce warnings rather than failures. Add `--agent <name>` (or
+`--agent <namespace>/<name>`) when a specific agent must be present and Ready, `--require-agents-ready` when every
+inspected agent must be Ready, and `--strict-agent-tags` when image tag skew should fail the run. Use `--skip-harness`
+or `--skip-cluster` for partial diagnostics, and the global `--json` / `--yaml` flags for machine-readable output.
 
 ### Streaming
 

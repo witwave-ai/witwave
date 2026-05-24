@@ -135,6 +135,7 @@ func Execute() int {
 	root.AddCommand(newValidateCmd())
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newUpdateCmd())
+	root.AddCommand(newDoctorCmd())
 	root.AddCommand(newOperatorCmd())
 	root.AddCommand(newAgentCmd())
 	root.AddCommand(newWorkspaceCmd())
