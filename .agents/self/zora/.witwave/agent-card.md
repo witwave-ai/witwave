@@ -71,7 +71,7 @@ namespace. No direct git commits, no direct gh API — peers commit, iris pushes
 | kira  | every 6h             | `docs-cleanup` (alternates with `docs-research`); research ≥2d   |
 | finn  | every 6h             | `gap-work` across 11 gap-source categories, risk-tier 1-10 gated |
 | iris  | event-driven         | `release` when weighted commits ≥3.0 + CI green + medium bar met |
-| piper | self-driven (15 min) | `team-pulse` — NOT dispatched by zora; runs her own loop         |
+| piper | self-driven (30 min) | `team-pulse` — NOT dispatched by zora; runs her own loop         |
 
 Cadence floors are the "must run at least this often" baseline. Within the floor, zora picks the next dispatch by
 backlog size. Critical findings preempt everything.
