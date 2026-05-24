@@ -524,7 +524,8 @@ Harness, operator, and MCP tool metrics use their own prefixes (`harness_*`, `wi
   for local inspection and `mise exec -- scripts/sops-exec-env.py <file.sops.env> -- <command>` to run commands with
   decrypted dotenv values in memory. Do not commit plaintext secret files.
 - Every protected endpoint uses `Authorization: Bearer <token>` headers. Two harness-scope tokens split by purpose:
-  `CONVERSATIONS_AUTH_TOKEN` (read / observe) and `ADHOC_RUN_AUTH_TOKEN` (trigger actions). Backends reuse
+  `CONVERSATIONS_AUTH_TOKEN` (read / observe) and `ADHOC_RUN_AUTH_TOKEN` (ad-hoc actions such as scheduler fires and
+  validation). Backends reuse
   `CONVERSATIONS_AUTH_TOKEN` for their `/conversations` / `/api/traces` / `/api/sessions/<id>/stream` paths.
   `CONVERSATIONS_AUTH_DISABLED=true` is the documented local-dev escape hatch; startup logs a loud warning when it's
   set.

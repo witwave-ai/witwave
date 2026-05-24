@@ -547,7 +547,8 @@ Protected endpoints use `Authorization: Bearer <token>` throughout. Two distinct
 - **`CONVERSATIONS_AUTH_TOKEN`** — read / observe endpoints (`/conversations`, `/trace`, `/mcp`, `/api/traces`,
   `/events/stream`, `/api/sessions/<id>/stream`). Reused on the harness for inbound and on each backend for its own
   protected surface.
-- **`ADHOC_RUN_AUTH_TOKEN`** — trigger-actions endpoints (`POST /jobs/<name>/run`, `/tasks/<name>/run`, `/validate`).
+- **`ADHOC_RUN_AUTH_TOKEN`** — ad-hoc action endpoints (`POST /heartbeat/run`, `/jobs/<name>/run`,
+  `/tasks/<name>/run`, `/validate`).
 
 Both are default-closed — the server refuses requests when the token is unset. `CONVERSATIONS_AUTH_DISABLED=true` is a
 documented escape hatch for local dev; startup logs a loud warning when it's set.
@@ -589,7 +590,7 @@ conversation-log redaction rules (idempotent merge-spans with UUID / OTel-trace 
 | `TRIGGERS_AUTH_TOKEN`                       | _(unset)_                           | Bearer token required for inbound trigger requests (fallback when no per-trigger HMAC secret is set)                                                                                                                                     |
 | `HOOK_EVENTS_AUTH_TOKEN`                    | _(unset)_                           | Canonical bearer token on `/internal/events/hook-decision` (bound to the metrics listener, #924). `HARNESS_EVENTS_AUTH_TOKEN` is a back-compat alias that logs a deprecation warning when used alone (#859). Unset = refuse (#712, #933) |
 | `SESSION_ID_SECRET`                         | _(unset — permissive)_              | HMAC key for `shared/session_binding.derive_session_id` used on `/mcp` session-id binding across SDK backends (#867/#929/#935/#941). Leave unset only in single-tenant dev; set to a 256-bit random value in production                  |
-| `ADHOC_RUN_AUTH_TOKEN`                      | _(unset)_                           | Bearer token required for `POST /jobs/<name>/run`, `/tasks/<name>/run`; unset = refuse (#700)                                                                                                                                            |
+| `ADHOC_RUN_AUTH_TOKEN`                      | _(unset)_                           | Bearer token required for `POST /heartbeat/run`, `/jobs/<name>/run`, `/tasks/<name>/run`, `/validate`; unset = refuse (#700)                                                                                                             |
 | `CORS_ALLOW_ORIGINS`                        | _(unset)_                           | Comma-separated list of allowed CORS origins; when unset, all cross-origin requests are denied (logs a warning)                                                                                                                          |
 | `CORS_ALLOW_WILDCARD`                       | `false`                             | Explicit acknowledgement for `CORS_ALLOW_ORIGINS=*`; template refuses the wildcard otherwise (#701)                                                                                                                                      |
 | `A2A_MAX_PROMPT_BYTES`                      | `1048576`                           | Reject inbound A2A prompts above this byte size at ingress; set to `0` to disable (#783)                                                                                                                                                 |

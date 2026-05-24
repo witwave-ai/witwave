@@ -143,7 +143,7 @@ cat > ~/.config/ww/config.toml <<'EOF'
 [profile.default]
 base_url  = "http://localhost:8000"
 token     = "your-CONVERSATIONS_AUTH_TOKEN"
-run_token = "your-ADHOC_RUN_AUTH_TOKEN"   # optional
+run_token = "your-ADHOC_RUN_AUTH_TOKEN"   # validate + ad-hoc run commands
 EOF
 
 # Who's up?
@@ -162,6 +162,11 @@ ww triggers
 ww heartbeat view
 ww continuations
 
+# Fire scheduler items on demand.
+ww jobs run daily-report
+ww tasks run daily-report
+ww heartbeat run
+
 # Validate a trigger file before committing it.
 ww validate .agents/self/iris/.witwave/triggers/notify.md
 ```
@@ -176,12 +181,12 @@ Every command supports `--help`. Summary:
 | `ww team status`           | Aggregate recent conversation-backed activity across WitwaveAgents; add `--watch` / `--interval 10s` for a live-refreshing table.                                   |
 | `ww tail`                  | Stream SSE events from `/events/stream`. `--agent`, `--session`, `--types`, `--pretty`.                                                                             |
 | `ww send <agent> [text]`   | POST an A2A `message/send` to the harness. `--prompt-file -` reads stdin.                                                                                           |
-| `ww jobs [list\|view]`     | Read the `/jobs` snapshot.                                                                                                                                          |
-| `ww tasks [list\|view]`    | Read the `/tasks` snapshot.                                                                                                                                         |
-| `ww heartbeat [view]`      | Read `/heartbeat`.                                                                                                                                                  |
+| `ww jobs [list\|view\|run]` | Read the `/jobs` snapshot, or fire a named job immediately through `/jobs/<name>/run` using `run_token`.                                                            |
+| `ww tasks [list\|view\|run]` | Read the `/tasks` snapshot, or fire a named task immediately through `/tasks/<name>/run` using `run_token`.                                                        |
+| `ww heartbeat [view\|run]` | Read `/heartbeat`, or fire the configured heartbeat immediately through `/heartbeat/run` using `run_token`.                                                          |
 | `ww triggers [list\|view]` | Read `/triggers`.                                                                                                                                                   |
 | `ww continuations […]`     | Read `/continuations`.                                                                                                                                              |
-| `ww validate <file>`       | POST a file to `/validate`. Kind inferred from path or passed via `--kind`.                                                                                         |
+| `ww validate <file>`       | POST a file to `/validate` using `run_token`. Kind inferred from path or passed via `--kind`.                                                                       |
 | `ww version`               | Print the version, commit, and build date. `--short` prints just the semver.                                                                                        |
 | `ww operator [cmd]`        | Install / upgrade / inspect / uninstall the witwave-operator Helm release on a Kubernetes cluster; plus `logs` and `events` for diagnostics. See below.             |
 | `ww workspace [cmd]`       | Manage `WitwaveWorkspace` CRs: `create`, `list`, `get`, `status`, `delete`, `bind`, `unbind`. See [WitwaveWorkspace management](#witwaveworkspace-management).      |

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"os"
@@ -23,9 +22,9 @@ func newValidateCmd() *cobra.Command {
 		Long: "POSTs the given markdown file to the harness /validate endpoint and\n" +
 			"prints the verdict. Kind (job|task|trigger|continuation|heartbeat|\n" +
 			"webhook) is inferred from the parent directory name; pass --kind\n" +
-			"to override. The conversations bearer token is used for auth; the\n" +
-			"harness response body (warnings, errors, or empty 2xx) is passed\n" +
-			"through verbatim.",
+			"to override. The ad-hoc run bearer token is used for auth. Human\n" +
+			"output prints OK for a clean result and details for validation\n" +
+			"failures; JSON/YAML modes emit the full harness response.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cc *cobra.Command, args []string) error {
 			ctx := cc.Context()
@@ -45,62 +44,22 @@ func newValidateCmd() *cobra.Command {
 				out.Warnf("could not infer kind from path; pass --kind to be explicit")
 			}
 
-			u, err := c.Resolve("/validate")
-			if err != nil {
+			resp := snapshotEntry{}
+			payload := map[string]string{
+				"kind":    kind,
+				"content": string(body),
+			}
+			if err := c.DoJSON(ctx, http.MethodPost, "/validate", payload, &resp, true); err != nil {
 				return handleErr(out, err)
 			}
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
-			if err != nil {
-				return handleErr(out, err)
+			if out.IsJSON() || out.IsYAML() {
+				return printView(out, resp)
 			}
-			req.Header.Set("Content-Type", "text/markdown")
-			if kind != "" {
-				req.Header.Set("X-Ww-Kind", kind)
-				// Also carry as query param so servers that parse
-				// query instead of header still work.
-				q := req.URL.Query()
-				q.Set("kind", kind)
-				req.URL.RawQuery = q.Encode()
+			if validationOK(resp) {
+				fmt.Fprintln(out.Out, "OK")
+				return nil
 			}
-			// /validate is not an ad-hoc-run endpoint; use the
-			// conversations token exclusively.
-			if tok := c.PreferredToken(); tok != "" {
-				req.Header.Set("Authorization", "Bearer "+tok)
-			}
-			req.Header.Set("User-Agent", "ww/"+Version)
-
-			resp, err := c.HTTP().Do(req)
-			if err != nil {
-				out.Errorf("%v", err)
-				return transportErr(err)
-			}
-			defer resp.Body.Close()
-
-			buf := new(bytes.Buffer)
-			_, _ = buf.ReadFrom(resp.Body)
-			if resp.StatusCode >= 500 {
-				out.Errorf("harness returned %s: %s", resp.Status, buf.String())
-				return transportErr(fmt.Errorf("%s", resp.Status))
-			}
-			if resp.StatusCode >= 400 {
-				out.Errorf("%s: %s", resp.Status, buf.String())
-				return logicalErr(fmt.Errorf("validation failed"))
-			}
-			// 2xx — harness accepted. The body may be JSON with
-			// warnings / errors. Pass it through verbatim.
-			if out.IsJSON() {
-				out.EmitRaw(buf.String())
-				if !bytes.HasSuffix(buf.Bytes(), []byte("\n")) {
-					out.EmitRaw("\n")
-				}
-			} else {
-				if buf.Len() == 0 {
-					fmt.Fprintln(out.Out, "OK")
-				} else {
-					fmt.Fprintln(out.Out, buf.String())
-				}
-			}
-			return nil
+			return printView(out, resp)
 		},
 	}
 	cmd.Flags().StringVar(&vf.kind, "kind", "", "file kind (job|task|trigger|continuation|heartbeat|webhook)")
@@ -126,4 +85,15 @@ func inferKind(path string) string {
 		return "heartbeat"
 	}
 	return ""
+}
+
+func validationOK(resp snapshotEntry) bool {
+	ok, _ := resp["ok"].(bool)
+	if !ok {
+		return false
+	}
+	if errors, _ := resp["errors"].([]any); len(errors) > 0 {
+		return false
+	}
+	return true
 }

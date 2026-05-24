@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/spf13/cobra"
 )
@@ -13,9 +14,10 @@ func newTasksCmd() *cobra.Command {
 		Long: "Fetches /tasks from the harness and lists every time-window task\n" +
 			"with its window, days, next fire, last fire, and last outcome.\n" +
 			"Run without a subcommand to default to `list`; use `view <name>`\n" +
-			"to see the full configuration of a single task.",
+			"to see the full configuration of a single task or `run <name>`\n" +
+			"to fire it immediately.",
 	}
-	cmd.AddCommand(newTasksListCmd(), newTasksViewCmd())
+	cmd.AddCommand(newTasksListCmd(), newTasksViewCmd(), newTasksRunCmd())
 	cmd.RunE = func(cc *cobra.Command, args []string) error { return runTasksList(cc) }
 	return cmd
 }
@@ -48,6 +50,21 @@ func runTasksList(cc *cobra.Command) error {
 		{"LAST_FIRE", "last_fire,last_run,last"},
 		{"OUTCOME", "last_outcome,outcome"},
 	})
+}
+
+func newTasksRunCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "run <name>",
+		Short: "Fire a task now",
+		Long: "POSTs /tasks/<name>/run through the harness ad-hoc run endpoint.\n" +
+			"Requires an ad-hoc run bearer token via --run-token, WW_RUN_TOKEN,\n" +
+			"or profile.default.run_token. The harness accepts the request and\n" +
+			"dispatches the task in the background.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cc *cobra.Command, args []string) error {
+			return runAdhocDispatch(cc, "/tasks/"+url.PathEscape(args[0])+"/run", "task run")
+		},
+	}
 }
 
 func newTasksViewCmd() *cobra.Command {

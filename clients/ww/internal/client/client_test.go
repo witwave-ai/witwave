@@ -50,6 +50,21 @@ func TestClient_DoJSON_RunTokenPreferred(t *testing.T) {
 	}
 }
 
+func TestClient_DoJSON_RunTokenAddsAdhocCSRFHeader(t *testing.T) {
+	var gotCSRF string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCSRF = r.Header.Get("X-Ad-Hoc-Run")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	c := New(Config{BaseURL: srv.URL, Token: "conv", RunToken: "run"})
+	_ = c.DoJSON(context.Background(), http.MethodPost, "/x", nil, nil, true)
+	if gotCSRF != "1" {
+		t.Errorf("want X-Ad-Hoc-Run=1, got %q", gotCSRF)
+	}
+}
+
 func TestClient_DoJSON_RetryOn5xx(t *testing.T) {
 	var count int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

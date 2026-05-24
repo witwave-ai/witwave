@@ -334,6 +334,9 @@ func (c *Client) applyHeaders(req *http.Request, useRunToken, hasBody bool) {
 	if tok != "" {
 		req.Header.Set("Authorization", "Bearer "+tok)
 	}
+	if useRunToken {
+		req.Header.Set("X-Ad-Hoc-Run", "1")
+	}
 	req.Header.Set("User-Agent", c.cfg.UserAgent)
 	req.Header.Set("Accept", "application/json")
 	if hasBody {
