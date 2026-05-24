@@ -525,10 +525,9 @@ Harness, operator, and MCP tool metrics use their own prefixes (`harness_*`, `wi
   decrypted dotenv values in memory. Do not commit plaintext secret files.
 - Every protected endpoint uses `Authorization: Bearer <token>` headers. Two harness-scope tokens split by purpose:
   `CONVERSATIONS_AUTH_TOKEN` (read / observe) and `ADHOC_RUN_AUTH_TOKEN` (ad-hoc actions such as scheduler fires and
-  validation). Backends reuse
-  `CONVERSATIONS_AUTH_TOKEN` for their `/conversations` / `/api/traces` / `/api/sessions/<id>/stream` paths.
-  `CONVERSATIONS_AUTH_DISABLED=true` is the documented local-dev escape hatch; startup logs a loud warning when it's
-  set.
+  validation). Backends reuse `CONVERSATIONS_AUTH_TOKEN` for their `/conversations` / `/api/traces` /
+  `/api/sessions/<id>/stream` paths. `CONVERSATIONS_AUTH_DISABLED=true` is the documented local-dev escape hatch;
+  startup logs a loud warning when it's set.
 - Session IDs on `/mcp` are HMAC-bound to the caller via `shared/session_binding.derive_session_id` when
   `SESSION_ID_SECRET` is set. `SESSION_ID_SECRET_PREV` provides a rotation window — writes always use the current-secret
   id; reads probe `[current, prev]` and emit a one-shot WARN on prev-hit so operators know when they can drop the prev

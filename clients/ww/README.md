@@ -175,23 +175,23 @@ ww validate .agents/self/iris/.witwave/triggers/notify.md
 
 Every command supports `--help`. Summary:
 
-| Command                    | Purpose                                                                                                                                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ww status`                | Fetch `/agents`, probe each member's `/health`, print a table.                                                                                                      |
-| `ww team status`           | Aggregate recent conversation-backed activity across WitwaveAgents; add `--watch` / `--interval 10s` for a live-refreshing table.                                   |
-| `ww tail`                  | Stream SSE events from `/events/stream`. `--agent`, `--session`, `--types`, `--pretty`.                                                                             |
-| `ww send <agent> [text]`   | POST an A2A `message/send` to the harness. `--prompt-file -` reads stdin.                                                                                           |
-| `ww jobs [list\|view\|run]` | Read the `/jobs` snapshot, or fire a named job immediately through `/jobs/<name>/run` using `run_token`.                                                            |
-| `ww tasks [list\|view\|run]` | Read the `/tasks` snapshot, or fire a named task immediately through `/tasks/<name>/run` using `run_token`.                                                        |
-| `ww heartbeat [view\|run]` | Read `/heartbeat`, or fire the configured heartbeat immediately through `/heartbeat/run` using `run_token`.                                                          |
-| `ww triggers [list\|view]` | Read `/triggers`.                                                                                                                                                   |
-| `ww continuations […]`     | Read `/continuations`.                                                                                                                                              |
-| `ww validate <file>`       | POST a file to `/validate` using `run_token`. Kind inferred from path or passed via `--kind`.                                                                       |
-| `ww version`               | Print the version, commit, and build date. `--short` prints just the semver.                                                                                        |
-| `ww operator [cmd]`        | Install / upgrade / inspect / uninstall the witwave-operator Helm release on a Kubernetes cluster; plus `logs` and `events` for diagnostics. See below.             |
-| `ww workspace [cmd]`       | Manage `WitwaveWorkspace` CRs: `create`, `list`, `get`, `status`, `delete`, `bind`, `unbind`. See [WitwaveWorkspace management](#witwaveworkspace-management).      |
-| `ww config [cmd]`          | Read, write, and inspect `ww` configuration values — `get`, `set`, `unset`, `list-keys`, `path`. See [Managing config from the CLI](#managing-config-from-the-cli). |
-| `ww update`                | Check for and install a newer `ww` release. See [Staying up to date](#staying-up-to-date).                                                                          |
+| Command                      | Purpose                                                                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ww status`                  | Fetch `/agents`, probe each member's `/health`, print a table.                                                                                                      |
+| `ww team status`             | Aggregate recent conversation-backed activity across WitwaveAgents; add `--watch` / `--interval 10s` for a live-refreshing table.                                   |
+| `ww tail`                    | Stream SSE events from `/events/stream`. `--agent`, `--session`, `--types`, `--pretty`.                                                                             |
+| `ww send <agent> [text]`     | POST an A2A `message/send` to the harness. `--prompt-file -` reads stdin.                                                                                           |
+| `ww jobs [list\|view\|run]`  | Read the `/jobs` snapshot, or fire a named job immediately through `/jobs/<name>/run` using `run_token`.                                                            |
+| `ww tasks [list\|view\|run]` | Read the `/tasks` snapshot, or fire a named task immediately through `/tasks/<name>/run` using `run_token`.                                                         |
+| `ww heartbeat [view\|run]`   | Read `/heartbeat`, or fire the configured heartbeat immediately through `/heartbeat/run` using `run_token`.                                                         |
+| `ww triggers [list\|view]`   | Read `/triggers`.                                                                                                                                                   |
+| `ww continuations […]`       | Read `/continuations`.                                                                                                                                              |
+| `ww validate <file>`         | POST a file to `/validate` using `run_token`. Kind inferred from path or passed via `--kind`.                                                                       |
+| `ww version`                 | Print the version, commit, and build date. `--short` prints just the semver.                                                                                        |
+| `ww operator [cmd]`          | Install / upgrade / inspect / uninstall the witwave-operator Helm release on a Kubernetes cluster; plus `logs` and `events` for diagnostics. See below.             |
+| `ww workspace [cmd]`         | Manage `WitwaveWorkspace` CRs: `create`, `list`, `get`, `status`, `delete`, `bind`, `unbind`. See [WitwaveWorkspace management](#witwaveworkspace-management).      |
+| `ww config [cmd]`            | Read, write, and inspect `ww` configuration values — `get`, `set`, `unset`, `list-keys`, `path`. See [Managing config from the CLI](#managing-config-from-the-cli). |
+| `ww update`                  | Check for and install a newer `ww` release. See [Staying up to date](#staying-up-to-date).                                                                          |
 
 ### Streaming
 

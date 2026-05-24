@@ -53,13 +53,22 @@ func newValidateCmd() *cobra.Command {
 				return handleErr(out, err)
 			}
 			if out.IsJSON() || out.IsYAML() {
-				return printView(out, resp)
+				if err := printView(out, resp); err != nil {
+					return err
+				}
+				if !validationOK(resp) {
+					return logicalErr(fmt.Errorf("validation failed"))
+				}
+				return nil
 			}
 			if validationOK(resp) {
 				fmt.Fprintln(out.Out, "OK")
 				return nil
 			}
-			return printView(out, resp)
+			if err := printView(out, resp); err != nil {
+				return err
+			}
+			return logicalErr(fmt.Errorf("validation failed"))
 		},
 	}
 	cmd.Flags().StringVar(&vf.kind, "kind", "", "file kind (job|task|trigger|continuation|heartbeat|webhook)")

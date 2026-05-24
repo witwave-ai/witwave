@@ -547,8 +547,8 @@ Protected endpoints use `Authorization: Bearer <token>` throughout. Two distinct
 - **`CONVERSATIONS_AUTH_TOKEN`** — read / observe endpoints (`/conversations`, `/trace`, `/mcp`, `/api/traces`,
   `/events/stream`, `/api/sessions/<id>/stream`). Reused on the harness for inbound and on each backend for its own
   protected surface.
-- **`ADHOC_RUN_AUTH_TOKEN`** — ad-hoc action endpoints (`POST /heartbeat/run`, `/jobs/<name>/run`,
-  `/tasks/<name>/run`, `/validate`).
+- **`ADHOC_RUN_AUTH_TOKEN`** — ad-hoc action endpoints (`POST /heartbeat/run`, `/jobs/<name>/run`, `/tasks/<name>/run`,
+  `/validate`).
 
 Both are default-closed — the server refuses requests when the token is unset. `CONVERSATIONS_AUTH_DISABLED=true` is a
 documented escape hatch for local dev; startup logs a loud warning when it's set.
