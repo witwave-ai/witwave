@@ -94,10 +94,9 @@ func (c *Client) Token() string { return c.cfg.Token }
 // RunToken returns the ad-hoc run bearer token (may be empty).
 func (c *Client) RunToken() string { return c.cfg.RunToken }
 
-// PreferredToken returns the token callers should use for A2A / validate
-// / other non-ad-hoc-run HTTP calls. This is always the conversations
-// token (Token) — RunToken is reserved for the dedicated ad-hoc-run
-// endpoints.
+// PreferredToken returns the token callers should use for A2A / read /
+// observe HTTP calls. This is always the conversations token (Token) —
+// RunToken is reserved for dedicated ad-hoc action endpoints.
 func (c *Client) PreferredToken() string { return c.cfg.Token }
 
 // Verbose returns the verbosity level (0/1/2).

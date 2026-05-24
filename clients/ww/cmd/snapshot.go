@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -277,9 +276,4 @@ func formatTime(v any) string {
 		return s
 	}
 	return s
-}
-
-// validateGet is a convenience for /validate-style POSTs.
-func postJSON(ctx context.Context, c *client.Client, path string, body any, out any) error {
-	return c.DoJSON(ctx, http.MethodPost, path, body, out, false)
 }
