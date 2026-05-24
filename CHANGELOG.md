@@ -6,6 +6,16 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.30.2] — 2026-05-24
+
+Release Doctor patch: the harness-side health probe now skips backend sidecar entries advertised by `/agents`, avoiding
+false failures when `ww doctor release` is run through the normal local port-forward path.
+
+### Fixed
+
+- **ww**: Skip `/agents` entries with `role=backend` during Release Doctor health probes because their URLs are
+  pod-local sidecar addresses, not laptop-reachable endpoints.
+
 ## [0.30.1] — 2026-05-24
 
 Release-operations patch: `ww` now includes a read-only Release Doctor that stitches together local CLI metadata,
