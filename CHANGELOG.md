@@ -6,6 +6,21 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.30.0] — 2026-05-24
+
+`ww` CLI minor: scheduler files can now be exercised one-shot from the CLI without waiting on cron, and the `validate`
+command now hard-fails when a scheduler file is broken instead of silently passing.
+
+### Added
+
+- **ww**: Add ad-hoc scheduler run commands so a scheduler file can be invoked once from the CLI for testing / manual
+  triggers, decoupled from its cron schedule.
+
+### Fixed
+
+- **ww**: `ww validate` now fails on invalid scheduler files instead of returning success — broken scheduler configs are
+  surfaced at validate time rather than at the next scheduled run.
+
 ## [0.29.2] — 2026-05-23
 
 Codex observability proof patch: deployed Codex backends now include the effective Responses API reasoning effort in
