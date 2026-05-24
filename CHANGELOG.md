@@ -6,6 +6,17 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.30.1] — 2026-05-24
+
+Release-operations patch: `ww` now includes a read-only Release Doctor that stitches together local CLI metadata,
+harness reachability, operator health, CRDs, and `WitwaveAgent` readiness into one post-release diagnostic pass.
+
+### Added
+
+- **ww**: Add `ww doctor release` with human, JSON, and YAML output for post-release validation.
+- **ww**: Add rollout-gate flags for required agents, strict image-tag checks, and harness/cluster-only partial
+  diagnostics.
+
 ## [0.30.0] — 2026-05-24
 
 `ww` CLI minor: scheduler files can now be exercised one-shot from the CLI without waiting on cron, and the `validate`
