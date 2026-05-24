@@ -152,8 +152,9 @@ func runHarnessReleaseChecks(ctx context.Context, c *client.Client) []doctorChec
 		Status:  doctorPass,
 		Details: fmt.Sprintf("%d advertised agent(s)", len(agents)),
 	})
-	if len(agents) > 0 {
-		rows := probeAll(ctx, c, agents)
+	probeTargets, skippedBackends := releaseDoctorHealthProbeTargets(agents)
+	if len(probeTargets) > 0 {
+		rows := probeAll(ctx, c, probeTargets)
 		down := []string{}
 		for _, row := range rows {
 			if !row.Healthy {
@@ -171,6 +172,15 @@ func runHarnessReleaseChecks(ctx context.Context, c *client.Client) []doctorChec
 		} else {
 			checks = append(checks, doctorCheck{Name: "advertised agent health", Status: doctorFail, Details: strings.Join(down, "; ")})
 		}
+	} else if len(agents) > 0 {
+		checks = append(checks, doctorCheck{Name: "advertised agent health", Status: doctorSkip, Details: "only backend sidecar entries advertised"})
+	}
+	if skippedBackends > 0 {
+		checks = append(checks, doctorCheck{
+			Name:    "backend sidecar health",
+			Status:  doctorSkip,
+			Details: fmt.Sprintf("%d backend entr%s skipped; sidecar URLs are pod-local", skippedBackends, pluralY(skippedBackends)),
+		})
 	}
 
 	entry, err := fetchSnapshotSingle(ctx, c, "/heartbeat")
@@ -186,6 +196,26 @@ func runHarnessReleaseChecks(ctx context.Context, c *client.Client) []doctorChec
 		checks = append(checks, doctorCheck{Name: "heartbeat config", Status: doctorPass, Details: schedule})
 	}
 	return checks
+}
+
+func releaseDoctorHealthProbeTargets(agents []agentEntry) ([]agentEntry, int) {
+	targets := make([]agentEntry, 0, len(agents))
+	skippedBackends := 0
+	for _, entry := range agents {
+		if strings.EqualFold(entry.Role, "backend") {
+			skippedBackends++
+			continue
+		}
+		targets = append(targets, entry)
+	}
+	return targets, skippedBackends
+}
+
+func pluralY(n int) string {
+	if n == 1 {
+		return "y"
+	}
+	return "ies"
 }
 
 func runClusterReleaseChecks(ctx context.Context, f doctorFlags) []doctorCheck {

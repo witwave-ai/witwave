@@ -81,6 +81,21 @@ func TestEvaluateAgentSummariesTreatsNamedNotReadyAsFailure(t *testing.T) {
 	}
 }
 
+func TestReleaseDoctorHealthProbeTargetsSkipsBackendSidecars(t *testing.T) {
+	targets, skipped := releaseDoctorHealthProbeTargets([]agentEntry{
+		{ID: "zora", Role: "witwave", URL: "http://localhost:8000"},
+		{ID: "claude", Role: "backend", URL: "http://localhost:8001"},
+		{ID: "codex", Role: "BACKEND", URL: "http://localhost:8002"},
+	})
+
+	if skipped != 2 {
+		t.Fatalf("skipped = %d, want 2", skipped)
+	}
+	if len(targets) != 1 || targets[0].ID != "zora" {
+		t.Fatalf("targets = %+v, want only zora", targets)
+	}
+}
+
 func TestAgentImageTagMismatchesIncludesHarnessAndBackends(t *testing.T) {
 	summaries := []agent.AgentSummary{{
 		Name:      "mira",
