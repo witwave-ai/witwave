@@ -55,6 +55,7 @@ test("health routes split liveness, readiness, and startup semantics", async () 
     const live = await getJson(port, "/health");
     assert.equal(live.status, 200);
     assert.equal(live.body.status, "starting");
+    assert.equal(live.body.hooks_enforcement_mode, "enforcing");
 
     const liveAlias = await getJson(port, "/health/live");
     assert.equal(liveAlias.status, 200);

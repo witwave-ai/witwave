@@ -299,6 +299,9 @@ class HealthReadinessSplitTests(unittest.TestCase):
         # Reset module-level state per test.
         main._ready = False
         main._boot_degraded_reason = None
+        main._set_health_executor(
+            types.SimpleNamespace(hooks_enforcement_mode_for_health=lambda: "enforcing")
+        )
 
     def test_health_ready_503_when_boot_degraded(self):
         """/health/ready returns 503 when _boot_degraded_reason is set."""
@@ -346,6 +349,7 @@ class HealthReadinessSplitTests(unittest.TestCase):
 
         body = json.loads(resp.body)
         self.assertEqual(body["status"], "ok")
+        self.assertEqual(body["hooks_enforcement_mode"], "enforcing")
         # Degraded reason still surfaces informationally.
         self.assertEqual(body["boot_degraded"], "initial_loads_timeout")
 
@@ -371,6 +375,7 @@ class HealthReadinessSplitTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         body = json.loads(resp.body)
         self.assertEqual(body["status"], "starting")
+        self.assertEqual(body["hooks_enforcement_mode"], "enforcing")
 
 
 if __name__ == "__main__":

@@ -2530,6 +2530,10 @@ class AgentExecutor(A2AAgentExecutor):
             )
             backend_hooks_active_rules.labels(**_LABELS, source="extension").set(0)
 
+    def hooks_enforcement_mode_for_health(self) -> str:
+        """Return a compact health-payload label for OpenAI's hook posture."""
+        return "partial"
+
     def _stamp_agent_md_revision(self, current: str, previous: str | None) -> None:
         """Update backend_agent_md_revision for a (possibly) new revision (#1097).
 

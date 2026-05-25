@@ -2344,6 +2344,14 @@ class AgentExecutor(A2AAgentExecutor):
             # Metrics must never affect request execution or startup.
             pass
 
+    def hooks_enforcement_mode_for_health(self) -> str:
+        """Return a compact health-payload label for the active hook posture."""
+        try:
+            rule_count = len(self._hook_state.baseline) + len(self._hook_state.extensions)
+            return "enforcing" if rule_count > 0 else "disabled"
+        except Exception:
+            return "unknown"
+
     def _get_mcp_reload_lock(self) -> asyncio.Lock:
         """Lazily create the MCP reload lock (#1051).
 

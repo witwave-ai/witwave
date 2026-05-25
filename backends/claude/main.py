@@ -100,6 +100,23 @@ _ready: bool = False
 _boot_degraded_reason: str | None = None
 _startup_mono: float = 0.0
 start_time: datetime = datetime.now(timezone.utc)
+_health_executor_ref: AgentExecutor | None = None
+
+
+def _set_health_executor(executor: AgentExecutor) -> None:
+    """Register the running executor for lightweight /health introspection."""
+    global _health_executor_ref
+    _health_executor_ref = executor
+
+
+def _hook_enforcement_mode_for_health() -> str:
+    executor = _health_executor_ref
+    if executor is None:
+        return "unknown"
+    try:
+        return executor.hooks_enforcement_mode_for_health()
+    except Exception:
+        return "unknown"
 
 # /mcp caller-identity cardinality tracker (#1049).  Holds the hex SHA256
 # fingerprints of distinct caller bearer tokens observed since process
@@ -211,6 +228,7 @@ async def health(request: Request) -> JSONResponse:
         "agent": AGENT_NAME,
         "agent_owner": AGENT_OWNER,
         "agent_id": AGENT_ID,
+        "hooks_enforcement_mode": _hook_enforcement_mode_for_health(),
         "uptime_seconds": elapsed,
     }
     # #1368: surface boot-degraded state so operators alert on
@@ -462,6 +480,7 @@ async def main():
 
     agent_card = build_agent_card()
     executor = AgentExecutor()
+    _set_health_executor(executor)
     _task_store_path = os.environ.get("TASK_STORE_PATH", "")
     if _task_store_path:
         logger.info("Using SqliteTaskStore at %s", _task_store_path)

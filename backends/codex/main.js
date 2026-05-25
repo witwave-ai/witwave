@@ -719,6 +719,14 @@ function hookActiveRules() {
   return [...(HOOKS_BASELINE_ENABLED ? CODEX_BASELINE_HOOK_RULES : []), ...loadHookExtensionRules()];
 }
 
+function hookEnforcementModeValue() {
+  return hookActiveRules().length > 0 ? 1 : -1;
+}
+
+function hookEnforcementModeLabel() {
+  return hookEnforcementModeValue() === 1 ? "enforcing" : "disabled";
+}
+
 function hookToolAliases(toolName) {
   const aliases = new Set([String(toolName || "")]);
   if (toolName === "run_shell_command") {
@@ -3161,6 +3169,7 @@ function handleHealth(probe, res) {
     agent_owner: AGENT_OWNER,
     agent_id: AGENT_ID,
     backend: BACKEND_ID,
+    hooks_enforcement_mode: hookEnforcementModeLabel(),
     uptime_seconds: uptime,
   };
   const initializingProbe = (probe === "ready" || probe === "start") && !ready;
@@ -3916,11 +3925,10 @@ export function renderMetrics() {
     lines.push(metricLine("backend_hooks_config_errors_total", value, labels({ reason })));
   }
   const extensionRuleCount = loadHookExtensionRules().length;
-  const hookEnforcementMode = HOOKS_BASELINE_ENABLED || extensionRuleCount > 0 ? 1 : -1;
   lines.push(
     "# HELP backend_hooks_enforcement_mode PreToolUse hook enforcement mode. 0=partial/skeleton, 1=enforcing, -1=disabled.",
     "# TYPE backend_hooks_enforcement_mode gauge",
-    metricLine("backend_hooks_enforcement_mode", hookEnforcementMode, labels()),
+    metricLine("backend_hooks_enforcement_mode", hookEnforcementModeValue(), labels()),
     "# HELP backend_hooks_active_rules Number of currently active PreToolUse rules by source.",
     "# TYPE backend_hooks_active_rules gauge",
     metricLine(
