@@ -155,7 +155,8 @@ can be blocked before execution.
 
 Prometheus exposes `backend_hooks_enforcement_mode` to make that boundary machine-readable: `1` means active
 PreToolUse-style enforcement on the backend's covered tool surface, `0` means partial/skeleton coverage, and `-1` means
-no active hook rules.
+no active hook rules. LLM backends also surface a compact `hooks_enforcement_mode` field from `/health` for quick
+operator checks without a Prometheus scrape.
 
 ## Current Practical Defaults
 

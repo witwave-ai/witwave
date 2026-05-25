@@ -315,6 +315,10 @@ class HealthReadinessSplitTests(unittest.TestCase):
         main._ready = True
         resp = _run(main.health(_make_request()))
         self.assertEqual(resp.status_code, 200)
+        import json
+
+        body = json.loads(resp.body)
+        self.assertEqual(body["hooks_enforcement_mode"], "skeleton")
 
     def test_health_liveness_200_when_not_ready(self):
         """/health (liveness) returns 200 even while still starting (#1672).
@@ -326,6 +330,10 @@ class HealthReadinessSplitTests(unittest.TestCase):
         main._ready = False
         resp = _run(main.health(_make_request()))
         self.assertEqual(resp.status_code, 200)
+        import json
+
+        body = json.loads(resp.body)
+        self.assertEqual(body["hooks_enforcement_mode"], "skeleton")
 
     def test_health_ready_200_when_ready(self):
         """/health/ready returns 200 when fully ready."""
