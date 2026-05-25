@@ -42,7 +42,7 @@ execution layer.
 | SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex covers query/session/tool-audit/error families; some SDK-specific series remain thinner.         |
 | File watcher/reload metrics           | Full    | Full    | Partial | Full    | Codex exposes MCP config reload state but does not yet run Python-style file watchers.                 |
 | SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex uses a JSON response-session store rather than the shared SQLite task-store path.                |
-| Focused regression tests              | Partial | Full    | Partial | Full    | Codex now has split auth, health, MCP, hooks, memory, trace/session-stream, and metrics coverage.      |
+| Focused regression tests              | Partial | Full    | Partial | Full    | Codex now has split A2A, auth, health, MCP, hooks, memory, trace/session-stream, and metrics coverage. |
 
 ## Highest-Value Gaps
 
