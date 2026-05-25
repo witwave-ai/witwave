@@ -170,6 +170,19 @@ npm install --prefix backends/codex
 npm test --prefix backends/codex
 ```
 
+The Node test suite is split by backend contract surface so parity regressions are easy to localize:
+
+- `test_a2a_contract.js` — A2A request/response shape, metadata extraction, redacted conversation logging, and token
+  budget metadata.
+- `test_auth_contract.js` — protected inspection endpoint auth posture.
+- `test_health_contract.js` — liveness, readiness, and startup route semantics.
+- `test_hooks_contract.js` — PreToolUse-style hook policy and Codex-owned tool gating.
+- `test_mcp_contract.js` — backend-local MCP endpoint and URL-shaped MCP tool calls.
+- `test_memory_contract.js` — bounded file-memory tools.
+- `test_metrics_contract.js` — common backend Prometheus label shape and streaming counters.
+- `test_trace_stream_contract.js` — OpenTelemetry trace lookup and per-session SSE streaming.
+- `test_codex_backend.js` — small core helper/config units that do not need a full contract fixture.
+
 ## Local Run
 
 ```bash
