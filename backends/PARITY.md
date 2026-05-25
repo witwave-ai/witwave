@@ -42,14 +42,14 @@ execution layer.
 | SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex covers query/session/tool-audit/error families; some SDK-specific series remain thinner.         |
 | File watcher/reload metrics           | Full    | Full    | Partial | Full    | Codex exposes MCP config reload state but does not yet run Python-style file watchers.                 |
 | SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex uses a JSON response-session store rather than the shared SQLite task-store path.                |
-| Focused regression tests              | Partial | Full    | Partial | Full    | Codex now has split auth, health, MCP, hooks, memory, and trace/session-stream coverage.               |
+| Focused regression tests              | Partial | Full    | Partial | Full    | Codex now has split auth, health, MCP, hooks, memory, trace/session-stream, and metrics coverage.      |
 
 ## Highest-Value Gaps
 
 1. Codex remaining metric gaps: decide which Python-specific watcher/task-store series should become Codex placeholders
    and which should stay documented as runtime-specific.
-2. Codex test shape: keep splitting the remaining large Node test file into focused contract tests for metrics and core
-   unit coverage.
+2. Codex test shape: keep splitting the remaining large Node test file into focused contract tests for core unit
+   coverage.
 3. Hook semantics: keep Claude as the reference, but make each backend's hook boundary explicit so users know what is
    denied before execution and what is only audited.
 4. MCP transport documentation: tighten backend docs so the distinction between stdio SDK MCP and in-cluster HTTP MCP is
