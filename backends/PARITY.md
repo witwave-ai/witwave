@@ -36,16 +36,16 @@ execution layer.
 | OpenTelemetry trace integration       | Full    | Full    | Full    | Full    | All expose trace APIs and continue inbound trace context.                                              |
 | Prompt-size rejection                 | Full    | Full    | Full    | Full    | `MAX_PROMPT_BYTES` now covers all LLM-backed A2A paths.                                                |
 | Token budget handling                 | Full    | Full    | Full    | Full    | `max_tokens` style budget checks exist across the LLM backends.                                        |
-| Context/token metrics                 | Full    | Full    | Partial | Full    | Codex has core usage summaries but not the full context-warning family.                                |
-| SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex covers core function-tool metrics; SDK-specific query families are still thinner.                |
-| File watcher/reload metrics           | Full    | Full    | Gap     | Full    | Codex loads config, but does not yet expose every Python watcher metric family.                        |
+| Context/token metrics                 | Full    | Full    | Full    | Full    | Codex reports budget-derived usage, warning, and exhaustion counters.                                  |
+| SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex now covers query/session/tool families; some SDK-specific series remain intentionally thinner.   |
+| File watcher/reload metrics           | Full    | Full    | Partial | Full    | Codex exposes MCP config reload state but does not yet run Python-style file watchers.                 |
 | SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex uses a JSON response-session store rather than the shared SQLite task-store path.                |
 | Focused regression tests              | Partial | Full    | Partial | Full    | Codex tests are broad but concentrated in one large JS file.                                           |
 
 ## Highest-Value Gaps
 
-1. Codex metric breadth: add or intentionally document the missing dashboard families so operators can union dashboards
-   across Claude/OpenAI/Gemini/Codex without special cases.
+1. Codex remaining metric gaps: decide which Python-specific watcher/task-store series should become Codex placeholders
+   and which should stay documented as runtime-specific.
 2. Codex test shape: split the large Node test file into focused contract tests for health, auth, MCP, hooks, memory,
    tracing, and metrics.
 3. Hook semantics: keep Claude as the reference, but make each backend's hook boundary explicit so users know what is

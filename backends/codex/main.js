@@ -45,6 +45,10 @@ const CODEX_REASONING_EFFORT = configString(
 const CODEX_RESPONSES_STREAMING =
   process.env.CODEX_RESPONSES_STREAMING === undefined ? true : parseBool(process.env.CODEX_RESPONSES_STREAMING);
 const MAX_PROMPT_BYTES = Number.parseInt(process.env.MAX_PROMPT_BYTES || String(10 * 1024 * 1024), 10);
+const CONTEXT_USAGE_WARN_THRESHOLD = (() => {
+  const parsed = Number.parseFloat(process.env.CONTEXT_USAGE_WARN_THRESHOLD || "0.8");
+  return Number.isFinite(parsed) ? parsed : 0.8;
+})();
 const METRICS_ENABLED = parseBool(process.env.METRICS_ENABLED);
 const METRICS_PORT = Number.parseInt(process.env.METRICS_PORT || "9000", 10);
 const CONVERSATIONS_AUTH_TOKEN = process.env.CONVERSATIONS_AUTH_TOKEN || "";
@@ -52,22 +56,38 @@ const CONVERSATIONS_AUTH_DISABLED = parseBool(process.env.CONVERSATIONS_AUTH_DIS
 const LOG_REDACT = parseBool(process.env.LOG_REDACT);
 const CODEX_SHELL_ENABLED = configBool([["tools", "shell"]], "CODEX_SHELL_ENABLED", false);
 const CODEX_SHELL_TIMEOUT_SECONDS = configInteger(
-  [["tools", "shell_timeout_seconds"], ["runtime", "shell_timeout_seconds"]],
+  [
+    ["tools", "shell_timeout_seconds"],
+    ["runtime", "shell_timeout_seconds"],
+  ],
   "CODEX_SHELL_TIMEOUT_SECONDS",
   30,
 );
 const CODEX_SHELL_MAX_OUTPUT_BYTES = configInteger(
-  [["tools", "shell_max_output_bytes"], ["runtime", "shell_max_output_bytes"]],
+  [
+    ["tools", "shell_max_output_bytes"],
+    ["runtime", "shell_max_output_bytes"],
+  ],
   "CODEX_SHELL_MAX_OUTPUT_BYTES",
   12000,
 );
 const CODEX_MAX_TOOL_ITERATIONS = configInteger(
-  [["runtime", "max_tool_iterations"], ["tools", "max_iterations"]],
+  [
+    ["runtime", "max_tool_iterations"],
+    ["tools", "max_iterations"],
+  ],
   "CODEX_MAX_TOOL_ITERATIONS",
   6,
 );
 const CODEX_MEMORY_ENABLED = configBool([["tools", "memory"]], "CODEX_MEMORY_ENABLED", true);
-const CODEX_MEMORY_ROOT = configString([["paths", "memory_root"], ["memory", "root"]], ["CODEX_MEMORY_ROOT"], "/home/agent/.codex/memory");
+const CODEX_MEMORY_ROOT = configString(
+  [
+    ["paths", "memory_root"],
+    ["memory", "root"],
+  ],
+  ["CODEX_MEMORY_ROOT"],
+  "/home/agent/.codex/memory",
+);
 const CODEX_MEMORY_MAX_BYTES = configInteger([["memory", "max_bytes"]], "CODEX_MEMORY_MAX_BYTES", 65536);
 const CODEX_MEMORY_MAX_LIST_ENTRIES = configInteger(
   [["memory", "max_list_entries"]],
@@ -75,9 +95,23 @@ const CODEX_MEMORY_MAX_LIST_ENTRIES = configInteger(
   200,
 );
 const CODEX_MCP_ENABLED = configBool([["tools", "mcp"]], "CODEX_MCP_ENABLED", true);
-const MCP_CONFIG_PATH = configString([["paths", "mcp_config"], ["mcp", "config_path"]], ["MCP_CONFIG_PATH"], "/home/agent/.codex/mcp.json");
+const MCP_CONFIG_PATH = configString(
+  [
+    ["paths", "mcp_config"],
+    ["mcp", "config_path"],
+  ],
+  ["MCP_CONFIG_PATH"],
+  "/home/agent/.codex/mcp.json",
+);
 const MCP_TOOL_AUTH_TOKEN = process.env.MCP_TOOL_AUTH_TOKEN || "";
-const HOOKS_CONFIG_PATH = configString([["paths", "hooks_config"], ["hooks", "config_path"]], ["HOOKS_CONFIG_PATH"], "/home/agent/.codex/hooks.yaml");
+const HOOKS_CONFIG_PATH = configString(
+  [
+    ["paths", "hooks_config"],
+    ["hooks", "config_path"],
+  ],
+  ["HOOKS_CONFIG_PATH"],
+  "/home/agent/.codex/hooks.yaml",
+);
 const HOOKS_BASELINE_ENABLED =
   process.env.HOOKS_BASELINE_ENABLED === undefined
     ? configBool([["hooks", "baseline_enabled"]], "HOOKS_BASELINE_ENABLED", true)
@@ -91,7 +125,10 @@ const CODEX_MCP_MAX_OUTPUT_BYTES = Math.max(
   Number.parseInt(process.env.CODEX_MCP_MAX_OUTPUT_BYTES || "12000", 10) || 12000,
 );
 const CODEX_SESSION_STORE_PATH = configString(
-  [["paths", "session_store"], ["sessions", "store_path"]],
+  [
+    ["paths", "session_store"],
+    ["sessions", "store_path"],
+  ],
   ["CODEX_SESSION_STORE_PATH"],
   "/home/agent/.codex/sessions/responses.json",
 );
@@ -177,20 +214,48 @@ const metrics = {
   emptyPromptsTotal: 0,
   promptTooLargeTotal: 0,
   budgetExceededTotal: 0,
+  concurrentQueries: 0,
+  runningTasks: 0,
   contextTokensCount: 0,
   contextTokensSum: 0,
   contextTokensRemainingCount: 0,
   contextTokensRemainingSum: 0,
+  contextUsagePercentCount: 0,
+  contextUsagePercentSum: 0,
+  contextWarningsTotal: 0,
+  contextExhaustionTotal: 0,
   sessionStartsTotal: 0,
   sessionEvictionsTotal: 0,
+  sessionAgeSecondsCount: 0,
+  sessionAgeSecondsSum: 0,
+  sessionIdleSecondsCount: 0,
+  sessionIdleSecondsSum: 0,
   streamingEventsEmitted: new Map(),
   streamingChunksDropped: new Map(),
   hookDenials: new Map(),
   hookWarnings: new Map(),
   hookEvaluations: new Map(),
   hookConfigErrors: new Map(),
+  mcpConfigErrors: new Map(),
+  mcpConfigReloadsTotal: 0,
   sdkToolCalls: new Map(),
   sdkToolErrors: new Map(),
+  sdkQueryDurationCounts: new Map(),
+  sdkQueryDurationSums: new Map(),
+  sdkQueryErrorDurationCounts: new Map(),
+  sdkQueryErrorDurationSums: new Map(),
+  sdkTimeToFirstMessageCounts: new Map(),
+  sdkTimeToFirstMessageSums: new Map(),
+  sdkSessionDurationCounts: new Map(),
+  sdkSessionDurationSums: new Map(),
+  sdkMessagesPerQueryCounts: new Map(),
+  sdkMessagesPerQuerySums: new Map(),
+  sdkTurnsPerQueryCounts: new Map(),
+  sdkTurnsPerQuerySums: new Map(),
+  sdkTokensPerQueryCounts: new Map(),
+  sdkTokensPerQuerySums: new Map(),
+  textBlocksPerQueryCounts: new Map(),
+  textBlocksPerQuerySums: new Map(),
   sdkToolDurationCounts: new Map(),
   sdkToolDurationSums: new Map(),
   sdkToolInputBytesCounts: new Map(),
@@ -411,6 +476,12 @@ function observeMcpOutboundCall(serverName, toolName, outcome, durationSeconds) 
   observeSummary(metrics.mcpOutboundDurationCounts, metrics.mcpOutboundDurationSums, key, durationSeconds);
 }
 
+function observeScalarSummary(countName, sumName, value) {
+  const observed = Number.isFinite(value) ? value : 0;
+  metrics[countName] += 1;
+  metrics[sumName] += observed;
+}
+
 function sanitizeModelLabel(value) {
   const raw = String(value || "");
   return /^[a-zA-Z0-9._-]{1,64}$/.test(raw) ? raw : "unknown";
@@ -549,7 +620,8 @@ function parseHookExtensionRule(raw) {
       tool,
       source: "extension",
       action: denyPattern ? "deny" : "warn",
-      reason: typeof raw.reason === "string" && raw.reason.trim() ? raw.reason.trim() : `blocked by extension rule ${name}`,
+      reason:
+        typeof raw.reason === "string" && raw.reason.trim() ? raw.reason.trim() : `blocked by extension rule ${name}`,
       pattern: new RegExp(denyPattern || warnPattern),
     };
   } catch (error) {
@@ -1135,8 +1207,18 @@ function recordSessionResponse(sessionId, responseId, model) {
   const sessions = loadSessionStore();
   const existing = sessions.get(sessionId);
   const now = new Date().toISOString();
+  const nowMs = Date.parse(now);
   if (!existing) {
     metrics.sessionStartsTotal += 1;
+  } else {
+    const updatedMs = Date.parse(existing.updated_at || "");
+    if (Number.isFinite(updatedMs)) {
+      observeScalarSummary("sessionIdleSecondsCount", "sessionIdleSecondsSum", Math.max(0, (nowMs - updatedMs) / 1000));
+    }
+  }
+  const createdMs = Date.parse(existing?.created_at || now);
+  if (Number.isFinite(createdMs)) {
+    observeScalarSummary("sessionAgeSecondsCount", "sessionAgeSecondsSum", Math.max(0, (nowMs - createdMs) / 1000));
   }
   sessions.set(sessionId, {
     previous_response_id: responseId,
@@ -1515,6 +1597,7 @@ function mcpConfigEntriesFromDisk() {
   try {
     return mcpServerEntriesFromConfig(JSON.parse(raw));
   } catch (error) {
+    inc(metrics.mcpConfigErrors, "json_parse");
     console.warn(`codex backend: failed to parse MCP config at ${MCP_CONFIG_PATH}: ${error?.message || error}`);
     return undefined;
   }
@@ -1639,6 +1722,7 @@ async function discoverMcpFunctionToolsInner() {
   }
 
   mcpToolCache = { fingerprint, clients, tools, toolIndex };
+  metrics.mcpConfigReloadsTotal += 1;
   await closeMcpClients(previousClients);
   return tools;
 }
@@ -2208,12 +2292,7 @@ export async function handleFunctionCall(call, traceId, context = {}) {
     const toolContext = buildContext(call.name);
     const toolStarted = performance.now();
     appendToolUseEvent(call.name, toolInput, traceId, toolContext);
-    const denied = preToolUseGate(
-      call.name,
-      toolInput,
-      traceId,
-      toolContext,
-    );
+    const denied = preToolUseGate(call.name, toolInput, traceId, toolContext);
     if (denied) {
       appendToolResultEvent(call.name, denied, traceId, toolContext);
       observeSdkToolCall(call.name, toolInput, denied, (performance.now() - toolStarted) / 1000);
@@ -2223,7 +2302,12 @@ export async function handleFunctionCall(call, traceId, context = {}) {
     appendToolResultEvent(call.name, result, traceId, toolContext);
     appendToolAuditEvent(call.name, toolInput, result, traceId, toolContext);
     observeSdkToolCall(call.name, toolInput, result, (performance.now() - toolStarted) / 1000);
-    observeMcpOutboundCall(tool?.serverName, tool?.toolName, result?.ok === false ? "error" : "ok", result?.duration_seconds);
+    observeMcpOutboundCall(
+      tool?.serverName,
+      tool?.toolName,
+      result?.ok === false ? "error" : "ok",
+      result?.duration_seconds,
+    );
     return result;
   }
 
@@ -2254,6 +2338,25 @@ function extractOutputText(response) {
   return chunks.join("\n");
 }
 
+function responseMessageCount(response) {
+  return (response?.output || []).filter((item) => item?.type === "message").length;
+}
+
+function responseTextBlockCount(response) {
+  let count = 0;
+  for (const item of response?.output || []) {
+    if (item?.type !== "message") {
+      continue;
+    }
+    for (const part of item.content || []) {
+      if (typeof part?.text === "string" && part.text) {
+        count += 1;
+      }
+    }
+  }
+  return count;
+}
+
 function usageTotalTokens(response) {
   const usage = response?.usage;
   const candidates = [
@@ -2281,6 +2384,15 @@ function budgetResult(response, maxTokens) {
   if (maxTokens !== undefined && totalTokens > 0) {
     metrics.contextTokensRemainingCount += 1;
     metrics.contextTokensRemainingSum += Math.max(0, maxTokens - totalTokens);
+    const usagePercent = (totalTokens / maxTokens) * 100;
+    metrics.contextUsagePercentCount += 1;
+    metrics.contextUsagePercentSum += usagePercent;
+    if (usagePercent >= CONTEXT_USAGE_WARN_THRESHOLD * 100) {
+      metrics.contextWarningsTotal += 1;
+    }
+  }
+  if (maxTokens !== undefined && totalTokens >= maxTokens) {
+    metrics.contextExhaustionTotal += 1;
   }
   return {
     total_tokens: totalTokens,
@@ -2400,6 +2512,9 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
         "Set OPENAI_API_KEY and CODEX_STUB_MODE=false to execute through the OpenAI Responses API.",
       total_tokens: 0,
       budget_exceeded: false,
+      message_count: 1,
+      text_block_count: 1,
+      turn_count: 1,
     };
   }
 
@@ -2439,6 +2554,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
   recordSessionIfComplete(sessionId, response, model);
   let budget = budgetResult(response, maxTokens);
   let toolCallsThisQuery = 0;
+  let turnsThisQuery = 1;
   if (budget.exceeded) {
     metrics.budgetExceededTotal += 1;
   }
@@ -2477,6 +2593,7 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
         hooks.onAssistantDelta,
         { "session.id_hash": sessionHash(sessionId), "response.previous_id": response.id || "", "tool.loop": "true" },
       );
+      turnsThisQuery += 1;
       recordSessionIfComplete(sessionId, response, model);
       budget = budgetResult(response, maxTokens);
       if (budget.exceeded) {
@@ -2498,7 +2615,41 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
     text: appendBudgetNotice(text, budget),
     total_tokens: budget.total_tokens,
     budget_exceeded: budget.exceeded,
+    message_count: responseMessageCount(response),
+    text_block_count: responseTextBlockCount(response),
+    turn_count: turnsThisQuery,
   };
+}
+
+function recordCodexQueryMetrics({
+  model,
+  status,
+  durationSeconds,
+  timeToFirstMessageSeconds,
+  sessionDurationSeconds,
+  messageCount,
+  turnCount,
+  tokenCount,
+  textBlockCount,
+}) {
+  const modelLabel = sanitizeModelLabel(model || CODEX_MODEL);
+  observeSummary(metrics.sdkQueryDurationCounts, metrics.sdkQueryDurationSums, modelLabel, durationSeconds);
+  if (status === "error") {
+    observeSummary(metrics.sdkQueryErrorDurationCounts, metrics.sdkQueryErrorDurationSums, modelLabel, durationSeconds);
+  }
+  if (Number.isFinite(timeToFirstMessageSeconds)) {
+    observeSummary(
+      metrics.sdkTimeToFirstMessageCounts,
+      metrics.sdkTimeToFirstMessageSums,
+      modelLabel,
+      timeToFirstMessageSeconds,
+    );
+  }
+  observeSummary(metrics.sdkSessionDurationCounts, metrics.sdkSessionDurationSums, modelLabel, sessionDurationSeconds);
+  observeSummary(metrics.sdkMessagesPerQueryCounts, metrics.sdkMessagesPerQuerySums, modelLabel, messageCount);
+  observeSummary(metrics.sdkTurnsPerQueryCounts, metrics.sdkTurnsPerQuerySums, modelLabel, turnCount);
+  observeSummary(metrics.sdkTokensPerQueryCounts, metrics.sdkTokensPerQuerySums, modelLabel, tokenCount);
+  observeSummary(metrics.textBlocksPerQueryCounts, metrics.textBlocksPerQuerySums, modelLabel, textBlockCount);
 }
 
 export async function handleA2A(payload) {
@@ -2532,8 +2683,15 @@ export async function handleA2A(payload) {
   let model = modelForRequest(metadata);
   inc(metrics.modelRequests, sanitizeModelLabel(model));
   let totalTokens = 0;
+  let dispatchedToBackend = false;
+  let queryDurationSeconds = 0;
+  let timeToFirstMessageSeconds;
+  let resultStats = { message_count: 0, text_block_count: 0, turn_count: 0 };
   let assistantSeq = 1;
   const publishAssistantDelta = (content) => {
+    if (timeToFirstMessageSeconds === undefined) {
+      timeToFirstMessageSeconds = (performance.now() - requestStarted) / 1000;
+    }
     publishSessionChunk(sessionId, { role: "assistant", seq: assistantSeq, content, final: false, model });
     assistantSeq += 1;
   };
@@ -2547,6 +2705,9 @@ export async function handleA2A(payload) {
       metrics.promptTooLargeTotal += 1;
       responseText = `codex backend — prompt of ${promptBytes} bytes exceeds MAX_PROMPT_BYTES=${MAX_PROMPT_BYTES}.`;
     } else {
+      dispatchedToBackend = true;
+      metrics.concurrentQueries += 1;
+      metrics.runningTasks += 1;
       const result = await runWithSpan(
         "backend.a2a.execute",
         {
@@ -2568,6 +2729,11 @@ export async function handleA2A(payload) {
       model = result.model;
       responseText = result.text;
       totalTokens = result.total_tokens || 0;
+      resultStats = {
+        message_count: result.message_count || (responseText ? 1 : 0),
+        text_block_count: result.text_block_count || (responseText ? 1 : 0),
+        turn_count: result.turn_count || 1,
+      };
       if (result.budget_exceeded) {
         status = "budget_exceeded";
       }
@@ -2576,9 +2742,28 @@ export async function handleA2A(payload) {
     status = "error";
     responseText = `codex backend error: ${error?.message || String(error)}`;
   } finally {
+    queryDurationSeconds = (performance.now() - requestStarted) / 1000;
+    if (dispatchedToBackend) {
+      metrics.concurrentQueries = Math.max(0, metrics.concurrentQueries - 1);
+      metrics.runningTasks = Math.max(0, metrics.runningTasks - 1);
+    }
     inc(metrics.a2aRequests, status);
     metrics.a2aDurationCount += 1;
-    metrics.a2aDurationSum += (performance.now() - requestStarted) / 1000;
+    metrics.a2aDurationSum += queryDurationSeconds;
+  }
+
+  if (dispatchedToBackend) {
+    recordCodexQueryMetrics({
+      model,
+      status,
+      durationSeconds: queryDurationSeconds,
+      timeToFirstMessageSeconds: timeToFirstMessageSeconds ?? (responseText ? queryDurationSeconds : undefined),
+      sessionDurationSeconds: queryDurationSeconds,
+      messageCount: resultStats.message_count,
+      turnCount: resultStats.turn_count,
+      tokenCount: totalTokens,
+      textBlockCount: resultStats.text_block_count,
+    });
   }
 
   metrics.responseBytesCount += 1;
@@ -3023,6 +3208,24 @@ function metricLine(name, value, labelValues = {}) {
   return `${name}${suffix} ${value}`;
 }
 
+function appendSummaryMap(lines, name, help, countMap, sumMap, labelsForKey) {
+  lines.push(`# HELP ${name} ${help}`, `# TYPE ${name} summary`);
+  for (const [key, count] of countMap.entries()) {
+    const labelSet = labels(labelsForKey(key));
+    lines.push(metricLine(`${name}_count`, count, labelSet));
+    lines.push(metricLine(`${name}_sum`, sumMap.get(key) || 0, labelSet));
+  }
+}
+
+function appendScalarSummary(lines, name, help, count, sum) {
+  lines.push(
+    `# HELP ${name} ${help}`,
+    `# TYPE ${name} summary`,
+    metricLine(`${name}_count`, count, labels()),
+    metricLine(`${name}_sum`, sum, labels()),
+  );
+}
+
 export function renderMetrics() {
   const uptime = (Date.now() - STARTED_AT.getTime()) / 1000;
   const lines = [
@@ -3038,6 +3241,12 @@ export function renderMetrics() {
     "# HELP backend_startup_duration_seconds Backend startup duration in seconds.",
     "# TYPE backend_startup_duration_seconds gauge",
     metricLine("backend_startup_duration_seconds", startupDurationSeconds.toFixed(3), labels()),
+    "# HELP backend_concurrent_queries Current Codex queries running inside this backend.",
+    "# TYPE backend_concurrent_queries gauge",
+    metricLine("backend_concurrent_queries", metrics.concurrentQueries, labels()),
+    "# HELP backend_running_tasks Current A2A tasks running inside this backend.",
+    "# TYPE backend_running_tasks gauge",
+    metricLine("backend_running_tasks", metrics.runningTasks, labels()),
     "# HELP backend_health_checks_total Total health checks by probe.",
     "# TYPE backend_health_checks_total counter",
   ];
@@ -3119,6 +3328,16 @@ export function renderMetrics() {
     "# TYPE backend_context_tokens_remaining summary",
     metricLine("backend_context_tokens_remaining_count", metrics.contextTokensRemainingCount, labels()),
     metricLine("backend_context_tokens_remaining_sum", metrics.contextTokensRemainingSum, labels()),
+    "# HELP backend_context_usage_percent Percent of max_tokens budget consumed by observed Responses API usage.",
+    "# TYPE backend_context_usage_percent summary",
+    metricLine("backend_context_usage_percent_count", metrics.contextUsagePercentCount, labels()),
+    metricLine("backend_context_usage_percent_sum", metrics.contextUsagePercentSum, labels()),
+    "# HELP backend_context_warnings_total Total Codex queries whose observed token usage crossed CONTEXT_USAGE_WARN_THRESHOLD.",
+    "# TYPE backend_context_warnings_total counter",
+    metricLine("backend_context_warnings_total", metrics.contextWarningsTotal, labels()),
+    "# HELP backend_context_exhaustion_total Total Codex queries whose observed token usage reached or exceeded max_tokens.",
+    "# TYPE backend_context_exhaustion_total counter",
+    metricLine("backend_context_exhaustion_total", metrics.contextExhaustionTotal, labels()),
     "# HELP backend_active_sessions Active persisted Codex response sessions.",
     "# TYPE backend_active_sessions gauge",
     metricLine("backend_active_sessions", loadSessionStore().size, labels()),
@@ -3128,8 +3347,25 @@ export function renderMetrics() {
     "# HELP backend_session_evictions_total Sessions evicted due to MAX_SESSIONS.",
     "# TYPE backend_session_evictions_total counter",
     metricLine("backend_session_evictions_total", metrics.sessionEvictionsTotal, labels()),
+    "# HELP backend_lru_cache_utilization_percent Persisted Codex response session store utilization as a percentage of MAX_SESSIONS.",
+    "# TYPE backend_lru_cache_utilization_percent gauge",
+    metricLine("backend_lru_cache_utilization_percent", (loadSessionStore().size / MAX_SESSIONS) * 100, labels()),
     "# HELP backend_streaming_events_emitted_total Total partial assistant text chunks enqueued during streaming.",
     "# TYPE backend_streaming_events_emitted_total counter",
+  );
+  appendScalarSummary(
+    lines,
+    "backend_session_age_seconds",
+    "Seconds between Codex session creation and the latest persisted response update.",
+    metrics.sessionAgeSecondsCount,
+    metrics.sessionAgeSecondsSum,
+  );
+  appendScalarSummary(
+    lines,
+    "backend_session_idle_seconds",
+    "Seconds a persisted Codex session was idle before being resumed.",
+    metrics.sessionIdleSecondsCount,
+    metrics.sessionIdleSecondsSum,
   );
   for (const [model, value] of metrics.streamingEventsEmitted.entries()) {
     lines.push(metricLine("backend_streaming_events_emitted_total", value, labels({ model })));
@@ -3142,6 +3378,19 @@ export function renderMetrics() {
     lines.push(metricLine("backend_streaming_chunks_dropped_total", value, labels({ model })));
   }
   lines.push(
+    "# HELP backend_mcp_config_errors_total Total MCP config parse/load errors by reason.",
+    "# TYPE backend_mcp_config_errors_total counter",
+  );
+  for (const [reason, value] of metrics.mcpConfigErrors.entries()) {
+    lines.push(metricLine("backend_mcp_config_errors_total", value, labels({ reason })));
+  }
+  lines.push(
+    "# HELP backend_mcp_config_reloads_total Total successful MCP config/tool-cache reloads.",
+    "# TYPE backend_mcp_config_reloads_total counter",
+    metricLine("backend_mcp_config_reloads_total", metrics.mcpConfigReloadsTotal, labels()),
+    "# HELP backend_mcp_servers_active Number of currently connected backend-local MCP servers.",
+    "# TYPE backend_mcp_servers_active gauge",
+    metricLine("backend_mcp_servers_active", mcpToolCache.clients.size, labels()),
     "# HELP backend_mcp_requests_total MCP requests by terminal status.",
     "# TYPE backend_mcp_requests_total counter",
   );
@@ -3167,6 +3416,70 @@ export function renderMetrics() {
     const [tool, status] = key.split(":", 2);
     lines.push(metricLine("backend_tool_calls_total", value, labels({ tool, status })));
   }
+  appendSummaryMap(
+    lines,
+    "backend_sdk_query_duration_seconds",
+    "Wall-clock seconds spent in a Codex backend query.",
+    metrics.sdkQueryDurationCounts,
+    metrics.sdkQueryDurationSums,
+    (model) => ({ model }),
+  );
+  appendSummaryMap(
+    lines,
+    "backend_sdk_query_error_duration_seconds",
+    "Wall-clock seconds for Codex backend queries that end in error.",
+    metrics.sdkQueryErrorDurationCounts,
+    metrics.sdkQueryErrorDurationSums,
+    (model) => ({ model }),
+  );
+  appendSummaryMap(
+    lines,
+    "backend_sdk_time_to_first_message_seconds",
+    "Seconds from Codex query submission to the first assistant message or delta.",
+    metrics.sdkTimeToFirstMessageCounts,
+    metrics.sdkTimeToFirstMessageSums,
+    (model) => ({ model }),
+  );
+  appendSummaryMap(
+    lines,
+    "backend_sdk_session_duration_seconds",
+    "Codex query/session duration in seconds.",
+    metrics.sdkSessionDurationCounts,
+    metrics.sdkSessionDurationSums,
+    (model) => ({ model }),
+  );
+  appendSummaryMap(
+    lines,
+    "backend_sdk_messages_per_query",
+    "Number of response message items observed per Codex query.",
+    metrics.sdkMessagesPerQueryCounts,
+    metrics.sdkMessagesPerQuerySums,
+    (model) => ({ model }),
+  );
+  appendSummaryMap(
+    lines,
+    "backend_sdk_turns_per_query",
+    "Number of Codex response turns, including tool-loop follow-ups, per query.",
+    metrics.sdkTurnsPerQueryCounts,
+    metrics.sdkTurnsPerQuerySums,
+    (model) => ({ model }),
+  );
+  appendSummaryMap(
+    lines,
+    "backend_sdk_tokens_per_query",
+    "Total tokens reported by the final Responses API call for a Codex query.",
+    metrics.sdkTokensPerQueryCounts,
+    metrics.sdkTokensPerQuerySums,
+    (model) => ({ model }),
+  );
+  appendSummaryMap(
+    lines,
+    "backend_text_blocks_per_query",
+    "Number of text blocks returned per Codex query.",
+    metrics.textBlocksPerQueryCounts,
+    metrics.textBlocksPerQuerySums,
+    (model) => ({ model }),
+  );
   lines.push(
     "# HELP backend_sdk_tool_calls_total Total Codex function-tool calls by tool name.",
     "# TYPE backend_sdk_tool_calls_total counter",

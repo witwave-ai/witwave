@@ -718,7 +718,10 @@ extensions:
   assert.equal(auditRow.decision, "deny");
 
   const body = renderMetrics();
-  assert.match(body, /backend_hooks_denials_total\{.*tool="write_memory_file".*source="extension".*rule="deny-memory-marker".*\} 1/);
+  assert.match(
+    body,
+    /backend_hooks_denials_total\{.*tool="write_memory_file".*source="extension".*rule="deny-memory-marker".*\} 1/,
+  );
   assert.match(body, /backend_hooks_evaluations_total\{.*tool="write_memory_file".*decision="deny".*\} 1/);
   assert.match(body, /backend_hooks_active_rules\{.*source="extension".*\} 1/);
   assert.match(body, /backend_sdk_tool_calls_total\{.*tool="write_memory_file".*\} 1/);
@@ -784,6 +787,23 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_log_write_errors_total\{.*backend="codex".*\} 0/);
   assert.match(body, /backend_prompt_length_bytes_count/);
   assert.match(body, /backend_active_sessions/);
+  assert.match(body, /backend_concurrent_queries\{.*backend="codex".*\} 0/);
+  assert.match(body, /backend_running_tasks\{.*backend="codex".*\} 0/);
+  assert.match(body, /backend_sdk_query_duration_seconds_count\{.*model="gpt-5.5".*\} [1-9]/);
+  assert.match(body, /backend_sdk_time_to_first_message_seconds_count\{.*model="gpt-5.5".*\} [1-9]/);
+  assert.match(body, /backend_sdk_session_duration_seconds_count\{.*model="gpt-5.5".*\} [1-9]/);
+  assert.match(body, /backend_sdk_messages_per_query_count\{.*model="gpt-5.5".*\} [1-9]/);
+  assert.match(body, /backend_sdk_turns_per_query_count\{.*model="gpt-5.5".*\} [1-9]/);
+  assert.match(body, /backend_sdk_tokens_per_query_count\{.*model="gpt-5.5".*\} [1-9]/);
+  assert.match(body, /backend_text_blocks_per_query_count\{.*model="gpt-5.5".*\} [1-9]/);
+  assert.match(body, /backend_context_usage_percent_count/);
+  assert.match(body, /backend_context_warnings_total/);
+  assert.match(body, /backend_context_exhaustion_total/);
+  assert.match(body, /backend_session_age_seconds_count/);
+  assert.match(body, /backend_session_idle_seconds_count/);
+  assert.match(body, /backend_lru_cache_utilization_percent/);
+  assert.match(body, /backend_mcp_config_reloads_total/);
+  assert.match(body, /backend_mcp_servers_active/);
   assert.match(body, /backend_budget_exceeded_total/);
   assert.match(body, /agent="/);
   assert.match(body, /backend="codex"/);
