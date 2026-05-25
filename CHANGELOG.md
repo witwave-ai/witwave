@@ -6,10 +6,35 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.31.0] — 2026-05-25
+
+Codex backend reaches Prometheus-and-trace parity with the Claude backend, and `ww` gains a one-shot way to pull every
+agent's metrics surface through the apiserver pod proxy. Self-team identity churn continues to settle in parallel.
+
 ### Added
 
+- **backends/codex**: Broaden the Prometheus surface to match the Claude backend — audit and SDK-error counters,
+  task-level execution metrics, agent-identity revision gauge, hook-config-reload counters, and runtime metric
+  placeholders so dashboards stay consistent across backends.
 - **ww**: Add `ww agent metrics <name>` to scrape every Prometheus `/metrics` endpoint owned by an agent pod, including
   the harness and enabled backend containers, through the Kubernetes apiserver pod proxy.
+
+### Fixed
+
+- **backends/codex**: Align the startup health probe semantics with the rest of the platform so the readiness signal
+  flips at the correct lifecycle point.
+- **backends**: Add a Claude prompt-size parity guard so oversized prompts fail loudly at the backend boundary instead
+  of silently truncating downstream.
+
+### Documentation
+
+- **backends**: Clarify hook enforcement boundaries so the contract between the harness and each backend is unambiguous.
+
+### Agent identity
+
+- **self-team**: Fix `.claude/agent-card.md` drift across all 9 peers; slow Zora and Piper heartbeats from 30 min to 60
+  min; add Mira platform-health v0.3.0 with `ask-peer-clarification` and the `.openai` drop; routine self-tidy across
+  the team.
 
 ## [0.30.3] — 2026-05-24
 
