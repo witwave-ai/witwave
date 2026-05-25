@@ -206,6 +206,14 @@ const metrics = {
   a2aRequests: new Map(),
   a2aDurationCount: 0,
   a2aDurationSum: 0,
+  tasks: new Map(),
+  taskDurationCount: 0,
+  taskDurationSum: 0,
+  taskErrorDurationCount: 0,
+  taskErrorDurationSum: 0,
+  taskLastSuccessTimestamp: 0,
+  taskLastErrorTimestamp: 0,
+  taskCancellationsTotal: 0,
   modelRequests: new Map(),
   mcpRequests: new Map(),
   mcpDurationCounts: new Map(),
@@ -2813,6 +2821,17 @@ export async function handleA2A(payload) {
     inc(metrics.a2aRequests, status);
     metrics.a2aDurationCount += 1;
     metrics.a2aDurationSum += queryDurationSeconds;
+    const taskStatus = status === "ok" ? "success" : status;
+    inc(metrics.tasks, taskStatus);
+    metrics.taskDurationCount += 1;
+    metrics.taskDurationSum += queryDurationSeconds;
+    if (status === "ok") {
+      metrics.taskLastSuccessTimestamp = Date.now() / 1000;
+    } else if (status !== "budget_exceeded") {
+      metrics.taskErrorDurationCount += 1;
+      metrics.taskErrorDurationSum += queryDurationSeconds;
+      metrics.taskLastErrorTimestamp = Date.now() / 1000;
+    }
   }
 
   if (dispatchedToBackend) {
@@ -3330,6 +3349,14 @@ export function renderMetrics() {
   }
 
   lines.push(
+    "# HELP backend_tasks_total Total Codex backend tasks processed by outcome.",
+    "# TYPE backend_tasks_total counter",
+  );
+  for (const [status, value] of metrics.tasks.entries()) {
+    lines.push(metricLine("backend_tasks_total", value, labels({ status })));
+  }
+
+  lines.push(
     "# HELP backend_model_requests_total Total requests per resolved model.",
     "# TYPE backend_model_requests_total counter",
   );
@@ -3345,6 +3372,23 @@ export function renderMetrics() {
     "# TYPE backend_a2a_request_duration_seconds summary",
     metricLine("backend_a2a_request_duration_seconds_count", metrics.a2aDurationCount, labels()),
     metricLine("backend_a2a_request_duration_seconds_sum", metrics.a2aDurationSum, labels()),
+    "# HELP backend_task_duration_seconds Duration of Codex backend A2A tasks in seconds.",
+    "# TYPE backend_task_duration_seconds summary",
+    metricLine("backend_task_duration_seconds_count", metrics.taskDurationCount, labels()),
+    metricLine("backend_task_duration_seconds_sum", metrics.taskDurationSum, labels()),
+    "# HELP backend_task_error_duration_seconds Wall-clock seconds for Codex backend tasks that end in error.",
+    "# TYPE backend_task_error_duration_seconds summary",
+    metricLine("backend_task_error_duration_seconds_count", metrics.taskErrorDurationCount, labels()),
+    metricLine("backend_task_error_duration_seconds_sum", metrics.taskErrorDurationSum, labels()),
+    "# HELP backend_task_last_success_timestamp_seconds Unix timestamp of the most recent successful Codex task.",
+    "# TYPE backend_task_last_success_timestamp_seconds gauge",
+    metricLine("backend_task_last_success_timestamp_seconds", metrics.taskLastSuccessTimestamp, labels()),
+    "# HELP backend_task_last_error_timestamp_seconds Unix timestamp of the most recent failed Codex task.",
+    "# TYPE backend_task_last_error_timestamp_seconds gauge",
+    metricLine("backend_task_last_error_timestamp_seconds", metrics.taskLastErrorTimestamp, labels()),
+    "# HELP backend_task_cancellations_total Total Codex task cancellation requests.",
+    "# TYPE backend_task_cancellations_total counter",
+    metricLine("backend_task_cancellations_total", metrics.taskCancellationsTotal, labels()),
     "# HELP backend_log_entries_total Total entries written to backend JSONL logs.",
     "# TYPE backend_log_entries_total counter",
   );
