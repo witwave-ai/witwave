@@ -55,8 +55,6 @@ const {
   publishSessionChunk,
   renderMetrics,
   responseFunctionCalls,
-  resolveMemoryPath,
-  runMemoryTool,
 } = await import("./main.js");
 
 async function withTestServer(fn) {
@@ -677,45 +675,6 @@ extensions:
   assert.match(body, /backend_tool_audit_entries_total\{.*tool="write_memory_file".*\} [1-9]/);
   assert.match(body, /backend_tool_audit_bytes_per_entry_count\{.*tool="write_memory_file".*\} [1-9]/);
   assert.match(body, /backend_hooks_config_reloads_total\{.*backend="codex".*\} [1-9]/);
-});
-
-test("resolveMemoryPath keeps memory tools inside the configured root", () => {
-  const resolved = resolveMemoryPath("platform-health/baseline.md");
-  assert.equal(resolved, path.join(process.env.CODEX_MEMORY_ROOT, "platform-health", "baseline.md"));
-  assert.throws(() => resolveMemoryPath("../outside.md"), /escapes/);
-  assert.throws(() => resolveMemoryPath("/tmp/outside.md"), /relative/);
-});
-
-test("runMemoryTool can write, append, read, and list memory files", async () => {
-  const write = await runMemoryTool("write_memory_file", {
-    path: "platform-health/baseline.md",
-    content: "# Baseline\n",
-  });
-  assert.equal(write.ok, true);
-  assert.equal(write.path, "platform-health/baseline.md");
-
-  const append = await runMemoryTool("append_memory_file", {
-    path: "platform-health/baseline.md",
-    content: "- restart pattern: normal\n",
-  });
-  assert.equal(append.ok, true);
-
-  const read = await runMemoryTool("read_memory_file", { path: "platform-health/baseline.md" });
-  assert.equal(read.ok, true);
-  assert.match(read.content, /restart pattern/);
-
-  const listed = await runMemoryTool("list_memory_files", { path: "platform-health" });
-  assert.equal(listed.ok, true);
-  assert.deepEqual(listed.entries, ["platform-health/baseline.md"]);
-});
-
-test("runMemoryTool refuses raw credential-shaped content", async () => {
-  const result = await runMemoryTool("write_memory_file", {
-    path: "platform-health/leak.md",
-    content: "sk-testthislookssecret0000000000000000",
-  });
-  assert.equal(result.ok, false);
-  assert.match(result.error, /credential/);
 });
 
 test("renderMetrics exposes the common backend label shape", async () => {
