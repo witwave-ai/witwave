@@ -1,9 +1,9 @@
 ---
 description: >-
   Runs Mira's bounded platform-health heartbeat. The check is read-only, records one compact snapshot, prioritizes
-  self-team pod restart/readiness signals, and escalates only clear fix-needed findings. The cadence stays hourly so the
-  reliability loop remains warm without turning monitoring into a major token sink.
-schedule: "17 * * * *"
+  self-team pod restart/readiness signals, and escalates only clear fix-needed findings. The cadence runs daily so the
+  reliability loop stays alive without turning monitoring into a major token sink.
+schedule: "17 14 * * *"
 enabled: true
 ---
 
