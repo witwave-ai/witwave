@@ -35,6 +35,14 @@ initOtelIfEnabled({
 
 const CONVERSATION_LOG = process.env.CONVERSATION_LOG || "/home/agent/logs/conversation.jsonl";
 const TRACE_LOG = process.env.TRACE_LOG || "/home/agent/logs/tool-activity.jsonl";
+const TOOL_ACTIVITY_ROTATION_PRESSURE_BYTES = parseNonNegativeInt(
+  process.env.TOOL_ACTIVITY_ROTATION_PRESSURE_BYTES,
+  268435456,
+);
+const TOOL_ACTIVITY_ROTATION_CHECK_EVERY = Math.max(
+  1,
+  parsePositiveInt(process.env.TOOL_ACTIVITY_ROTATION_CHECK_EVERY, 100),
+);
 const CODEX_AGENT_MD = process.env.CODEX_AGENT_MD || "/home/agent/.codex/AGENTS.md";
 const CODEX_MODEL = configString([["model"], ["model", "name"]], ["CODEX_MODEL", "OPENAI_MODEL"], "gpt-5.5");
 const CODEX_REASONING_EFFORT = configString(
@@ -211,6 +219,7 @@ const metrics = {
   promptBytesSum: 0,
   responseBytesCount: 0,
   responseBytesSum: 0,
+  emptyResponsesTotal: 0,
   emptyPromptsTotal: 0,
   promptTooLargeTotal: 0,
   budgetExceededTotal: 0,
@@ -240,6 +249,9 @@ const metrics = {
   mcpConfigReloadsTotal: 0,
   sdkToolCalls: new Map(),
   sdkToolErrors: new Map(),
+  sdkErrors: new Map(),
+  sdkResultErrors: new Map(),
+  sdkClientErrors: new Map(),
   sdkQueryDurationCounts: new Map(),
   sdkQueryDurationSums: new Map(),
   sdkQueryErrorDurationCounts: new Map(),
@@ -262,6 +274,10 @@ const metrics = {
   sdkToolInputBytesSums: new Map(),
   sdkToolResultBytesCounts: new Map(),
   sdkToolResultBytesSums: new Map(),
+  toolAuditEntries: new Map(),
+  toolAuditBytesCounts: new Map(),
+  toolAuditBytesSums: new Map(),
+  toolAuditRotationPressure: new Map(),
   sdkToolCallsPerQueryCount: 0,
   sdkToolCallsPerQuerySum: 0,
   mcpOutboundRequests: new Map(),
@@ -271,6 +287,7 @@ const metrics = {
 };
 
 let codexSessions = null;
+let toolAuditWritesSinceRotationCheck = 0;
 const sessionStreams = new Map();
 const sessionStreamCallerCounts = new Map();
 let mcpToolCache = {
@@ -823,23 +840,51 @@ function appendToolResultEvent(toolName, result, traceId, context = {}) {
   });
 }
 
+function appendToolAuditRecord(record, toolName) {
+  const written = appendJsonl(TRACE_LOG, record);
+  if (!written.ok) {
+    return;
+  }
+  const tool = String(toolName || record.tool_name || record.tool || "unknown");
+  inc(metrics.toolAuditEntries, tool);
+  observeSummary(metrics.toolAuditBytesCounts, metrics.toolAuditBytesSums, tool, written.bytes);
+  if (TOOL_ACTIVITY_ROTATION_PRESSURE_BYTES <= 0) {
+    return;
+  }
+  toolAuditWritesSinceRotationCheck += 1;
+  if (toolAuditWritesSinceRotationCheck % TOOL_ACTIVITY_ROTATION_CHECK_EVERY !== 0) {
+    return;
+  }
+  try {
+    const size = fs.statSync(TRACE_LOG).size;
+    if (size >= TOOL_ACTIVITY_ROTATION_PRESSURE_BYTES) {
+      inc(metrics.toolAuditRotationPressure, "size_threshold_exceeded");
+    }
+  } catch {
+    // Best-effort only; audit metrics must never break tool execution.
+  }
+}
+
 function appendToolAuditEvent(toolName, toolInput, result, traceId, context = {}) {
   const ctx = toolTraceContext(context);
   const isError = result?.ok === false || result?.refused === true || result?.is_error === true;
-  appendJsonl(TRACE_LOG, {
-    ts: new Date().toISOString(),
-    agent: AGENT_NAME,
-    agent_id: AGENT_ID,
-    session_id: ctx.sessionId,
-    event_type: "tool_audit",
-    model: ctx.model,
-    tool_use_id: ctx.toolUseId,
-    tool_name: toolName,
-    tool_input: safeTraceValue(toolInput, 4096),
-    tool_response_preview: truncateBytes(redactText(hookInputHaystack(result)), 2048),
-    decision: isError ? "error" : "allow",
-    ...(traceId ? { trace_id: traceId } : {}),
-  });
+  appendToolAuditRecord(
+    {
+      ts: new Date().toISOString(),
+      agent: AGENT_NAME,
+      agent_id: AGENT_ID,
+      session_id: ctx.sessionId,
+      event_type: "tool_audit",
+      model: ctx.model,
+      tool_use_id: ctx.toolUseId,
+      tool_name: toolName,
+      tool_input: safeTraceValue(toolInput, 4096),
+      tool_response_preview: truncateBytes(redactText(hookInputHaystack(result)), 2048),
+      decision: isError ? "error" : "allow",
+      ...(traceId ? { trace_id: traceId } : {}),
+    },
+    toolName,
+  );
 }
 
 function recordHookDecision(toolName, toolInput, traceId, context = {}) {
@@ -854,25 +899,28 @@ function recordHookDecision(toolName, toolInput, traceId, context = {}) {
   } else if (decision === "warn") {
     inc(metrics.hookWarnings, metricKey);
   }
-  appendJsonl(TRACE_LOG, {
-    ts: new Date().toISOString(),
-    backend: BACKEND_ID,
-    event_type: "tool_audit",
-    agent: AGENT_NAME,
-    agent_id: AGENT_ID,
-    session_id: context.sessionId || "",
-    model: context.model || "",
-    tool_use_id: context.toolUseId || "",
-    tool_name: toolName,
-    tool: toolName,
-    tool_input: safeTraceValue(toolInput, 4096),
-    decision,
-    rule: rule.name,
-    source: rule.source,
-    reason: rule.reason,
-    input_preview: safeToolInputPreview(toolInput),
-    ...(traceId ? { trace_id: traceId } : {}),
-  });
+  appendToolAuditRecord(
+    {
+      ts: new Date().toISOString(),
+      backend: BACKEND_ID,
+      event_type: "tool_audit",
+      agent: AGENT_NAME,
+      agent_id: AGENT_ID,
+      session_id: context.sessionId || "",
+      model: context.model || "",
+      tool_use_id: context.toolUseId || "",
+      tool_name: toolName,
+      tool: toolName,
+      tool_input: safeTraceValue(toolInput, 4096),
+      decision,
+      rule: rule.name,
+      source: rule.source,
+      reason: rule.reason,
+      input_preview: safeToolInputPreview(toolInput),
+      ...(traceId ? { trace_id: traceId } : {}),
+    },
+    toolName,
+  );
   return { decision, rule };
 }
 
@@ -1112,11 +1160,14 @@ function appendJsonl(filePath, record) {
     const line = JSON.stringify(record);
     fs.appendFileSync(filePath, `${line}\n`, "utf8");
     inc(metrics.logEntries, loggerName);
-    inc(metrics.logBytes, loggerName, byteLength(line));
+    const bytes = byteLength(line);
+    inc(metrics.logBytes, loggerName, bytes);
+    return { ok: true, bytes };
   } catch (error) {
     metrics.logWriteErrorsTotal += 1;
     inc(metrics.logWriteErrorsByLogger, loggerName);
     console.error(`codex backend: failed to append ${filePath}:`, error);
+    return { ok: false, bytes: 0 };
   }
 }
 
@@ -2652,6 +2703,11 @@ function recordCodexQueryMetrics({
   observeSummary(metrics.textBlocksPerQueryCounts, metrics.textBlocksPerQuerySums, modelLabel, textBlockCount);
 }
 
+function isClientLevelError(error) {
+  const message = String(error?.message || error || "");
+  return /api.?key|auth|credential|connect|econn|enotfound|etimedout|timeout|network|fetch/i.test(message);
+}
+
 export async function handleA2A(payload) {
   const id = payload?.id ?? null;
   if (!payload || payload.jsonrpc !== "2.0") {
@@ -2740,6 +2796,13 @@ export async function handleA2A(payload) {
     }
   } catch (error) {
     status = "error";
+    const modelLabel = sanitizeModelLabel(model || CODEX_MODEL);
+    inc(metrics.sdkErrors, modelLabel);
+    if (isClientLevelError(error)) {
+      inc(metrics.sdkClientErrors, modelLabel);
+    } else {
+      inc(metrics.sdkResultErrors, modelLabel);
+    }
     responseText = `codex backend error: ${error?.message || String(error)}`;
   } finally {
     queryDurationSeconds = (performance.now() - requestStarted) / 1000;
@@ -2768,6 +2831,9 @@ export async function handleA2A(payload) {
 
   metrics.responseBytesCount += 1;
   metrics.responseBytesSum += byteLength(responseText);
+  if (!responseText) {
+    metrics.emptyResponsesTotal += 1;
+  }
   const ts = new Date().toISOString();
   const baseRecord = conversationBaseRecord({ ts, sessionId, contextId, messageId, model, status, traceId });
   appendJsonl(CONVERSATION_LOG, {
@@ -3311,6 +3377,9 @@ export function renderMetrics() {
     "# TYPE backend_response_length_bytes summary",
     metricLine("backend_response_length_bytes_count", metrics.responseBytesCount, labels()),
     metricLine("backend_response_length_bytes_sum", metrics.responseBytesSum, labels()),
+    "# HELP backend_empty_responses_total Total Codex tasks that produced no text output.",
+    "# TYPE backend_empty_responses_total counter",
+    metricLine("backend_empty_responses_total", metrics.emptyResponsesTotal, labels()),
     "# HELP backend_empty_prompts_total Empty prompts rejected.",
     "# TYPE backend_empty_prompts_total counter",
     metricLine("backend_empty_prompts_total", metrics.emptyPromptsTotal, labels()),
@@ -3481,6 +3550,27 @@ export function renderMetrics() {
     (model) => ({ model }),
   );
   lines.push(
+    "# HELP backend_sdk_errors_total Total Codex SDK/runtime errors by model.",
+    "# TYPE backend_sdk_errors_total counter",
+  );
+  for (const [model, value] of metrics.sdkErrors.entries()) {
+    lines.push(metricLine("backend_sdk_errors_total", value, labels({ model })));
+  }
+  lines.push(
+    "# HELP backend_sdk_result_errors_total Total Codex result/execution errors by model.",
+    "# TYPE backend_sdk_result_errors_total counter",
+  );
+  for (const [model, value] of metrics.sdkResultErrors.entries()) {
+    lines.push(metricLine("backend_sdk_result_errors_total", value, labels({ model })));
+  }
+  lines.push(
+    "# HELP backend_sdk_client_errors_total Total Codex client/auth/network errors by model.",
+    "# TYPE backend_sdk_client_errors_total counter",
+  );
+  for (const [model, value] of metrics.sdkClientErrors.entries()) {
+    lines.push(metricLine("backend_sdk_client_errors_total", value, labels({ model })));
+  }
+  lines.push(
     "# HELP backend_sdk_tool_calls_total Total Codex function-tool calls by tool name.",
     "# TYPE backend_sdk_tool_calls_total counter",
   );
@@ -3535,6 +3625,28 @@ export function renderMetrics() {
         labels({ tool }),
       ),
     );
+  }
+  lines.push(
+    "# HELP backend_tool_audit_entries_total Total tool audit rows written by Codex-owned function tools and hook gates.",
+    "# TYPE backend_tool_audit_entries_total counter",
+  );
+  for (const [tool, value] of metrics.toolAuditEntries.entries()) {
+    lines.push(metricLine("backend_tool_audit_entries_total", value, labels({ tool })));
+  }
+  appendSummaryMap(
+    lines,
+    "backend_tool_audit_bytes_per_entry",
+    "Per-row byte size of Codex tool audit entries.",
+    metrics.toolAuditBytesCounts,
+    metrics.toolAuditBytesSums,
+    (tool) => ({ tool }),
+  );
+  lines.push(
+    "# HELP backend_tool_audit_rotation_pressure_total Total checks that found tool-activity.jsonl above the rotation threshold.",
+    "# TYPE backend_tool_audit_rotation_pressure_total counter",
+  );
+  for (const [reason, value] of metrics.toolAuditRotationPressure.entries()) {
+    lines.push(metricLine("backend_tool_audit_rotation_pressure_total", value, labels({ reason })));
   }
   lines.push(
     "# HELP backend_mcp_outbound_requests_total Total outbound MCP tool invocations issued by this backend.",

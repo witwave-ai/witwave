@@ -729,6 +729,8 @@ extensions:
   assert.match(body, /backend_sdk_tool_duration_seconds_count\{.*tool="write_memory_file".*\} 1/);
   assert.match(body, /backend_sdk_tool_call_input_size_bytes_count\{.*tool="write_memory_file".*\} 1/);
   assert.match(body, /backend_sdk_tool_result_size_bytes_count\{.*tool="write_memory_file".*\} 1/);
+  assert.match(body, /backend_tool_audit_entries_total\{.*tool="write_memory_file".*\} [1-9]/);
+  assert.match(body, /backend_tool_audit_bytes_per_entry_count\{.*tool="write_memory_file".*\} [1-9]/);
 });
 
 test("resolveMemoryPath keeps memory tools inside the configured root", () => {
@@ -786,6 +788,7 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_log_bytes_total\{.*logger="conversation".*\} [1-9]/);
   assert.match(body, /backend_log_write_errors_total\{.*backend="codex".*\} 0/);
   assert.match(body, /backend_prompt_length_bytes_count/);
+  assert.match(body, /backend_empty_responses_total/);
   assert.match(body, /backend_active_sessions/);
   assert.match(body, /backend_concurrent_queries\{.*backend="codex".*\} 0/);
   assert.match(body, /backend_running_tasks\{.*backend="codex".*\} 0/);
@@ -795,6 +798,9 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_sdk_messages_per_query_count\{.*model="gpt-5.5".*\} [1-9]/);
   assert.match(body, /backend_sdk_turns_per_query_count\{.*model="gpt-5.5".*\} [1-9]/);
   assert.match(body, /backend_sdk_tokens_per_query_count\{.*model="gpt-5.5".*\} [1-9]/);
+  assert.match(body, /backend_sdk_errors_total/);
+  assert.match(body, /backend_sdk_result_errors_total/);
+  assert.match(body, /backend_sdk_client_errors_total/);
   assert.match(body, /backend_text_blocks_per_query_count\{.*model="gpt-5.5".*\} [1-9]/);
   assert.match(body, /backend_context_usage_percent_count/);
   assert.match(body, /backend_context_warnings_total/);
@@ -804,6 +810,7 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_lru_cache_utilization_percent/);
   assert.match(body, /backend_mcp_config_reloads_total/);
   assert.match(body, /backend_mcp_servers_active/);
+  assert.match(body, /backend_tool_audit_rotation_pressure_total/);
   assert.match(body, /backend_budget_exceeded_total/);
   assert.match(body, /agent="/);
   assert.match(body, /backend="codex"/);

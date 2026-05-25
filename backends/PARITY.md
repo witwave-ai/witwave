@@ -37,7 +37,7 @@ execution layer.
 | Prompt-size rejection                 | Full    | Full    | Full    | Full    | `MAX_PROMPT_BYTES` now covers all LLM-backed A2A paths.                                                |
 | Token budget handling                 | Full    | Full    | Full    | Full    | `max_tokens` style budget checks exist across the LLM backends.                                        |
 | Context/token metrics                 | Full    | Full    | Full    | Full    | Codex reports budget-derived usage, warning, and exhaustion counters.                                  |
-| SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex now covers query/session/tool families; some SDK-specific series remain intentionally thinner.   |
+| SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex covers query/session/tool-audit/error families; some SDK-specific series remain thinner.         |
 | File watcher/reload metrics           | Full    | Full    | Partial | Full    | Codex exposes MCP config reload state but does not yet run Python-style file watchers.                 |
 | SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex uses a JSON response-session store rather than the shared SQLite task-store path.                |
 | Focused regression tests              | Partial | Full    | Partial | Full    | Codex tests are broad but concentrated in one large JS file.                                           |
