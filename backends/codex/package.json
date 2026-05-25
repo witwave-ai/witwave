@@ -6,7 +6,7 @@
   "description": "Witwave Codex-native backend A2A server.",
   "scripts": {
     "start": "node main.js",
-    "test": "node --test test_codex_backend.js"
+    "test": "node --test test_*.js"
   },
   "engines": {
     "node": ">=20"

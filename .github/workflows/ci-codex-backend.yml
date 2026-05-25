@@ -48,9 +48,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           npx --yes prettier@3.4.2 --check \
-            backends/codex/main.js \
-            backends/codex/otel.js \
-            backends/codex/test_codex_backend.js \
+            backends/codex/*.js \
             backends/codex/package.json \
             backends/codex/README.md \
             .github/workflows/ci-codex-backend.yml
