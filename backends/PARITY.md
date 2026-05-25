@@ -50,8 +50,8 @@ execution layer.
    become active Node instrumentation and which should stay documented as runtime-specific.
 2. Cross-backend regression symmetry: use Codex's focused contract-test shape as the pattern when tightening any backend
    that still relies on broad or mixed-purpose tests.
-3. Hook semantics: keep Claude as the reference, but make each backend's hook boundary explicit so users know what is
-   denied before execution and what is only audited.
+3. Hook enforcement parity: the backend guide now states each backend's interception boundary; remaining work is making
+   OpenAI/Gemini enforcement converge where their SDKs allow it.
 4. MCP transport documentation: tighten backend docs so the distinction between stdio SDK MCP and in-cluster HTTP MCP is
    clear and consistent.
 5. Memory semantics: document which backends have native file-memory tools, which only persist session history, and

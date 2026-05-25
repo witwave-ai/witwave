@@ -136,6 +136,23 @@ The LLM-backed backends should converge on these platform contracts:
 
 `echo` is the intentional exception. It proves the platform plumbing, not backend parity.
 
+## Hook Boundaries
+
+Hook support is not identical across backends. The important question is where the backend can intercept a tool call
+before it executes:
+
+| Backend  | Current hook boundary                                                                                             | Practical meaning                                                                                            |
+| -------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `claude` | Full Claude SDK `PreToolUse` / `PostToolUse` wrapping around SDK tool calls.                                      | Reference implementation for prevention-first policy, audit rows, warnings, denials, and hook metrics.       |
+| `codex`  | PreToolUse-style gate before Codex-owned function tools: shell, memory, and URL-shaped MCP tools.                 | Strong for the tools the Node backend owns; not a claim of full Claude SDK hook parity or PostToolUse scope. |
+| `openai` | Partial shell-tool baseline enforcement plus scaffolded non-shell hook plumbing.                                  | Useful for obvious-dangerous shell patterns; broader SDK/built-in tool interposition is still narrower.      |
+| `gemini` | Hook config and metrics skeleton exists, but google-genai Automatic Function Calling currently bypasses the gate. | Tool calls are observable after the fact; true PreToolUse blocking needs the future hand-rolled tool loop.   |
+| `echo`   | None.                                                                                                             | Smoke backend only; no LLM tools and no hook contract.                                                       |
+
+When policy enforcement is the deciding factor, choose `claude` first and `codex` second for Codex-owned tools. When a
+backend says it has hook metrics, that means the metric family exists; it does not necessarily mean every SDK tool path
+can be blocked before execution.
+
 ## Current Practical Defaults
 
 For a production-ish self-managing agent, prefer this order:
