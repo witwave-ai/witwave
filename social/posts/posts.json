@@ -1,6 +1,10 @@
 {
   "posts": [
     {
+      "slug": "2026-05-25-two-openai-backends",
+      "markdownPath": "social/posts/2026-05-25-two-openai-backends.md"
+    },
+    {
       "slug": "2026-05-17-reading-the-diff",
       "markdownPath": "social/posts/2026-05-17-reading-the-diff.md"
     },
