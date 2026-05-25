@@ -10,15 +10,15 @@ version: 0.1.0
 
 # ask-peer-clarification
 
-A focused wrapper around `call-peer` for the specific case where Mira has detected a platform anomaly that points at
-one specific peer AND the external evidence alone doesn't fully explain the cause. The peer's subjective context about
-their own state often clarifies whether the external signal is a real fault or a benign artifact, and that enriches
-the Zora handoff.
+A focused wrapper around `call-peer` for the specific case where Mira has detected a platform anomaly that points at one
+specific peer AND the external evidence alone doesn't fully explain the cause. The peer's subjective context about their
+own state often clarifies whether the external signal is a real fault or a benign artifact, and that enriches the Zora
+handoff.
 
-The distinction from `call-peer` matters: every other peer's `call-peer` use is for delegating WORK ("Iris, please
-push these commits"). Mira's use is purely for INFORMATION ("Evan, your pod restarted at 14:32Z with OOMKilled — are
-you aware of any heavy operation around that time?"). The framing tells the recipient peer to answer briefly with the
-fact, not to launch a skill or take an action.
+The distinction from `call-peer` matters: every other peer's `call-peer` use is for delegating WORK ("Iris, please push
+these commits"). Mira's use is purely for INFORMATION ("Evan, your pod restarted at 14:32Z with OOMKilled — are you
+aware of any heavy operation around that time?"). The framing tells the recipient peer to answer briefly with the fact,
+not to launch a skill or take an action.
 
 ## Inputs
 
@@ -26,8 +26,8 @@ fact, not to launch a skill or take an action.
   Required. Use the peer whose pod / activity / memory the external signal references — don't ask Iris about Evan's
   restart.
 - **`anomaly`** — one-line summary of the external evidence: what Mira observed, where, when. Required.
-- **`question`** — the one specific question. Required. Should be answerable in ≤ 50 words. Read-only framing only
-  ("are you aware of X?", "do you have context for Y?") — never "please do Z."
+- **`question`** — the one specific question. Required. Should be answerable in ≤ 50 words. Read-only framing only ("are
+  you aware of X?", "do you have context for Y?") — never "please do Z."
 
 ## Instructions
 
@@ -83,16 +83,14 @@ call-peer peer=<peer> prompt=<the composed text above>
 
 Three useful shapes:
 
-- **Subjective context that clarifies the anomaly** — fold into the Zora handoff body under
-  `Peer follow-up (if any)` with attribution: "Asked Evan: ... / Reply: 'I dispatched a deep risk-work
-  sweep at 14:30Z that touched the full source tree; OOMKilled was probably memory pressure from that.'"
-  This is the highest-value shape — Zora now has both the external evidence + the peer's inside view.
-- **"I don't have context on this"** — proceed with the Zora handoff using external evidence only. Note
-  in the handoff that the peer was asked and didn't have additional context (so Zora knows the evidence
-  is the full picture).
-- **Pushback on framing** — the peer says "your interpretation of X is wrong; the actual situation is
-  Y." Update the handoff with the corrected framing. Optionally note in the handoff that the peer
-  clarified the framing.
+- **Subjective context that clarifies the anomaly** — fold into the Zora handoff body under `Peer follow-up (if any)`
+  with attribution: "Asked Evan: ... / Reply: 'I dispatched a deep risk-work sweep at 14:30Z that touched the full
+  source tree; OOMKilled was probably memory pressure from that.'" This is the highest-value shape — Zora now has both
+  the external evidence + the peer's inside view.
+- **"I don't have context on this"** — proceed with the Zora handoff using external evidence only. Note in the handoff
+  that the peer was asked and didn't have additional context (so Zora knows the evidence is the full picture).
+- **Pushback on framing** — the peer says "your interpretation of X is wrong; the actual situation is Y." Update the
+  handoff with the corrected framing. Optionally note in the handoff that the peer clarified the framing.
 
 ### 5. Log the clarification round-trip
 
@@ -100,19 +98,19 @@ Append to the `peer_followup` section of the current snapshot in
 `/workspaces/witwave-self/memory/agents/mira/platform-health/snapshots/YYYY-MM-DD.jsonl`:
 
 ```yaml
-- questions_sent: [{peer: <name>, anomaly: <one-line>, question: <one-line>}]
-- responses: [{peer: <name>, reply: <peer's-reply-summary, ≤ 30 words>, outcome: <inline | reframed | no-context>}]
+- questions_sent: [{ peer: <name>, anomaly: <one-line>, question: <one-line> }]
+- responses: [{ peer: <name>, reply: <peer's-reply-summary, ≤ 30 words>, outcome: <inline | reframed | no-context> }]
 ```
 
-This way a human auditing Mira's handoff history can see what was asked, what came back, and how it shaped the
-Zora handoff.
+This way a human auditing Mira's handoff history can see what was asked, what came back, and how it shaped the Zora
+handoff.
 
 ## Use sparingly — read-first is your default
 
 The point of this skill is to AVOID speculating about peer-internal state in handoffs to Zora. But every clarification
-round-trip interrupts the peer (who is doing real work) and adds token cost — exactly the cost concern that drove
-Zora's cadence-tuning work. **Default mode: don't ask.** Only invoke after the read-first checklist comes up empty AND
-all three gates pass.
+round-trip interrupts the peer (who is doing real work) and adds token cost — exactly the cost concern that drove Zora's
+cadence-tuning work. **Default mode: don't ask.** Only invoke after the read-first checklist comes up empty AND all
+three gates pass.
 
 Most ticks will ask zero peers anything. That's the design — Mira is read-mostly, the team is work-mostly, the channels
 are quiet by default.
@@ -127,5 +125,5 @@ are quiet by default.
   for live questions about specific detected anomalies. Don't use it as a "how are you doing?" check-in.
 - **Asking peers about decisions outside their domain.** Don't ask Iris about why Evan flagged a bug; ask Evan. Don't
   ask Evan about why a release pipeline failed; ask Iris.
-- **Routine cross-checks during normal Green ticks.** Skip this skill entirely when the platform is Green — there's
-  no anomaly to enrich.
+- **Routine cross-checks during normal Green ticks.** Skip this skill entirely when the platform is Green — there's no
+  anomaly to enrich.

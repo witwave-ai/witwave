@@ -22,10 +22,10 @@ files only.
 
 - ✅ `/workspaces/witwave-self/memory/agents/<own>/**` — your private memory namespace.
 - ✅ `.agents/self/<own>/.witwave/agent-card.md` — your harness-side A2A identity card (consumed by `gh-team-list`,
-  future `ww team list`, dashboards, and any other surface that reads agent-cards). **Canonical location** — every
-  peer has this; it's the one source of truth for what your card says.
-- ✅ `.agents/self/<own>/.claude/agent-card.md` — optional backend-local identity card, only if it already exists.
-  No peer ships one today; if a future agent adds one, keep it in sync with the canonical `.witwave/` copy.
+  future `ww team list`, dashboards, and any other surface that reads agent-cards). **Canonical location** — every peer
+  has this; it's the one source of truth for what your card says.
+- ✅ `.agents/self/<own>/.claude/agent-card.md` — optional backend-local identity card, only if it already exists. No
+  peer ships one today; if a future agent adds one, keep it in sync with the canonical `.witwave/` copy.
 - ❌ Any other agent's files — that's their lane. If you notice cross-agent drift, log it to your own
   `cross_agent_observations.md` so the next zora team-tidy pass can act on it.
 - ❌ Source code (`harness/`, `backends/`, `tools/`, `shared/`, etc.) — never your domain.

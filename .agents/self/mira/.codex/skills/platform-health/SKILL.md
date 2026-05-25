@@ -233,8 +233,8 @@ kubectl get deploy,pods --namespace witwave-system -o json
 kubectl get events --namespace witwave-system --sort-by=.lastTimestamp | tail -40
 ```
 
-**Resource metrics (v0.3.0 — promoted from optional).** Run these on every tick when the metrics-server API is reachable.
-Record results into `resources.*` in the snapshot. When the metrics API is NOT available, set
+**Resource metrics (v0.3.0 — promoted from optional).** Run these on every tick when the metrics-server API is
+reachable. Record results into `resources.*` in the snapshot. When the metrics API is NOT available, set
 `resources.metrics_api_available: false` once and continue with the rest of the check — don't fail the whole skill.
 
 ```sh
@@ -251,8 +251,8 @@ Capture:
 - **Actual-vs-request ratios per pod** — compute `current_usage / spec.containers[].resources.requests.{cpu,memory}` for
   each container in each pod; record into `resources.pod_cpu_vs_request_pct` and `resources.pod_mem_vs_request_pct`. A
   pod consistently running at >150% of its memory request is on the OOM-kill path; <30% is overprovisioned.
-- **Node pressure conditions** — every node's `.status.conditions[]` for `MemoryPressure`, `DiskPressure`, `PIDPressure`.
-  Record any non-`False` condition in `resources.node_pressure` keyed by node name.
+- **Node pressure conditions** — every node's `.status.conditions[]` for `MemoryPressure`, `DiskPressure`,
+  `PIDPressure`. Record any non-`False` condition in `resources.node_pressure` keyed by node name.
 - **OOM-killed pods in the last 24h** — scan `kubectl get events -A --field-selector reason=OOMKilling` (or events on
   individual pods showing OOM in their lastState). Append to `resources.oom_kills_24h` (rolling window — entries older
   than 24h drop off on subsequent snapshots).
@@ -262,8 +262,8 @@ kubectl get nodes -o json | jq '.items[] | {name: .metadata.name, conditions: [.
 kubectl get events --all-namespaces --field-selector reason=OOMKilling --sort-by=.lastTimestamp
 ```
 
-**PVC capacity utilization (v0.3.0).** Track how full each PVC actually is, not just whether it's bound. Two
-strategies depending on what's available:
+**PVC capacity utilization (v0.3.0).** Track how full each PVC actually is, not just whether it's bound. Two strategies
+depending on what's available:
 
 ```sh
 # Preferred: metrics-server style or kubelet stats summary, when reachable.
@@ -273,9 +273,9 @@ kubectl get --raw "/api/v1/nodes/<node>/proxy/stats/summary" 2>/dev/null | jq '.
 kubectl exec -n witwave-self <pod> -c <container-with-mount> -- df -h /workspaces/witwave-self/source 2>/dev/null
 ```
 
-Record per-claim utilization percent in `storage.pvc_capacity_pct`. Treat ≥80% as Yellow (handoff candidate),
-≥95% as Red (immediate handoff). Set to `null` per claim when neither source is reachable so historical
-comparison shows when capacity reporting starts working.
+Record per-claim utilization percent in `storage.pvc_capacity_pct`. Treat ≥80% as Yellow (handoff candidate), ≥95% as
+Red (immediate handoff). Set to `null` per claim when neither source is reachable so historical comparison shows when
+capacity reporting starts working.
 
 If an agent is degraded, inspect just that agent before broadening:
 
@@ -301,12 +301,12 @@ they identify the cause.
 
 ### 4.5. Inter-agent connectivity (v0.3.0)
 
-The platform's value depends on agents being able to reach each other for A2A dispatch, on each container exposing
-its Prometheus surface, and on gitSync sidecars actually pulling latest identity files. None of those show up in pod
+The platform's value depends on agents being able to reach each other for A2A dispatch, on each container exposing its
+Prometheus surface, and on gitSync sidecars actually pulling latest identity files. None of those show up in pod
 readiness — readiness probes only check the harness's own `/health`. Add three reachability sweeps to every tick:
 
-**A2A peer reachability.** Each agent exposes `/.well-known/agent.json` on its harness port. From inside any pod (or
-via Service DNS resolution from `mira`'s own pod), probe every agent's well-known endpoint:
+**A2A peer reachability.** Each agent exposes `/.well-known/agent.json` on its harness port. From inside any pod (or via
+Service DNS resolution from `mira`'s own pod), probe every agent's well-known endpoint:
 
 ```sh
 for agent in $(ww agent list --namespace witwave-self --json | jq -r '.[].name'); do
@@ -316,8 +316,8 @@ for agent in $(ww agent list --namespace witwave-self --json | jq -r '.[].name')
 done
 ```
 
-Record unreachable peers in `connectivity.a2a_unreachable`. An unreachable peer is what causes Zora's `call-peer`
-to fail; surfacing it BEFORE the stuck-peer escalation fires gives Zora better evidence.
+Record unreachable peers in `connectivity.a2a_unreachable`. An unreachable peer is what causes Zora's `call-peer` to
+fail; surfacing it BEFORE the stuck-peer escalation fires gives Zora better evidence.
 
 **Prometheus `/metrics` endpoint reachability.** Every harness + backend container exposes `/metrics` on the dedicated
 metrics port (default 9000, per `METRICS_PORT`). If the metrics surface is dead, observability is dead and Mira herself
@@ -344,9 +344,9 @@ for pod in $(kubectl get pods -n witwave-self -l 'app.kubernetes.io/component=ag
 done
 ```
 
-Compute seconds-since-last-successful-pull per agent and record in `connectivity.gitsync_lag_seconds`. Treat >300s
-(5 min, two heartbeats) as a Yellow signal; >900s (15 min, four heartbeats) as Red — the agent is meaningfully out of
-sync with what's on `main`.
+Compute seconds-since-last-successful-pull per agent and record in `connectivity.gitsync_lag_seconds`. Treat >300s (5
+min, two heartbeats) as a Yellow signal; >900s (15 min, four heartbeats) as Red — the agent is meaningfully out of sync
+with what's on `main`.
 
 ### 5. Runtime persistence posture
 
@@ -431,19 +431,19 @@ When a finding is systemic, repeated, or problematic enough to require team work
 `call-peer`.
 
 **Optional pre-handoff enrichment (v0.3.0).** When an external signal points at one specific peer (a restart spike, a
-token anomaly, an unreachable A2A endpoint, a missing-memory-write gap) AND the evidence alone doesn't fully explain
-the cause, you may send THAT peer a single focused A2A question to enrich the handoff. The peer's subjective context
-about their own state often clarifies whether the external signal is a real fault or a benign artifact.
+token anomaly, an unreachable A2A endpoint, a missing-memory-write gap) AND the evidence alone doesn't fully explain the
+cause, you may send THAT peer a single focused A2A question to enrich the handoff. The peer's subjective context about
+their own state often clarifies whether the external signal is a real fault or a benign artifact.
 
 Rules for the targeted follow-up:
 
-1. **One question per anomaly, one peer per question.** No fan-out polling. No multi-turn back-and-forth — if the
-   single answer isn't enough, hand off to Zora with what you have.
+1. **One question per anomaly, one peer per question.** No fan-out polling. No multi-turn back-and-forth — if the single
+   answer isn't enough, hand off to Zora with what you have.
 2. **Only fires on existing evidence.** No routine polling. The trigger is an external signal you can point at; the
    question is "I observed X, do you have context that helps explain it?"
 3. **Read-only framing.** Ask for information, never for action. Wrong: "please restart your skill." Right: "your pod
-   restarted at <time> with OOMKilled; are you aware of any heavy operation around that time before I escalate this
-   to Zora?"
+   restarted at <time> with OOMKilled; are you aware of any heavy operation around that time before I escalate this to
+   Zora?"
 4. **Cost-bounded.** Skip the peer follow-up entirely on Green ticks. Token cost is a real concern (see Zora's cadence
    tuning); peer follow-up only pays off when it materially improves a handoff Zora is going to act on anyway.
 5. **Record both sides in the snapshot.** Append to `peer_followup.questions_sent` and `peer_followup.responses` so the
