@@ -81,7 +81,7 @@ async def fetch_backend_metrics(backends: list[BackendConfig]) -> str:
         )
 
     parts = []
-    for backend, result in zip(reachable, results):
+    for backend, result in zip(reachable, results, strict=True):
         if isinstance(result, BaseException):
             logger.warning(f"Backend {backend.id!r} /metrics gather error: {result!r} — skipping")
             if harness_metrics_backend_fetch_errors_total is not None:
