@@ -584,11 +584,11 @@ async def health_ready(request: Request) -> JSONResponse:
         # refresh critical section (once per TTL) rather than on every probe,
         # so the metric cost scales with refresh frequency, not probe rate.
         if harness_backend_reachable is not None:
-            for b, ok in zip(backend_configs, results):
+            for b, ok in zip(backend_configs, results, strict=True):
                 harness_backend_reachable.labels(backend=b.id).set(1 if ok else 0)
 
         if not all(results):
-            unhealthy = [b.id for b, ok in zip(backend_configs, results) if not ok]
+            unhealthy = [b.id for b, ok in zip(backend_configs, results, strict=True) if not ok]
             body = {"status": "degraded", "unhealthy_backends": unhealthy}
             status_code = 503
         else:
@@ -915,7 +915,7 @@ async def main():
                 *[_fetch_card(b, client) for b in reachable_backends],
                 return_exceptions=True,
             )
-            for backend, result in zip(reachable_backends, backend_entries):
+            for backend, result in zip(reachable_backends, backend_entries, strict=True):
                 if isinstance(result, Exception):
                     logger.debug(f"Backend {backend.id!r} agent card fetch raised: {result!r}")
                     agents.append(
@@ -2401,7 +2401,7 @@ async def main():
                     _warned = True
                     unhealthy = [
                         b.id
-                        for b, r in zip(backend_configs, results)
+                        for b, r in zip(backend_configs, results, strict=True)
                         if isinstance(r, Exception) or r.status_code != 200
                     ]
                     logger.warning(
