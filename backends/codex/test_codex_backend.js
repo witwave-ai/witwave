@@ -719,6 +719,24 @@ extensions:
   assert.equal(auditRow.tool_name, "write_memory_file");
   assert.equal(auditRow.decision, "deny");
 
+  fs.writeFileSync(
+    process.env.HOOKS_CONFIG_PATH,
+    `
+extensions:
+  - name: deny-reloaded-memory-marker
+    tool: write_memory_file
+    deny_if_match: "DO_NOT_WRITE_AFTER_RELOAD"
+    reason: "test extension reload deny"
+`,
+    "utf8",
+  );
+  const reloaded = evaluatePreToolUse("write_memory_file", {
+    path: "platform-health/hook.md",
+    content: "DO_NOT_WRITE_AFTER_RELOAD",
+  });
+  assert.equal(reloaded.decision, "deny");
+  assert.equal(reloaded.rule.name, "deny-reloaded-memory-marker");
+
   const body = renderMetrics();
   assert.match(
     body,
@@ -733,6 +751,7 @@ extensions:
   assert.match(body, /backend_sdk_tool_result_size_bytes_count\{.*tool="write_memory_file".*\} 1/);
   assert.match(body, /backend_tool_audit_entries_total\{.*tool="write_memory_file".*\} [1-9]/);
   assert.match(body, /backend_tool_audit_bytes_per_entry_count\{.*tool="write_memory_file".*\} [1-9]/);
+  assert.match(body, /backend_hooks_config_reloads_total\{.*backend="codex".*\} [1-9]/);
 });
 
 test("resolveMemoryPath keeps memory tools inside the configured root", () => {

@@ -253,6 +253,7 @@ const metrics = {
   hookWarnings: new Map(),
   hookEvaluations: new Map(),
   hookConfigErrors: new Map(),
+  hookConfigReloadsTotal: 0,
   mcpConfigErrors: new Map(),
   mcpConfigReloadsTotal: 0,
   sdkToolCalls: new Map(),
@@ -684,6 +685,7 @@ function loadHookExtensionRules() {
   if (signature === hookExtensionRuleCache.signature) {
     return hookExtensionRuleCache.rules;
   }
+  const previousSignature = hookExtensionRuleCache.signature;
   if (signature === "missing") {
     hookExtensionRuleCache = { signature, rules: [] };
     return hookExtensionRuleCache.rules;
@@ -692,6 +694,9 @@ function loadHookExtensionRules() {
   try {
     const rules = loadHookExtensionRulesFromText(raw);
     hookExtensionRuleCache = { signature, rules };
+    if (previousSignature && previousSignature !== signature) {
+      metrics.hookConfigReloadsTotal += 1;
+    }
     return rules;
   } catch (error) {
     console.warn(`codex backend: failed to load hooks config at ${HOOKS_CONFIG_PATH}: ${error?.message || error}`);
@@ -3759,6 +3764,9 @@ export function renderMetrics() {
     lines.push(metricLine("backend_hooks_evaluations_total", value, labels({ tool, decision })));
   }
   lines.push(
+    "# HELP backend_hooks_config_reloads_total Total successful hooks.yaml reloads observed by Codex.",
+    "# TYPE backend_hooks_config_reloads_total counter",
+    metricLine("backend_hooks_config_reloads_total", metrics.hookConfigReloadsTotal, labels()),
     "# HELP backend_hooks_config_errors_total Total hooks.yaml parse/reload/validation errors by reason.",
     "# TYPE backend_hooks_config_errors_total counter",
   );
