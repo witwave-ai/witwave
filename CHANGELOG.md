@@ -6,6 +6,17 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.32.0] — 2026-05-25
+
+Backends now publish their hook enforcement mode through both a dedicated endpoint and the health surface, so the
+harness and operators can see which mode each backend is running in without inspecting the hook config directly.
+
+### Added
+
+- **backends**: Expose the active hook enforcement mode on each backend (claude, codex, gemini, openai) and surface the
+  same value as a field in the health/readiness payload so platform-level tooling can read it through the existing probe
+  channels.
+
 ## [0.31.1] — 2026-05-25
 
 Quiet patch sweeping up lint, CI, and a medium-severity dependency CVE. Internal-only fixes — no runtime behaviour
