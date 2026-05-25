@@ -29,6 +29,7 @@ execution layer.
 | Persistent session continuity         | Full    | Full    | Full    | Full    | The persistence mechanism differs by SDK/runtime.                                                      |
 | Conversation and tool/activity logs   | Full    | Full    | Full    | Full    | Codex now writes Claude-shaped tool trace rows for its owned tools.                                    |
 | Primary identity document             | Full    | Full    | Full    | Full    | `CLAUDE.md`, `.openai/AGENTS.md`, `.codex/AGENTS.md`, and `GEMINI.md`.                                 |
+| Identity revision metric              | Gap     | Full    | Full    | Full    | Codex reports the active `AGENTS.md` revision; Claude has not adopted this metric yet.                 |
 | Skill-folder convention               | Full    | Partial | Partial | Gap     | Claude has the strongest convention; OpenAI/Codex can mirror docs, Gemini lacks a native skill folder. |
 | Memory surface                        | Full    | Partial | Full    | Partial | Codex has bounded memory tools; Gemini persists sessions but lacks native file-memory tooling.         |
 | MCP consumption                       | Full    | Full    | Partial | Partial | Codex supports URL-shaped MCP tools; SDK-backed transports differ by backend.                          |

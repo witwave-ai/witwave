@@ -15,6 +15,8 @@ process.env.LOG_REDACT = "true";
 process.env.CODEX_CONFIG_TOML = path.join(tmp, "config.toml");
 process.env.HOOKS_CONFIG_PATH = path.join(tmp, "hooks.yaml");
 process.env.HOOKS_BASELINE_ENABLED = "true";
+process.env.CODEX_AGENT_MD = path.join(tmp, "AGENTS.md");
+fs.writeFileSync(process.env.CODEX_AGENT_MD, "# Codex test identity\n", "utf8");
 fs.writeFileSync(
   process.env.CODEX_CONFIG_TOML,
   `
@@ -781,6 +783,7 @@ test("renderMetrics exposes the common backend label shape", async () => {
   });
   const body = renderMetrics();
   assert.match(body, /backend_up/);
+  assert.match(body, /backend_agent_md_revision\{.*revision="[a-f0-9]{12}".*\} 1/);
   assert.match(body, /backend_a2a_requests_total/);
   assert.match(body, /backend_model_requests_total\{.*model="gpt-5.5".*\} [1-9]/);
   assert.match(body, /backend_a2a_request_duration_seconds_count\{.*backend="codex".*\} [1-9]/);

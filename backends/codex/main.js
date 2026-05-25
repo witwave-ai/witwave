@@ -1361,6 +1361,14 @@ function loadInstructions() {
   return readTextIfExists(CODEX_AGENT_MD).trim();
 }
 
+function computeAgentMdRevision(content) {
+  return crypto
+    .createHash("sha256")
+    .update(String(content || ""), "utf8")
+    .digest("hex")
+    .slice(0, 12);
+}
+
 export function buildAgentCard() {
   return {
     name: AGENT_NAME,
@@ -2561,6 +2569,7 @@ function recordSessionIfComplete(sessionId, response, model) {
 async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sessionId], hooks = {}) {
   const model = modelForRequest(metadata);
   const instructions = loadInstructions();
+  const agentMdRevision = computeAgentMdRevision(instructions);
   const traceId = traceIdForMetadata(metadata);
   const maxTokens = maxTokensForRequest(metadata);
   if (shouldUseStub()) {
@@ -2608,7 +2617,11 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
     request,
     storedSessionId || sessionId,
     hooks.onAssistantDelta,
-    { "session.id_hash": sessionHash(sessionId), "response.previous_id": request.previous_response_id || "" },
+    {
+      "session.id_hash": sessionHash(sessionId),
+      "response.previous_id": request.previous_response_id || "",
+      "codex.agent_md_revision": agentMdRevision,
+    },
   );
   recordSessionIfComplete(sessionId, response, model);
   let budget = budgetResult(response, maxTokens);
@@ -2650,7 +2663,12 @@ async function runCodex(prompt, metadata, sessionId, candidateSessionIds = [sess
           ...(maxOutputTokens !== undefined ? { max_output_tokens: maxOutputTokens } : {}),
         },
         hooks.onAssistantDelta,
-        { "session.id_hash": sessionHash(sessionId), "response.previous_id": response.id || "", "tool.loop": "true" },
+        {
+          "session.id_hash": sessionHash(sessionId),
+          "response.previous_id": response.id || "",
+          "tool.loop": "true",
+          "codex.agent_md_revision": agentMdRevision,
+        },
       );
       turnsThisQuery += 1;
       recordSessionIfComplete(sessionId, response, model);
@@ -3313,6 +3331,7 @@ function appendScalarSummary(lines, name, help, count, sum) {
 
 export function renderMetrics() {
   const uptime = (Date.now() - STARTED_AT.getTime()) / 1000;
+  const agentMdRevision = computeAgentMdRevision(loadInstructions());
   const lines = [
     "# HELP backend_up Whether the backend process is running.",
     "# TYPE backend_up gauge",
@@ -3320,6 +3339,9 @@ export function renderMetrics() {
     "# HELP backend_info Backend identity and version.",
     "# TYPE backend_info gauge",
     metricLine("backend_info", 1, labels({ version: AGENT_VERSION })),
+    "# HELP backend_agent_md_revision Currently-active AGENTS.md revision.",
+    "# TYPE backend_agent_md_revision gauge",
+    metricLine("backend_agent_md_revision", 1, labels({ revision: agentMdRevision })),
     "# HELP backend_uptime_seconds Backend process uptime in seconds.",
     "# TYPE backend_uptime_seconds gauge",
     metricLine("backend_uptime_seconds", uptime.toFixed(3), labels()),
