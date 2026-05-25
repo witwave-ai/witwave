@@ -6,6 +6,21 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.31.1] — 2026-05-25
+
+Quiet patch sweeping up lint, CI, and a medium-severity dependency CVE. Internal-only fixes — no runtime behaviour
+change in well-formed code.
+
+### Fixed
+
+- **backends/codex**: Bump `yaml` 2.8.1 → 2.8.3 to patch CVE-2026-33532 (MEDIUM) — a deeply-nested-YAML parsing DoS
+  reachable through the user-supplied `HOOKS_CONFIG_PATH`.
+- **harness**: Mark every `zip(...)` paired with `asyncio.gather` results as `strict=True` across `conversations_proxy`,
+  `main`, and `metrics_proxy` so any future refactor that breaks the `len(results) == len(backends)` invariant fails
+  loud instead of silently dropping metrics labels, agent-card entries, or degraded-readiness signals.
+- **ci**: Re-sort Python imports and reformat tests to the newer ruff baseline so `CI — Python Services` runs clean
+  against the latest `ruff` that CI pulls.
+
 ## [0.31.0] — 2026-05-25
 
 Codex backend reaches Prometheus-and-trace parity with the Claude backend, and `ww` gains a one-shot way to pull every
