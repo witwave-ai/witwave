@@ -21,9 +21,11 @@ files only.
 **Strictly own namespace.** This is the boundary that keeps self-tidy safe to run autonomously without coordination:
 
 - ✅ `/workspaces/witwave-self/memory/agents/<own>/**` — your private memory namespace.
-- ✅ `.agents/self/<own>/.claude/agent-card.md` — your A2A identity card (consumed by `gh-team-list`, future
-  `ww team list`, dashboards, and any other surface that reads agent-cards).
-- ✅ `.agents/self/<own>/.witwave/agent-card.md` — your harness-side identity card (same content shape).
+- ✅ `.agents/self/<own>/.witwave/agent-card.md` — your harness-side A2A identity card (consumed by `gh-team-list`,
+  future `ww team list`, dashboards, and any other surface that reads agent-cards). **Canonical location** — every
+  peer has this; it's the one source of truth for what your card says.
+- ✅ `.agents/self/<own>/.claude/agent-card.md` — optional backend-local identity card, only if it already exists.
+  No peer ships one today; if a future agent adds one, keep it in sync with the canonical `.witwave/` copy.
 - ❌ Any other agent's files — that's their lane. If you notice cross-agent drift, log it to your own
   `cross_agent_observations.md` so the next zora team-tidy pass can act on it.
 - ❌ Source code (`harness/`, `backends/`, `tools/`, `shared/`, etc.) — never your domain.
@@ -96,7 +98,8 @@ team-tidy pass.
 
 ### 4. Public-presentation drift check
 
-Read your own `agent-card.md` (both `.claude/` and `.witwave/` copies — they should match). Verify:
+Read your own `.witwave/agent-card.md` (the canonical copy) and any backend-local copy if it exists (e.g.,
+`.claude/agent-card.md`) — they should match. Verify:
 
 - **Capability descriptions still match current skills.** List the directories in your `.claude/skills/`. For each,
   verify the agent-card mentions or implies it. Drift = card claims a skill you don't have, or has a skill you've
