@@ -9,8 +9,9 @@ import logging
 from urllib.parse import urlparse, urlunparse
 
 import httpx
-from backends.config import BackendConfig
 from metrics import harness_metrics_backend_fetch_errors_total
+
+from backends.config import BackendConfig
 
 logger = logging.getLogger(__name__)
 

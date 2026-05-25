@@ -8,8 +8,9 @@ import time
 from datetime import datetime, timezone
 
 import httpx
-from backends.config import BackendConfig
 from metrics import harness_backend_proxy_fetch_errors_total
+
+from backends.config import BackendConfig
 
 logger = logging.getLogger(__name__)
 
