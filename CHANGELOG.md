@@ -6,6 +6,11 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+### Added
+
+- **ww**: Add `ww agent metrics <name>` to scrape every Prometheus `/metrics` endpoint owned by an agent pod, including
+  the harness and enabled backend containers, through the Kubernetes apiserver pod proxy.
+
 ## [0.30.3] — 2026-05-24
 
 Release Doctor clarity patch: disabled agents now show as parked instead of being counted as active Ready capacity when

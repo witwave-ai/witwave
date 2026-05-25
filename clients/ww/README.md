@@ -397,6 +397,7 @@ ww agent delete hello --purge                   # also wipe repo folder + ww-man
 
 # Interaction
 ww agent send hello "ping"                      # round-trip A2A call via the apiserver Service proxy
+ww agent metrics hello                          # scrape harness + backend Prometheus metrics
 ww agent logs hello                             # tail the harness container (--container <name> for a sidecar)
 ww agent events hello                           # CR + pod events scoped to this agent
 
@@ -583,6 +584,11 @@ local port-forwarding or an external LoadBalancer. This makes round-trip A2A cal
 agent Just Work. Caveats: the apiserver proxy has payload size caps and isn't suited for streaming — use
 `ww agent logs -f` for live observation, or the dedicated `ww send --base-url ...` path for long-running streams against
 an externally-reachable harness URL.
+
+`ww agent metrics <name>` scrapes every Prometheus `/metrics` endpoint owned by the agent pod: harness plus each enabled
+backend container. The CLI discovers container ports named `metrics-*` and reads them through the Kubernetes apiserver
+pod proxy, so no local port-forward is required. Output stays in Prometheus text format with lightweight comment headers
+per container.
 
 ### Deleting agents — repo + Secret cleanup
 

@@ -110,6 +110,7 @@ func newAgentCmd() *cobra.Command {
 	cmd.AddCommand(newAgentStatusCmd(f))
 	cmd.AddCommand(newAgentDeleteCmd(f))
 	cmd.AddCommand(newAgentSendCmd(f))
+	cmd.AddCommand(newAgentMetricsCmd(f))
 	cmd.AddCommand(newAgentLogsCmd(f))
 	cmd.AddCommand(newAgentEventsCmd(f))
 	cmd.AddCommand(newAgentScaffoldCmd())
@@ -1895,6 +1896,55 @@ func runAgentSend(ctx context.Context, f *agentFlags, name, prompt, messageID st
 		RawJSON:   rawJSON,
 		Out:       os.Stdout,
 	})
+}
+
+// ---------------------------------------------------------------------------
+// metrics
+// ---------------------------------------------------------------------------
+
+func newAgentMetricsCmd(f *agentFlags) *cobra.Command {
+	var (
+		timeout time.Duration
+		pod     string
+	)
+	cmd := &cobra.Command{
+		Use:   "metrics <name>",
+		Short: "Scrape every Prometheus metrics endpoint for a WitwaveAgent",
+		Long: "Scrapes every /metrics endpoint owned by the selected WitwaveAgent pod.\n" +
+			"Each application container exposes its own Prometheus listener: the harness\n" +
+			"uses metrics-harness and each backend uses metrics-<backend>. ww discovers\n" +
+			"those pod ports and reads them through the Kubernetes apiserver pod proxy,\n" +
+			"so no local port-forward is required.\n\n" +
+			"The output is Prometheus text grouped with comment headers per container.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAgentMetrics(cmd.Context(), f, args[0], agent.MetricsOptions{
+				Timeout: timeout,
+				Pod:     pod,
+				Out:     os.Stdout,
+			})
+		},
+	}
+	cmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second,
+		"Maximum time for the full multi-container metrics scrape")
+	cmd.Flags().StringVar(&pod, "pod", "",
+		"Target a specific pod by name instead of all pods matching the agent label")
+	return cmd
+}
+
+func runAgentMetrics(ctx context.Context, f *agentFlags, name string, opts agent.MetricsOptions) error {
+	target, resolver, err := f.resolveTarget(ctx)
+	if err != nil {
+		return err
+	}
+	cfg, err := resolver.REST()
+	if err != nil {
+		return err
+	}
+	ns := logAndResolveNamespace(f.namespace, target.Namespace)
+	opts.Agent = name
+	opts.Namespace = ns
+	return agent.Metrics(ctx, cfg, opts)
 }
 
 // ---------------------------------------------------------------------------
