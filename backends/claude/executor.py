@@ -17,7 +17,7 @@ from a2a.server.events import EventQueue
 from a2a.utils import new_agent_text_message
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, HookMatcher
 from claude_agent_sdk.types import AssistantMessage, ResultMessage, TextBlock, ToolResultBlock, ToolUseBlock
-from exceptions import BudgetExceededError
+from exceptions import BudgetExceededError, PromptTooLargeError
 from hooks import (
     BASELINE_RULES,
     DECISION_DENY,
@@ -65,6 +65,7 @@ from metrics import (
     backend_mcp_servers_active,
     backend_model_requests_total,
     backend_prompt_length_bytes,
+    backend_prompt_too_large_total,
     backend_response_length_bytes,
     backend_running_tasks,
     backend_sdk_client_errors_total,
@@ -585,6 +586,7 @@ else:
 CONTEXT_USAGE_WARN_THRESHOLD = float(os.environ.get("CONTEXT_USAGE_WARN_THRESHOLD", "0.8"))
 MAX_SESSIONS = int(os.environ.get("MAX_SESSIONS", "10000"))
 TASK_TIMEOUT_SECONDS = int(os.environ.get("TASK_TIMEOUT_SECONDS", "300"))
+_MAX_PROMPT_BYTES = int(os.environ.get("MAX_PROMPT_BYTES", str(10 * 1024 * 1024)))
 # Maximum number of bytes of prompt text included in INFO-level log messages.
 # Set to 0 to suppress prompt text from logs entirely; set higher for more context.
 LOG_PROMPT_MAX_BYTES = int(os.environ.get("LOG_PROMPT_MAX_BYTES", "200"))
@@ -2750,6 +2752,36 @@ class AgentExecutor(A2AAgentExecutor):
                     "Error: prompt is empty or whitespace-only; request rejected without dispatching to the model."
                 )
             )
+            return
+        # Hard prompt-size cap (#1620). Reject before the prompt reaches the
+        # Claude SDK so pathological callers cannot OOM the pod with an
+        # oversized A2A payload. Mirrors OpenAI/Gemini/Codex behavior.
+        _prompt_bytes = len(prompt.encode("utf-8"))
+        if _prompt_bytes > _MAX_PROMPT_BYTES:
+            _too_large_sid_raw = str(
+                context.context_id or (context.message.metadata or {}).get("session_id") or ""
+            ).strip()[:256]
+            _too_large_sid = "".join(c for c in _too_large_sid_raw if c >= " ") or "unknown"
+            _too_large_err = PromptTooLargeError(_prompt_bytes, _MAX_PROMPT_BYTES)
+            logger.warning(
+                f"Session {_too_large_sid!r}: rejected execute() — prompt size "
+                f"{_prompt_bytes} bytes exceeds MAX_PROMPT_BYTES={_MAX_PROMPT_BYTES} (#1620)."
+            )
+            if backend_prompt_too_large_total is not None:
+                backend_prompt_too_large_total.labels(**_LABELS).inc()
+            if backend_a2a_requests_total is not None:
+                backend_a2a_requests_total.labels(**_LABELS, status="error").inc()
+            if backend_a2a_request_duration_seconds is not None:
+                backend_a2a_request_duration_seconds.labels(**_LABELS).observe(time.monotonic() - _exec_start)
+            if backend_a2a_last_request_timestamp_seconds is not None:
+                backend_a2a_last_request_timestamp_seconds.labels(**_LABELS).set(time.time())
+            await log_entry(
+                "system",
+                f"execute() rejected: prompt {_prompt_bytes} bytes exceeds "
+                f"MAX_PROMPT_BYTES={_MAX_PROMPT_BYTES} (#1620).",
+                _too_large_sid,
+            )
+            await event_queue.enqueue_event(new_agent_text_message(f"Error: {_too_large_err}"))
             return
         # OTel server span continuation (#469). Upstream harness echoes the
         # traceparent into metadata; when OTel is on we use it as the parent

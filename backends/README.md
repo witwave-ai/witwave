@@ -6,7 +6,7 @@ run one backend or several, then route `a2a`, `heartbeat`, `job`, `task`, `trigg
 different backends.
 
 Use this page as the quick chooser. The per-backend READMEs remain the source of truth for runtime flags, endpoints,
-secrets, and implementation details.
+secrets, and implementation details. For cross-backend contract status and known gaps, see [Backend Parity](PARITY.md).
 
 ## Quick Choice
 
