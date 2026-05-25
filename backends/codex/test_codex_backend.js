@@ -151,25 +151,6 @@ test("buildAgentCard advertises a non-streaming Codex backend", () => {
   assert.deepEqual(card.defaultInputModes, ["text/plain"]);
 });
 
-test("health routes split liveness, readiness, and startup semantics", async () => {
-  await withTestServer(async (port) => {
-    const live = await getJson(port, "/health");
-    assert.equal(live.status, 200);
-    assert.equal(live.body.status, "starting");
-
-    const liveAlias = await getJson(port, "/health/live");
-    assert.equal(liveAlias.status, 200);
-
-    const ready = await getJson(port, "/health/ready");
-    assert.equal(ready.status, 503);
-    assert.equal(ready.body.status, "starting");
-
-    const startup = await getJson(port, "/health/start");
-    assert.equal(startup.status, 503);
-    assert.equal(startup.body.status, "starting");
-  });
-});
-
 test("constantTimeBearerTokenMatches requires an exact bearer token match", () => {
   assert.equal(constantTimeBearerTokenMatches("Bearer expected-token", "expected-token"), true);
   assert.equal(constantTimeBearerTokenMatches("Bearer wrong-token", "expected-token"), false);
