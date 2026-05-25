@@ -3153,7 +3153,8 @@ function handleHealth(probe, res) {
     backend: BACKEND_ID,
     uptime_seconds: uptime,
   };
-  jsonResponse(res, probe === "ready" && !ready ? 503 : 200, body);
+  const initializingProbe = (probe === "ready" || probe === "start") && !ready;
+  jsonResponse(res, initializingProbe ? 503 : 200, body);
 }
 
 function handleConversations(req, res) {
