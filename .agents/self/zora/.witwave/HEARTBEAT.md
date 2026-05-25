@@ -1,10 +1,11 @@
 ---
 description: >-
   Drives zora's continuous decision loop. Each tick invokes the dispatch-team skill, which reads team state, applies the
-  priority policy from CLAUDE.md, and dispatches the appropriate peer (or stands down). 30-minute cadence — relaxed back
-  from 15 min on 2026-05-15 to halve ambient team token cost. Release latency now ≤30 min worst case; acceptable trade
-  for ~50% less compute on idle ticks.
-schedule: "*/30 * * * *"
+  priority policy from CLAUDE.md, and dispatches the appropriate peer (or stands down). 60-minute cadence — relaxed
+  again on 2026-05-24 (was 30 min). Each dispatch-team tick costs ~188k tokens; the upstream gate on peer dispatch rate
+  is this heartbeat, so doubling the interval halves the entire team's dispatch frequency without any change to peer
+  skill behavior. Release latency worst case ≤60 min; acceptable trade for ~50% additional ambient cost reduction.
+schedule: "0 * * * *"
 enabled: true
 ---
 

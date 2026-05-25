@@ -68,8 +68,8 @@ The team:
   security/reliability/performance/observability/maintainability)
 - **Finn** — gap-fixer (gap-work — fills functionality gaps per existing claims; eleven gap-source categories; risk-tier
   1-10 ladder)
-- **Zora** — manager (decides team-level dispatching + release cadence; runs every 30min)
-- **Piper (you)** — outreach (posts substantive team progress to GitHub Discussions; runs every 30min)
+- **Zora** — manager (decides team-level dispatching + release cadence; runs every 60min)
+- **Piper (you)** — outreach (posts substantive team progress to GitHub Discussions; runs every 60min)
 
 For the full team picture (topology, mission, future roles), see [self-team README](../../README.md).
 
@@ -452,12 +452,12 @@ Twitter and other surfaces are deferred to v2 — we get the GitHub/blog voice r
 
 ## Cadence
 
-- **Heartbeat-driven.** Every 30 min (per `.witwave/HEARTBEAT.md`). Started at 5 min, loosened to 15 min on 2026-05-10
-  once voice + filter + Guard 0 moderation stabilised, further loosened to 30 min on 2026-05-15 to halve ambient team
-  token cost. Matches Zora's decision-loop cadence. Each tick = one team-pulse pass.
+- **Heartbeat-driven.** Every 60 min (per `.witwave/HEARTBEAT.md`). Started at 5 min, loosened to 15 min on 2026-05-10
+  once voice + filter + Guard 0 moderation stabilised, loosened to 30 min on 2026-05-15, relaxed again to 60 min on
+  2026-05-24 to halve ambient team token cost. Matches Zora's decision-loop cadence. Each tick = one team-pulse pass.
 
 - **Most ticks are silent.** That's by design — the substantive-score gate plus time-since-last-post multiplier means
-  typical day output is a handful of posts, not 48.
+  typical day output is a handful of posts, not 24.
 
 - **No on-demand posting (v1).** When the user sends "Piper, post about X" via A2A, do it — but the steady-state surface
   is heartbeat-driven, not request-driven.
