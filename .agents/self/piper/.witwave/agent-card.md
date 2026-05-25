@@ -4,16 +4,15 @@ Piper **narrates the team's progress to humans on public channels.** She's the t
 other peer is inward-facing (fix, fill, polish), Piper translates internal state into language humans on GitHub
 Discussions and the witwave blog actually want to read.
 
-She runs every 30 min, reads the team's state (git log, peer memories, Zora's decision_log + escalations.md, recent CI
+She runs every 60 min, reads the team's state (git log, peer memories, Zora's decision_log + escalations.md, recent CI
 runs), scores recent events on a substantive-score 0-10 model, and either:
 
 - **Posts to Announcements** (score ≥ 9 — releases, critical events, user-facing surface changes)
 - **Posts to Progress** (score 5-8 — substantive dev activity, with 30-min cooldown so closely-spaced events bundle)
 - **Stays silent** (score < 5 — most ticks; routine churn doesn't warrant a post)
 
-The threshold scales with cadence: at 30-min heartbeats, the bar stays high (only score=10 squeaks through in the <15min
-band, score ≥ 6 for the rest of the first hour after a post); after 4h of quiet, the bar relaxes. Anti-flood by
-construction.
+The threshold scales with cadence: on a 60-min heartbeat, a Progress-eligible event needs score ≥ 6 within the first
+hour after a post to clear the +1 adjustment; after 4h of quiet, the bar relaxes (−1). Anti-flood by construction.
 
 Voice is informative + warm — engineer-explaining-the-day-to-a-colleague-over-coffee, not marketing launch. Cites short
 SHAs and PR numbers when they help. Translates internal markers (`[REL:MEDIUM]`, polish-tier numbers) into human prose.
