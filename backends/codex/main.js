@@ -21,6 +21,7 @@ const AGENT_VERSION = process.env.AGENT_VERSION || "0.1.0";
 const AGENT_OWNER = process.env.AGENT_OWNER || AGENT_NAME;
 const AGENT_ID = process.env.AGENT_ID || process.env.HOSTNAME || "codex";
 const BACKEND_ID = "codex";
+const OPENAI_SDK_VERSION = process.env.OPENAI_SDK_VERSION || packageDependencyVersion("openai");
 const CODEX_CONFIG_TOML = process.env.CODEX_CONFIG_TOML || "/home/agent/.codex/config.toml";
 const CODEX_CONFIG = loadCodexConfig(CODEX_CONFIG_TOML);
 
@@ -312,6 +313,15 @@ function parseBool(value) {
     return false;
   }
   return ["1", "true", "yes", "on"].includes(String(value).trim().toLowerCase());
+}
+
+function packageDependencyVersion(packageName) {
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(new URL("./package.json", import.meta.url), "utf8"));
+    return packageJson.dependencies?.[packageName] || packageJson.devDependencies?.[packageName] || "unknown";
+  } catch {
+    return "unknown";
+  }
 }
 
 function stripTomlComment(line) {
@@ -3335,6 +3345,134 @@ function appendScalarSummary(lines, name, help, count, sum) {
   );
 }
 
+function appendPlaceholderCounter(lines, name, help, extraLabels = {}) {
+  lines.push(`# HELP ${name} ${help}`, `# TYPE ${name} counter`, metricLine(name, 0, labels(extraLabels)));
+}
+
+function appendPlaceholderGauge(lines, name, help, extraLabels = {}) {
+  lines.push(`# HELP ${name} ${help}`, `# TYPE ${name} gauge`, metricLine(name, 0, labels(extraLabels)));
+}
+
+function appendPlaceholderSummary(lines, name, help, extraLabels = {}) {
+  const labelSet = labels(extraLabels);
+  lines.push(
+    `# HELP ${name} ${help}`,
+    `# TYPE ${name} summary`,
+    metricLine(`${name}_count`, 0, labelSet),
+    metricLine(`${name}_sum`, 0, labelSet),
+  );
+}
+
+function appendRuntimeSpecificMetricPlaceholders(lines) {
+  const model = sanitizeModelLabel(CODEX_MODEL);
+  appendPlaceholderSummary(
+    lines,
+    "backend_event_loop_lag_seconds",
+    "Placeholder for Python asyncio event-loop lag; not applicable to the Node Codex runtime.",
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_task_restarts_total",
+    "Placeholder for guarded worker task restarts; not applicable to the Node Codex runtime.",
+    { task: "none" },
+  );
+  appendPlaceholderSummary(
+    lines,
+    "backend_task_timeout_headroom_seconds",
+    "Placeholder for task timeout headroom; Codex currently does not run a Python task timeout wrapper.",
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_session_history_save_errors_total",
+    "Placeholder for file-backed SDK session history save errors; Codex uses the Responses session store.",
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_session_path_mismatch_total",
+    "Placeholder for SDK session path drift checks; Codex does not depend on Claude SDK session files.",
+    { reason: "not_applicable" },
+  );
+  appendPlaceholderSummary(
+    lines,
+    "backend_sdk_subprocess_spawn_duration_seconds",
+    "Placeholder for SDK subprocess spawn time; Codex uses in-process Responses API calls.",
+    { model },
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_sdk_context_fetch_errors_total",
+    "Placeholder for SDK context fetch errors; Codex observes usage directly from Responses API results.",
+    { model },
+  );
+  appendPlaceholderSummary(
+    lines,
+    "backend_stderr_lines_per_task",
+    "Placeholder for SDK stderr line counts; Codex does not spawn an SDK subprocess.",
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_tasks_with_stderr_total",
+    "Placeholder for SDK stderr-producing tasks; Codex does not spawn an SDK subprocess.",
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_task_retries_total",
+    "Placeholder for retries caused by SDK session contention; Codex resumes Responses sessions by response id.",
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_mcp_command_rejected_total",
+    "Placeholder for stdio MCP command allow-list rejections; Codex accepts URL-shaped MCP entries only.",
+    { reason: "not_applicable" },
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_watcher_events_total",
+    "Placeholder for Python file-watcher events; Codex loads config synchronously on demand.",
+    { watcher: "none" },
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_file_watcher_restarts_total",
+    "Placeholder for Python file-watcher restarts; Codex loads config synchronously on demand.",
+    { watcher: "none" },
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_hooks_blocked_total",
+    "Deprecated placeholder alias for backend_hooks_denials_total.",
+    { tool: "none", source: "none", rule: "none" },
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_hooks_shed_total",
+    "Placeholder for hook decision POST shedding; Codex evaluates hooks in-process.",
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_allowed_tools_reload_total",
+    "Placeholder for Claude settings.json ALLOWED_TOOLS reloads; Codex uses hooks.yaml and config.toml.",
+    { direction: "none" },
+  );
+  appendPlaceholderCounter(
+    lines,
+    "backend_session_binding_fallback_total",
+    "Placeholder for shared Python session-binding fallback paths; Codex derives session IDs in Node.",
+    { reason: "none" },
+  );
+  appendPlaceholderGauge(
+    lines,
+    "backend_session_caller_cardinality",
+    "Placeholder for /mcp caller cardinality tracking; Codex does not currently aggregate distinct caller buckets.",
+  );
+  appendPlaceholderSummary(
+    lines,
+    "backend_sqlite_task_store_lock_wait_seconds",
+    "Placeholder for SQLite task-store lock wait; Codex uses a JSON response-session store.",
+    { op: "none" },
+  );
+}
+
 export function renderMetrics() {
   const uptime = (Date.now() - STARTED_AT.getTime()) / 1000;
   const agentMdRevision = computeAgentMdRevision(loadInstructions());
@@ -3345,6 +3483,9 @@ export function renderMetrics() {
     "# HELP backend_info Backend identity and version.",
     "# TYPE backend_info gauge",
     metricLine("backend_info", 1, labels({ version: AGENT_VERSION })),
+    "# HELP backend_sdk_info Underlying SDK package and version.",
+    "# TYPE backend_sdk_info gauge",
+    metricLine("backend_sdk_info", 1, labels({ sdk: "openai", version: OPENAI_SDK_VERSION })),
     "# HELP backend_agent_md_revision Currently-active AGENTS.md revision.",
     "# TYPE backend_agent_md_revision gauge",
     metricLine("backend_agent_md_revision", 1, labels({ revision: agentMdRevision })),
@@ -3785,6 +3926,7 @@ export function renderMetrics() {
     ),
     metricLine("backend_hooks_active_rules", extensionRuleCount, labels({ source: "extension" })),
   );
+  appendRuntimeSpecificMetricPlaceholders(lines);
   return `${lines.join("\n")}\n`;
 }
 

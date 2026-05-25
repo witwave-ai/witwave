@@ -86,6 +86,30 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_mcp_servers_active/);
   assert.match(body, /backend_tool_audit_rotation_pressure_total/);
   assert.match(body, /backend_budget_exceeded_total/);
+  for (const placeholderMetric of [
+    "backend_sdk_info",
+    "backend_event_loop_lag_seconds_count",
+    "backend_task_restarts_total",
+    "backend_task_timeout_headroom_seconds_count",
+    "backend_session_history_save_errors_total",
+    "backend_session_path_mismatch_total",
+    "backend_sdk_subprocess_spawn_duration_seconds_count",
+    "backend_sdk_context_fetch_errors_total",
+    "backend_stderr_lines_per_task_count",
+    "backend_tasks_with_stderr_total",
+    "backend_task_retries_total",
+    "backend_mcp_command_rejected_total",
+    "backend_watcher_events_total",
+    "backend_file_watcher_restarts_total",
+    "backend_hooks_blocked_total",
+    "backend_hooks_shed_total",
+    "backend_allowed_tools_reload_total",
+    "backend_session_binding_fallback_total",
+    "backend_session_caller_cardinality",
+    "backend_sqlite_task_store_lock_wait_seconds_count",
+  ]) {
+    assert.ok(body.includes(placeholderMetric), `expected ${placeholderMetric} placeholder metric`);
+  }
   assert.match(body, /agent="/);
   assert.match(body, /backend="codex"/);
 });

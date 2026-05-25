@@ -29,6 +29,7 @@ The first implementation is contract-first:
 - backend-local MCP client bridging for URL-shaped `.codex/mcp.json` entries
 - streaming-delta Prometheus counters with bounded `model` labels
 - common model request, request-duration, and JSONL log-write metrics for cross-backend dashboards
+- zero-value placeholders for runtime-specific Claude/Python metric families that do not apply to the Node backend
 - active `AGENTS.md` revision metrics for rollout verification
 - OpenTelemetry spans for A2A execution, MCP `tools/call`, Responses API calls, and function tools
 - Claude-shaped tool trace rows for Codex-owned function tools (`tool_use`, `tool_result`, and `tool_audit`)
@@ -156,6 +157,12 @@ dashboard's Tool Trace view pair Codex tool calls the same way it pairs Claude t
 Codex also mirrors Claude's core tool metric names for cross-backend dashboards: `backend_sdk_tool_calls_total`,
 `backend_sdk_tool_calls_per_query`, `backend_sdk_tool_duration_seconds`, tool input/result byte summaries,
 `backend_sdk_tool_errors_total`, and outbound MCP tool request/duration summaries.
+
+Some Claude metric families describe Python- or Claude-SDK-specific runtime behavior, such as asyncio event-loop lag,
+file watcher restarts, SDK subprocess stderr, and SQLite task-store lock wait. Codex emits zero-value placeholder series
+for those names so dashboards can union across `(agent, agent_id, backend)` without dropping the Codex backend. The
+placeholder is intentional: it preserves the metric contract without pretending the Node runtime has the same internal
+mechanism.
 
 OpenTelemetry is active when either `OTEL_ENABLED=true` or `OTEL_IN_MEMORY_SPANS` is positive. OTLP export is opt-in;
 the in-memory ring is enabled by default so `/api/traces` can show recent backend spans without requiring a collector.

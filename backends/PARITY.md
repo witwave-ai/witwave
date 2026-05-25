@@ -40,14 +40,14 @@ execution layer.
 | Task-level metrics                    | Full    | Full    | Full    | Full    | Codex maps A2A work to backend task counters, durations, and last-run timestamps.                      |
 | Context/token metrics                 | Full    | Full    | Full    | Full    | Codex reports budget-derived usage, warning, and exhaustion counters.                                  |
 | SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex covers query/session/tool-audit/error families; some SDK-specific series remain thinner.         |
-| File watcher/reload metrics           | Full    | Full    | Partial | Full    | Codex exposes MCP config reload state but does not yet run Python-style file watchers.                 |
-| SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex uses a JSON response-session store rather than the shared SQLite task-store path.                |
+| File watcher/reload metrics           | Full    | Full    | Partial | Full    | Codex emits placeholders for Python watcher families but does not run Python-style file watchers.      |
+| SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex emits a placeholder but uses a JSON response-session store rather than the shared SQLite path.   |
 | Focused regression tests              | Partial | Full    | Partial | Full    | Codex now has split A2A, auth, health, MCP, hooks, memory, trace/session-stream, and metrics coverage. |
 
 ## Highest-Value Gaps
 
-1. Codex remaining metric gaps: decide which Python-specific watcher/task-store series should become Codex placeholders
-   and which should stay documented as runtime-specific.
+1. Codex remaining metric semantics: placeholder series now exist for Python-specific families; decide which should
+   become active Node instrumentation and which should stay documented as runtime-specific.
 2. Cross-backend regression symmetry: use Codex's focused contract-test shape as the pattern when tightening any backend
    that still relies on broad or mixed-purpose tests.
 3. Hook semantics: keep Claude as the reference, but make each backend's hook boundary explicit so users know what is
