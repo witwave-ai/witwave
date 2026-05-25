@@ -32,7 +32,7 @@ without restarting the container.
 context-window tokens, SDK error classification split into connection / result / catch-all, per-stdio-server liveness,
 MCP per-request observability, command allow-list rejections, tool-payload-size histograms). Claude is the superset;
 gemini tracks placeholders for its missing series so PromQL joins stay clean. The `backend_hooks_enforcement_mode` gauge
-reports whether PreToolUse hooks are actually evaluated: `0`=skeleton (rules loaded but AFC bypasses them — today's
+reports whether PreToolUse hooks are actually evaluated: `0`=partial/skeleton (rules loaded but AFC bypasses them — today's
 state), `1`=enforcing, `-1`=disabled. See `metrics.py` for the live catalog.
 
 ## Endpoints

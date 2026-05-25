@@ -33,7 +33,7 @@ execution layer.
 | Skill-folder convention               | Full    | Partial | Partial | Gap     | Claude has the strongest convention; OpenAI/Codex can mirror docs, Gemini lacks a native skill folder. |
 | Memory surface                        | Full    | Partial | Full    | Partial | Codex has bounded memory tools; Gemini persists sessions but lacks native file-memory tooling.         |
 | MCP consumption                       | Full    | Full    | Partial | Partial | Codex supports URL-shaped MCP tools; SDK-backed transports differ by backend.                          |
-| Hook enforcement                      | Full    | Partial | Partial | Partial | Claude is full PreToolUse/PostToolUse; Codex gates owned tools; Gemini still has AFC limits.           |
+| Hook enforcement                      | Full    | Partial | Partial | Partial | `backend_hooks_enforcement_mode` reports full, partial/skeleton, or disabled coverage per backend.     |
 | OpenTelemetry trace integration       | Full    | Full    | Full    | Full    | All expose trace APIs and continue inbound trace context.                                              |
 | Prompt-size rejection                 | Full    | Full    | Full    | Full    | `MAX_PROMPT_BYTES` now covers all LLM-backed A2A paths.                                                |
 | Token budget handling                 | Full    | Full    | Full    | Full    | `max_tokens` style budget checks exist across the LLM backends.                                        |

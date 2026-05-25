@@ -49,6 +49,7 @@ from metrics import (
     backend_hooks_config_errors_total,
     backend_hooks_config_reloads_total,
     backend_hooks_denials_total,
+    backend_hooks_enforcement_mode,
     backend_hooks_evaluations_total,
     backend_hooks_shed_total,
     backend_hooks_warnings_total,
@@ -2315,6 +2316,7 @@ class AgentExecutor(A2AAgentExecutor):
         if backend_hooks_active_rules is not None:
             backend_hooks_active_rules.labels(**_LABELS, source="baseline").set(len(self._hook_state.baseline))
             backend_hooks_active_rules.labels(**_LABELS, source="extension").set(0)
+        self._refresh_hook_enforcement_mode_metric()
         # One-shot probe for Claude Agent SDK on-disk layout drift (#530).
         # Read-only filesystem + attribute inspection; no SDK subprocess is
         # spawned and no LLM query is fired. Emits backend_session_path_mismatch_total
@@ -2330,6 +2332,17 @@ class AgentExecutor(A2AAgentExecutor):
             self.hooks_config_watcher,
             self.settings_watcher,
         ]
+
+    def _refresh_hook_enforcement_mode_metric(self) -> None:
+        """Report whether the Claude PreToolUse gate has any active rules."""
+        if backend_hooks_enforcement_mode is None:
+            return
+        try:
+            rule_count = len(self._hook_state.baseline) + len(self._hook_state.extensions)
+            backend_hooks_enforcement_mode.labels(**_LABELS).set(1 if rule_count > 0 else -1)
+        except Exception:
+            # Metrics must never affect request execution or startup.
+            pass
 
     def _get_mcp_reload_lock(self) -> asyncio.Lock:
         """Lazily create the MCP reload lock (#1051).
@@ -2426,6 +2439,7 @@ class AgentExecutor(A2AAgentExecutor):
             self._initial_hooks_loaded = True
         if backend_hooks_active_rules is not None:
             backend_hooks_active_rules.labels(**_LABELS, source="extension").set(len(self._hook_state.extensions))
+        self._refresh_hook_enforcement_mode_metric()
         logger.info(
             "Hooks config loaded (initial): baseline=%s (rules=%d) extensions=%d",
             self._hook_state.baseline_enabled,
@@ -2565,6 +2579,7 @@ class AgentExecutor(A2AAgentExecutor):
                 self._hook_state.extensions = _initial_ext
             if backend_hooks_active_rules is not None:
                 backend_hooks_active_rules.labels(**_LABELS, source="extension").set(len(self._hook_state.extensions))
+            self._refresh_hook_enforcement_mode_metric()
             logger.info(
                 "Hooks config loaded: baseline=%s (rules=%d) extensions=%d",
                 self._hook_state.baseline_enabled,
@@ -2590,6 +2605,7 @@ class AgentExecutor(A2AAgentExecutor):
                                 self._hook_state.extensions = new_rules
                             if backend_hooks_active_rules is not None:
                                 backend_hooks_active_rules.labels(**_LABELS, source="extension").set(len(new_rules))
+                            self._refresh_hook_enforcement_mode_metric()
                             if backend_hooks_config_reloads_total is not None:
                                 backend_hooks_config_reloads_total.labels(**_LABELS).inc()
                             logger.info("hooks.yaml reloaded: extensions=%d", len(new_rules))

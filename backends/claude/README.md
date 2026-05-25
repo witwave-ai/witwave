@@ -159,7 +159,7 @@ claude-only `backend_hooks_blocked_total` alias is retained for one release cycl
 `backend_hooks_warnings_total{tool,source,rule}`, `backend_tool_audit_entries_total{tool}`,
 `backend_hooks_evaluations_total{tool,decision}`, `backend_hooks_config_reloads_total`,
 `backend_hooks_config_errors_total{reason}`, `backend_hooks_shed_total` (hook POSTs shed at the in-flight cap, #712),
-and `backend_hooks_active_rules{source}`.
+`backend_hooks_enforcement_mode`, and `backend_hooks_active_rules{source}`.
 
 ## Tracing (OpenTelemetry)
 

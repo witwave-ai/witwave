@@ -146,6 +146,7 @@ backend_session_binding_fallback_total: prometheus_client.Counter | None = None
 backend_mcp_outbound_requests_total: prometheus_client.Counter | None = None
 backend_mcp_outbound_duration_seconds: prometheus_client.Histogram | None = None
 backend_hooks_config_reloads_total: prometheus_client.Counter | None = None
+backend_hooks_enforcement_mode: prometheus_client.Gauge | None = None
 backend_hooks_active_rules: prometheus_client.Gauge | None = None
 backend_hooks_evaluations_total: prometheus_client.Counter | None = None
 backend_hooks_shed_total: prometheus_client.Counter | None = None
@@ -711,6 +712,11 @@ if _enabled:
     backend_hooks_config_reloads_total = prometheus_client.Counter(
         "backend_hooks_config_reloads_total",
         "Total reloads of hooks.yaml by the hooks config watcher.",
+        ["agent", "agent_id", "backend"],
+    )
+    backend_hooks_enforcement_mode = prometheus_client.Gauge(
+        "backend_hooks_enforcement_mode",
+        "PreToolUse hook enforcement mode. 0=partial/skeleton, 1=enforcing, -1=disabled.",
         ["agent", "agent_id", "backend"],
     )
     backend_hooks_active_rules = prometheus_client.Gauge(

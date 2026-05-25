@@ -60,8 +60,10 @@ from metrics import (
     backend_empty_responses_total,
     backend_file_watcher_restarts_total,
     backend_hook_session_missing_total,
+    backend_hooks_active_rules,
     backend_hooks_config_errors_total,
     backend_hooks_denials_total,
+    backend_hooks_enforcement_mode,
     backend_hooks_shed_total,
     backend_log_bytes_total,
     backend_log_entries_total,
@@ -2514,6 +2516,19 @@ class AgentExecutor(A2AAgentExecutor):
         self._initial_mcp_loaded = False
         self._initial_agent_md_loaded = False
         self._initial_tool_config_loaded = False
+        # OpenAI can actively block the ShellTool executor, but broader
+        # Agents SDK tools do not yet expose a universal PreToolUse
+        # interposition point. Report the conservative partial/skeleton
+        # mode so dashboards do not mistake shell-only coverage for full
+        # Claude-style enforcement.
+        if backend_hooks_enforcement_mode is not None:
+            backend_hooks_enforcement_mode.labels(**_LABELS).set(0)
+        if backend_hooks_active_rules is not None:
+            shared_shell_rules = sum(1 for rule in _SHARED_BASELINE_RULES if getattr(rule, "tool", None) == "Bash")
+            backend_hooks_active_rules.labels(**_LABELS, source="baseline").set(
+                shared_shell_rules + len(_SHELL_DENY_RULES)
+            )
+            backend_hooks_active_rules.labels(**_LABELS, source="extension").set(0)
 
     def _stamp_agent_md_revision(self, current: str, previous: str | None) -> None:
         """Update backend_agent_md_revision for a (possibly) new revision (#1097).

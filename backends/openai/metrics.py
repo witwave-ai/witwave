@@ -166,6 +166,7 @@ backend_hook_session_missing_total: prometheus_client.Counter | None = None
 backend_hooks_warnings_total: prometheus_client.Counter | None = None
 backend_hooks_config_reloads_total: prometheus_client.Counter | None = None
 backend_hooks_config_errors_total: prometheus_client.Counter | None = None
+backend_hooks_enforcement_mode: prometheus_client.Gauge | None = None
 backend_hooks_active_rules: prometheus_client.Gauge | None = None
 backend_hooks_evaluations_total: prometheus_client.Counter | None = None
 backend_tool_audit_entries_total: prometheus_client.Counter | None = None
@@ -781,11 +782,11 @@ if _enabled:
         ["agent", "agent_id", "backend", "server", "tool", "outcome"],
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
     )
-    # Peer-parity placeholders (#796): claude's hook surface exposes
-    # backend_hooks_active_rules and backend_hooks_evaluations_total;
-    # register them on openai too so cross-backend dashboards don't drop
-    # the series. openai's hook path is baseline-only (#586 deferred) so
-    # today these sit at their registered zero value.
+    # Peer-parity hook surface (#796): claude's hook surface exposes
+    # backend_hooks_active_rules and backend_hooks_evaluations_total.
+    # openai reports its active shell-baseline count, while broader
+    # non-shell evaluation remains deferred until the Agents SDK exposes
+    # a universal pre-tool interposition point.
     backend_hooks_active_rules = prometheus_client.Gauge(
         "backend_hooks_active_rules",
         "Number of currently active hook rules, by rule source.",
@@ -807,6 +808,12 @@ if _enabled:
         "backend_hooks_config_errors_total",
         "Total hooks.yaml parse/reload/validation errors by reason.",
         ["agent", "agent_id", "backend", "reason"],
+    )
+    backend_hooks_enforcement_mode = prometheus_client.Gauge(
+        "backend_hooks_enforcement_mode",
+        "PreToolUse hook enforcement mode. 0=partial/skeleton, 1=enforcing, -1=disabled. "
+        "OpenAI reports 0 while enforcement is shell-baseline-only.",
+        ["agent", "agent_id", "backend"],
     )
     backend_hooks_evaluations_total = prometheus_client.Counter(
         "backend_hooks_evaluations_total",

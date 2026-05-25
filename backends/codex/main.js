@@ -3916,7 +3916,11 @@ export function renderMetrics() {
     lines.push(metricLine("backend_hooks_config_errors_total", value, labels({ reason })));
   }
   const extensionRuleCount = loadHookExtensionRules().length;
+  const hookEnforcementMode = HOOKS_BASELINE_ENABLED || extensionRuleCount > 0 ? 1 : -1;
   lines.push(
+    "# HELP backend_hooks_enforcement_mode PreToolUse hook enforcement mode. 0=partial/skeleton, 1=enforcing, -1=disabled.",
+    "# TYPE backend_hooks_enforcement_mode gauge",
+    metricLine("backend_hooks_enforcement_mode", hookEnforcementMode, labels()),
     "# HELP backend_hooks_active_rules Number of currently active PreToolUse rules by source.",
     "# TYPE backend_hooks_active_rules gauge",
     metricLine(

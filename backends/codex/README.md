@@ -148,6 +148,7 @@ Tool aliases keep common cross-backend rules useful: `run_shell_command` also ma
 also match `tool: Write`. Denied calls return a refused function result to the model, emit paired `tool_use`,
 `tool_result`, and `tool_audit` rows in `TRACE_LOG`, and increment `backend_hooks_*` metrics. This gate covers
 Codex-owned function tools; it does not make the Node backend a drop-in clone of Claude's SDK hook surface.
+`backend_hooks_enforcement_mode` reports `1` when baseline or extension rules are active for that owned-tool surface.
 
 Codex writes Claude-shaped tool trace rows for every function tool it executes. `tool_use` rows carry `id`, `name`,
 `input`, `session_id`, and `model`; `tool_result` rows carry the matching `tool_use_id`, `content`, and `is_error`;

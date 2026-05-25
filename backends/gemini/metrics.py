@@ -657,7 +657,7 @@ if _enabled:
     )
     backend_hooks_enforcement_mode = prometheus_client.Gauge(
         "backend_hooks_enforcement_mode",
-        "PreToolUse hook enforcement mode. 0=skeleton (rules loaded but "
+        "PreToolUse hook enforcement mode. 0=partial/skeleton (rules loaded but "
         "AFC bypasses them), 1=enforcing, -1=disabled. Gemini reports 0 "
         "until #640 disables AFC and hand-rolls the tool loop (#736).",
         ["agent", "agent_id", "backend"],

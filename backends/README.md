@@ -153,6 +153,10 @@ When policy enforcement is the deciding factor, choose `claude` first and `codex
 backend says it has hook metrics, that means the metric family exists; it does not necessarily mean every SDK tool path
 can be blocked before execution.
 
+Prometheus exposes `backend_hooks_enforcement_mode` to make that boundary machine-readable: `1` means active
+PreToolUse-style enforcement on the backend's covered tool surface, `0` means partial/skeleton coverage, and `-1` means
+no active hook rules.
+
 ## Current Practical Defaults
 
 For a production-ish self-managing agent, prefer this order:
