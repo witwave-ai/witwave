@@ -166,7 +166,7 @@ async def fetch_backend_conversations(
             *[_fetch_one_conversations(client, b) for b in backends],
             return_exceptions=True,
         )
-    for backend, result in zip(backends, results):
+    for backend, result in zip(backends, results, strict=True):
         if isinstance(result, BaseException):
             _count_fetch_error(backend.id, "conversations")
             _log_fetch_error(
@@ -257,7 +257,7 @@ async def fetch_backend_tool_audit(
             *[_fetch_one_tool_audit(client, b) for b in backends],
             return_exceptions=True,
         )
-    for backend, result in zip(backends, results):
+    for backend, result in zip(backends, results, strict=True):
         if isinstance(result, BaseException):
             _count_fetch_error(backend.id, "tool_audit")
             _log_fetch_error(
@@ -341,7 +341,7 @@ async def fetch_backend_trace(
             *[_fetch_one_trace(client, b) for b in backends],
             return_exceptions=True,
         )
-    for backend, result in zip(backends, results):
+    for backend, result in zip(backends, results, strict=True):
         if isinstance(result, BaseException):
             _count_fetch_error(backend.id, "trace")
             _log_fetch_error(
