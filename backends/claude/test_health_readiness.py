@@ -299,9 +299,7 @@ class HealthReadinessSplitTests(unittest.TestCase):
         # Reset module-level state per test.
         main._ready = False
         main._boot_degraded_reason = None
-        main._set_health_executor(
-            types.SimpleNamespace(hooks_enforcement_mode_for_health=lambda: "enforcing")
-        )
+        main._set_health_executor(types.SimpleNamespace(hooks_enforcement_mode_for_health=lambda: "enforcing"))
 
     def test_health_ready_503_when_boot_degraded(self):
         """/health/ready returns 503 when _boot_degraded_reason is set."""

@@ -305,9 +305,7 @@ class HealthReadinessSplitTests(unittest.TestCase):
     def setUp(self):
         # Reset module-level state per test.
         main._ready = False
-        main._set_health_executor(
-            types.SimpleNamespace(hooks_enforcement_mode_for_health=lambda: "partial")
-        )
+        main._set_health_executor(types.SimpleNamespace(hooks_enforcement_mode_for_health=lambda: "partial"))
 
     def test_health_liveness_200_when_ready(self):
         """/health (liveness) returns 200 when ready."""

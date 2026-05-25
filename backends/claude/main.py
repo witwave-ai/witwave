@@ -118,6 +118,7 @@ def _hook_enforcement_mode_for_health() -> str:
     except Exception:
         return "unknown"
 
+
 # /mcp caller-identity cardinality tracker (#1049).  Holds the hex SHA256
 # fingerprints of distinct caller bearer tokens observed since process
 # start, capped to prevent unbounded growth on per-request tokens. The

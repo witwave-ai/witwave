@@ -50,9 +50,8 @@ empty-prompt rejections, and hook evaluation + denials (canonical `backend_hooks
 backend-specific `backend_openai_hooks_denials_total` alias and pre-rename `backend_codex_hooks_denials_total` alias are
 retained during migration and gated by `EMIT_DEPRECATED_HOOK_METRICS`). Claude is the superset; openai tracks
 placeholders for its missing series so cross-backend PromQL joins stay clean. `backend_hooks_enforcement_mode` reports
-`0` while hook blocking remains shell-baseline-only —
-`backend_sdk_subprocess_spawn_duration_seconds` is a zero-value placeholder since the Agents SDK runs in-process. See
-`metrics.py` for the live catalog.
+`0` while hook blocking remains shell-baseline-only — `backend_sdk_subprocess_spawn_duration_seconds` is a zero-value
+placeholder since the Agents SDK runs in-process. See `metrics.py` for the live catalog.
 
 ## Endpoints
 
