@@ -2507,7 +2507,7 @@ function usageTotalTokens(response) {
   return 0;
 }
 
-function budgetResult(response, maxTokens) {
+export function budgetResult(response, maxTokens) {
   const totalTokens = usageTotalTokens(response);
   if (totalTokens > 0) {
     metrics.contextTokensCount += 1;
@@ -2533,7 +2533,7 @@ function budgetResult(response, maxTokens) {
   };
 }
 
-function appendBudgetNotice(text, budget) {
+export function appendBudgetNotice(text, budget) {
   if (!budget?.exceeded) {
     return text;
   }

@@ -20,8 +20,15 @@ fs.writeFileSync(
   "utf8",
 );
 
-const { createResponseWithSessionFallback, deriveSessionId, handleA2A, publishSessionChunk, renderMetrics } =
-  await import("./main.js");
+const {
+  appendBudgetNotice,
+  budgetResult,
+  createResponseWithSessionFallback,
+  deriveSessionId,
+  handleA2A,
+  publishSessionChunk,
+  renderMetrics,
+} = await import("./main.js");
 
 test("streaming delta metrics use bounded model labels", () => {
   publishSessionChunk("00000000-0000-4000-8000-000000000201", {
@@ -185,4 +192,16 @@ test("session history save error metric records Responses session store write fa
   }
 
   assert.match(renderMetrics(), /backend_session_history_save_errors_total\{.*backend="codex".*\} [1-9]/);
+});
+
+test("budget metrics record warning and exhaustion when usage reaches max_tokens", () => {
+  const budget = budgetResult({ usage: { input_tokens: 7, output_tokens: 3 } }, 10);
+
+  assert.deepEqual(budget, { total_tokens: 10, max_tokens: 10, exceeded: true });
+  assert.match(appendBudgetNotice("done", budget), /Token budget exceeded: 10 tokens used of 10 limit/);
+
+  const body = renderMetrics();
+  assert.match(body, /backend_context_warnings_total\{.*backend="codex".*\} [1-9]/);
+  assert.match(body, /backend_context_exhaustion_total\{.*backend="codex".*\} [1-9]/);
+  assert.match(body, /backend_context_usage_percent_count\{.*backend="codex".*\} [1-9]/);
 });
