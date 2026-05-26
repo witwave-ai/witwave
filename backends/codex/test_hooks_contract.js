@@ -124,6 +124,10 @@ extensions:
     body,
     /backend_hooks_denials_total\{.*tool="write_memory_file".*source="extension".*rule="deny-memory-marker".*\} 1/,
   );
+  assert.match(
+    body,
+    /backend_hooks_blocked_total\{.*tool="write_memory_file".*source="extension".*rule="deny-memory-marker".*\} 1/,
+  );
   assert.match(body, /backend_hooks_evaluations_total\{.*tool="write_memory_file".*decision="deny".*\} 1/);
   assert.match(body, /backend_hooks_enforcement_mode\{.*backend="codex".*\} 1/);
   assert.match(body, /backend_hooks_active_rules\{.*source="extension".*\} 1/);

@@ -3411,6 +3411,14 @@ function appendPlaceholderSummary(lines, name, help, extraLabels = {}) {
   );
 }
 
+function appendHookDenialCounter(lines, name, help) {
+  lines.push(`# HELP ${name} ${help}`, `# TYPE ${name} counter`);
+  for (const [key, value] of metrics.hookDenials.entries()) {
+    const [tool, source, rule] = mapKeyParts(key);
+    lines.push(metricLine(name, value, labels({ tool, source, rule })));
+  }
+}
+
 function appendRuntimeSpecificMetricPlaceholders(lines) {
   const model = sanitizeModelLabel(CODEX_MODEL);
   appendPlaceholderSummary(
@@ -3484,12 +3492,6 @@ function appendRuntimeSpecificMetricPlaceholders(lines) {
     "backend_file_watcher_restarts_total",
     "Placeholder for Python file-watcher restarts; Codex loads config synchronously on demand.",
     { watcher: "none" },
-  );
-  appendPlaceholderCounter(
-    lines,
-    "backend_hooks_blocked_total",
-    "Deprecated placeholder alias for backend_hooks_denials_total.",
-    { tool: "none", source: "none", rule: "none" },
   );
   appendPlaceholderCounter(
     lines,
@@ -3942,14 +3944,8 @@ export function renderMetrics() {
       metricLine("backend_mcp_outbound_duration_seconds_sum", metrics.mcpOutboundDurationSums.get(key) || 0, labelSet),
     );
   }
-  lines.push(
-    "# HELP backend_hooks_denials_total Total tool calls denied by a PreToolUse hook.",
-    "# TYPE backend_hooks_denials_total counter",
-  );
-  for (const [key, value] of metrics.hookDenials.entries()) {
-    const [tool, source, rule] = mapKeyParts(key);
-    lines.push(metricLine("backend_hooks_denials_total", value, labels({ tool, source, rule })));
-  }
+  appendHookDenialCounter(lines, "backend_hooks_denials_total", "Total tool calls denied by a PreToolUse hook.");
+  appendHookDenialCounter(lines, "backend_hooks_blocked_total", "Deprecated alias for backend_hooks_denials_total.");
   lines.push(
     "# HELP backend_hooks_warnings_total Total tool calls flagged but allowed by a PreToolUse hook.",
     "# TYPE backend_hooks_warnings_total counter",

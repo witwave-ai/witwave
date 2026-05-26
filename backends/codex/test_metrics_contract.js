@@ -110,7 +110,6 @@ test("renderMetrics exposes the common backend label shape", async () => {
     "backend_mcp_command_rejected_total",
     "backend_watcher_events_total",
     "backend_file_watcher_restarts_total",
-    "backend_hooks_blocked_total",
     "backend_hooks_shed_total",
     "backend_allowed_tools_reload_total",
     "backend_session_binding_fallback_total",
@@ -118,6 +117,7 @@ test("renderMetrics exposes the common backend label shape", async () => {
   ]) {
     assert.ok(body.includes(placeholderMetric), `expected ${placeholderMetric} placeholder metric`);
   }
+  assert.ok(body.includes("backend_hooks_blocked_total"), "expected deprecated hook-blocked alias metric");
   assert.match(body, /backend_session_caller_cardinality\{.*backend="codex".*\} 0/);
   assert.match(body, /agent="/);
   assert.match(body, /backend="codex"/);
