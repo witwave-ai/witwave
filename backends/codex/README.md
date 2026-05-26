@@ -134,9 +134,9 @@ Codex cost control is layered rather than owned by one knob:
 - Treat `CODEX_REASONING_EFFORT=xhigh` as a deliberate high-quality posture. For always-on agents, pair it with a
   conservative schedule, token budget, and tool-iteration cap before increasing cadence.
 
-The cheapest release smoke is still no-token: run `ww doctor release --agent <namespace>/<agent> --require-backend codex
---strict-agent-tags` to prove the deployed agent carries Codex and matches the operator appVersion before firing real
-prompts.
+The cheapest release smoke is still no-token: run
+`ww doctor release --agent <namespace>/<agent> --require-backend codex --strict-agent-tags` to prove the deployed agent
+carries Codex and matches the operator appVersion before firing real prompts.
 
 To prove the live pod is using the intended Codex posture, scrape the agent metrics and filter the runtime series:
 
