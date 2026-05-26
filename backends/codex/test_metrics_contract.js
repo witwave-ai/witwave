@@ -13,7 +13,11 @@ process.env.CONVERSATIONS_AUTH_DISABLED = "true";
 process.env.CODEX_CONFIG_TOML = path.join(tmp, "config.toml");
 process.env.CODEX_AGENT_MD = path.join(tmp, "AGENTS.md");
 fs.writeFileSync(process.env.CODEX_AGENT_MD, "# Metrics contract test identity\n", "utf8");
-fs.writeFileSync(process.env.CODEX_CONFIG_TOML, 'model = "gpt-5.5"\nreasoning_effort = "xhigh"\n', "utf8");
+fs.writeFileSync(
+  process.env.CODEX_CONFIG_TOML,
+  'model = "gpt-5.5"\nreasoning_effort = "xhigh"\n\n[runtime]\nmax_tool_iterations = 10\ndefault_max_tokens = 30000\n',
+  "utf8",
+);
 
 const { handleA2A, publishSessionChunk, renderMetrics } = await import("./main.js");
 
@@ -86,6 +90,11 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_mcp_servers_active/);
   assert.match(body, /backend_tool_audit_rotation_pressure_total/);
   assert.match(body, /backend_budget_exceeded_total/);
+  assert.match(body, /backend_runtime_config_info\{.*model="gpt-5.5".*reasoning_effort="xhigh".*\} 1/);
+  assert.match(body, /backend_runtime_default_max_tokens\{.*backend="codex".*\} 30000/);
+  assert.match(body, /backend_runtime_max_tool_iterations\{.*backend="codex".*\} 10/);
+  assert.match(body, /backend_runtime_responses_streaming_enabled\{.*backend="codex".*\} 1/);
+  assert.match(body, /backend_runtime_stub_mode_enabled\{.*backend="codex".*\} 1/);
   for (const placeholderMetric of [
     "backend_sdk_info",
     "backend_event_loop_lag_seconds_count",

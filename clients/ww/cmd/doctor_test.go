@@ -124,6 +124,58 @@ func TestEvaluateAgentSummariesTreatsRequiredDisabledAsFailure(t *testing.T) {
 	t.Fatalf("checks = %+v, want required disabled agent to fail", checks)
 }
 
+func TestEvaluateAgentSummariesRequiresNamedBackend(t *testing.T) {
+	checks := evaluateAgentSummaries([]agent.AgentSummary{
+		{
+			Name:      "mira",
+			Namespace: "witwave-self",
+			Phase:     "Ready",
+			Ready:     1,
+			Backends:  []string{"codex"},
+			Raw:       agentWithImages("0.30.0", []map[string]string{{"name": "codex", "tag": "0.30.0"}}),
+		},
+	}, doctorFlags{agents: []string{"mira"}, requiredBackends: []string{"CODEX"}}, "0.30.0")
+
+	for _, check := range checks {
+		if check.Name == "required backends" {
+			if check.Status != doctorPass {
+				t.Fatalf("required backend status = %s, want PASS", check.Status)
+			}
+			if check.Details != "codex" {
+				t.Fatalf("required backend details = %q, want codex", check.Details)
+			}
+			return
+		}
+	}
+	t.Fatalf("checks = %+v, want required backends check", checks)
+}
+
+func TestEvaluateAgentSummariesFailsWhenRequiredBackendMissing(t *testing.T) {
+	checks := evaluateAgentSummaries([]agent.AgentSummary{
+		{
+			Name:      "zora",
+			Namespace: "witwave-self",
+			Phase:     "Ready",
+			Ready:     1,
+			Backends:  []string{"claude"},
+			Raw:       agentWithImages("0.30.0", []map[string]string{{"name": "claude", "tag": "0.30.0"}}),
+		},
+	}, doctorFlags{agents: []string{"zora"}, requiredBackends: []string{"codex"}}, "0.30.0")
+
+	for _, check := range checks {
+		if check.Name == "required backends" {
+			if check.Status != doctorFail {
+				t.Fatalf("required backend status = %s, want FAIL", check.Status)
+			}
+			if !strings.Contains(check.Details, "witwave-self/zora missing codex") {
+				t.Fatalf("required backend details = %q, want missing zora/codex", check.Details)
+			}
+			return
+		}
+	}
+	t.Fatalf("checks = %+v, want required backends check", checks)
+}
+
 func TestReleaseDoctorHealthProbeTargetsSkipsBackendSidecars(t *testing.T) {
 	targets, skipped := releaseDoctorHealthProbeTargets([]agentEntry{
 		{ID: "zora", Role: "witwave", URL: "http://localhost:8000"},

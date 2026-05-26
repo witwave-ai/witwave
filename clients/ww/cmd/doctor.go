@@ -22,6 +22,7 @@ type doctorFlags struct {
 	skipCluster        bool
 	skipHarness        bool
 	agents             []string
+	requiredBackends   []string
 	requireAgentsReady bool
 	strictAgentTags    bool
 }
@@ -72,7 +73,8 @@ func newDoctorReleaseCmd(f *doctorFlags) *cobra.Command {
 			"operator pods, CRDs, and WitwaveAgent CRs. Agent readiness and image\n" +
 			"tag skew are warnings by default because agents may be intentionally\n" +
 			"scaled down; use --agent or --require-agents-ready when this should\n" +
-			"act as a rollout gate.",
+			"act as a rollout gate. Use --require-backend with --agent to prove a\n" +
+			"specific backend, such as codex, is present on that rollout target.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDoctorRelease(cmd.Context(), *f)
 		},
@@ -85,6 +87,8 @@ func newDoctorReleaseCmd(f *doctorFlags) *cobra.Command {
 		"Skip configured harness checks")
 	cmd.Flags().StringArrayVar(&f.agents, "agent", nil,
 		"Require the named WitwaveAgent to be present and Ready; repeatable")
+	cmd.Flags().StringArrayVar(&f.requiredBackends, "require-backend", nil,
+		"Require each inspected WitwaveAgent to declare the named backend; repeatable")
 	cmd.Flags().BoolVar(&f.requireAgentsReady, "require-agents-ready", false,
 		"Fail when any inspected WitwaveAgent is not Ready")
 	cmd.Flags().BoolVar(&f.strictAgentTags, "strict-agent-tags", false,
@@ -346,6 +350,9 @@ func evaluateAgentSummaries(summaries []agent.AgentSummary, f doctorFlags, expec
 	} else {
 		checks = append(checks, evaluateActiveAgentReadiness(active, f)...)
 	}
+	if len(f.requiredBackends) > 0 {
+		checks = append(checks, evaluateRequiredBackends(filtered, f.requiredBackends)...)
+	}
 
 	if expectedTag != "" {
 		mismatches := agentImageTagMismatches(filtered, expectedTag)
@@ -360,6 +367,22 @@ func evaluateAgentSummaries(summaries []agent.AgentSummary, f doctorFlags, expec
 		}
 	}
 	return checks
+}
+
+func evaluateRequiredBackends(summaries []agent.AgentSummary, required []string) []doctorCheck {
+	missing := requiredBackendMismatches(summaries, required)
+	if len(missing) > 0 {
+		return []doctorCheck{{
+			Name:    "required backends",
+			Status:  doctorFail,
+			Details: strings.Join(missing, "; "),
+		}}
+	}
+	return []doctorCheck{{
+		Name:    "required backends",
+		Status:  doctorPass,
+		Details: strings.Join(normalizeRequiredBackends(required), ", "),
+	}}
 }
 
 func evaluateActiveAgentReadiness(summaries []agent.AgentSummary, f doctorFlags) []doctorCheck {
@@ -442,6 +465,44 @@ func agentReady(summary agent.AgentSummary) bool {
 		return false
 	}
 	return summary.Phase == "Ready" && summary.Ready > 0
+}
+
+func requiredBackendMismatches(summaries []agent.AgentSummary, required []string) []string {
+	normalizedRequired := normalizeRequiredBackends(required)
+	missing := []string{}
+	for _, summary := range summaries {
+		present := map[string]bool{}
+		for _, backend := range summary.Backends {
+			present[strings.ToLower(strings.TrimSpace(backend))] = true
+		}
+		missingForAgent := []string{}
+		for _, backend := range normalizedRequired {
+			if !present[backend] {
+				missingForAgent = append(missingForAgent, backend)
+			}
+		}
+		if len(missingForAgent) > 0 {
+			missing = append(missing, fmt.Sprintf("%s/%s missing %s",
+				summary.Namespace, summary.Name, strings.Join(missingForAgent, ",")))
+		}
+	}
+	sort.Strings(missing)
+	return missing
+}
+
+func normalizeRequiredBackends(required []string) []string {
+	seen := map[string]bool{}
+	normalized := []string{}
+	for _, backend := range required {
+		backend = strings.ToLower(strings.TrimSpace(backend))
+		if backend == "" || seen[backend] {
+			continue
+		}
+		seen[backend] = true
+		normalized = append(normalized, backend)
+	}
+	sort.Strings(normalized)
+	return normalized
 }
 
 func expectedOperatorVersion(status *operator.Status) string {

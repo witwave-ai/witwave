@@ -88,6 +88,17 @@ const CODEX_MAX_TOOL_ITERATIONS = configInteger(
   "CODEX_MAX_TOOL_ITERATIONS",
   6,
 );
+const CODEX_DEFAULT_MAX_TOKENS = positiveIntegerOrUndefined(
+  configInteger(
+    [
+      ["runtime", "default_max_tokens"],
+      ["budget", "default_max_tokens"],
+      ["budget", "max_tokens"],
+    ],
+    "CODEX_DEFAULT_MAX_TOKENS",
+    0,
+  ),
+);
 const CODEX_MEMORY_ENABLED = configBool([["tools", "memory"]], "CODEX_MEMORY_ENABLED", true);
 const CODEX_MEMORY_ROOT = configString(
   [
@@ -1511,13 +1522,18 @@ export function maxOutputTokensForRequest(metadata) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-export function maxTokensForRequest(metadata) {
+function positiveIntegerOrUndefined(value) {
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+export function maxTokensForRequest(metadata, defaultMaxTokens = CODEX_DEFAULT_MAX_TOKENS) {
   const raw = metadata?.max_tokens || metadata?.maxTokens;
   if (raw === undefined || raw === null || raw === "") {
-    return undefined;
+    return defaultMaxTokens;
   }
   const parsed = Number.parseInt(String(raw), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultMaxTokens;
 }
 
 function maxToolIterationsForRequest(metadata) {
@@ -3336,6 +3352,17 @@ function metricLine(name, value, labelValues = {}) {
   return `${name}${suffix} ${value}`;
 }
 
+function metricBool(value) {
+  return value ? 1 : 0;
+}
+
+function runtimeConfigLabels() {
+  return labels({
+    model: sanitizeModelLabel(CODEX_MODEL),
+    reasoning_effort: CODEX_REASONING_EFFORT || "none",
+  });
+}
+
 function appendSummaryMap(lines, name, help, countMap, sumMap, labelsForKey) {
   lines.push(`# HELP ${name} ${help}`, `# TYPE ${name} summary`);
   for (const [key, count] of countMap.entries()) {
@@ -3495,6 +3522,21 @@ export function renderMetrics() {
     "# HELP backend_sdk_info Underlying SDK package and version.",
     "# TYPE backend_sdk_info gauge",
     metricLine("backend_sdk_info", 1, labels({ sdk: "openai", version: OPENAI_SDK_VERSION })),
+    "# HELP backend_runtime_config_info Active Codex runtime posture. Labels expose the configured model and reasoning effort.",
+    "# TYPE backend_runtime_config_info gauge",
+    metricLine("backend_runtime_config_info", 1, runtimeConfigLabels()),
+    "# HELP backend_runtime_default_max_tokens Default total-token budget applied when request metadata omits max_tokens. Zero means unset.",
+    "# TYPE backend_runtime_default_max_tokens gauge",
+    metricLine("backend_runtime_default_max_tokens", CODEX_DEFAULT_MAX_TOKENS || 0, labels()),
+    "# HELP backend_runtime_max_tool_iterations Maximum Responses API function-tool loop iterations per Codex request.",
+    "# TYPE backend_runtime_max_tool_iterations gauge",
+    metricLine("backend_runtime_max_tool_iterations", CODEX_MAX_TOOL_ITERATIONS, labels()),
+    "# HELP backend_runtime_responses_streaming_enabled Whether Codex streams Responses API deltas into session SSE updates.",
+    "# TYPE backend_runtime_responses_streaming_enabled gauge",
+    metricLine("backend_runtime_responses_streaming_enabled", metricBool(CODEX_RESPONSES_STREAMING), labels()),
+    "# HELP backend_runtime_stub_mode_enabled Whether Codex is currently returning stub responses instead of calling the Responses API.",
+    "# TYPE backend_runtime_stub_mode_enabled gauge",
+    metricLine("backend_runtime_stub_mode_enabled", metricBool(shouldUseStub()), labels()),
     "# HELP backend_agent_md_revision Currently-active AGENTS.md revision.",
     "# TYPE backend_agent_md_revision gauge",
     metricLine("backend_agent_md_revision", 1, labels({ revision: agentMdRevision })),

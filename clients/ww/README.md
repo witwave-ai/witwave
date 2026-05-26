@@ -209,8 +209,16 @@ CRs across namespaces.
 
 By default, intentionally scaled-down agents produce warnings rather than failures. Add `--agent <name>` (or
 `--agent <namespace>/<name>`) when a specific agent must be present and Ready, `--require-agents-ready` when every
-inspected agent must be Ready, and `--strict-agent-tags` when image tag skew should fail the run. Use `--skip-harness`
-or `--skip-cluster` for partial diagnostics, and the global `--json` / `--yaml` flags for machine-readable output.
+inspected agent must be Ready, `--require-backend <name>` when the inspected agents must carry a backend such as
+`codex`, and `--strict-agent-tags` when image tag skew should fail the run. Use `--skip-harness` or `--skip-cluster` for
+partial diagnostics, and the global `--json` / `--yaml` flags for machine-readable output.
+
+For example, after a Codex backend rollout, this gives a no-token smoke check that Mira is Ready, has a Codex backend,
+and is pinned to the operator appVersion:
+
+```bash
+ww doctor release --skip-harness --agent witwave-self/mira --require-backend codex --strict-agent-tags
+```
 
 ### Streaming
 
@@ -610,6 +618,13 @@ an externally-reachable harness URL.
 backend container. The CLI discovers container ports named `metrics-*` and reads them through the Kubernetes apiserver
 pod proxy, so no local port-forward is required. Output stays in Prometheus text format with lightweight comment headers
 per container.
+
+For Codex-backed agents, the runtime posture is visible without spending model tokens:
+
+```bash
+ww agent metrics mira --namespace witwave-self \
+  | rg 'backend_runtime_(config_info|default_max_tokens|max_tool_iterations|responses_streaming_enabled|stub_mode_enabled)'
+```
 
 ### Deleting agents — repo + Secret cleanup
 

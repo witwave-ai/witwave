@@ -5,6 +5,7 @@ description: >-
   reliability loop stays alive without turning monitoring into a major token sink.
 schedule: "17 14 * * *"
 enabled: true
+max-tokens: 30000
 ---
 
 Run your `platform-health` skill in bounded heartbeat mode.

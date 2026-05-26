@@ -427,7 +427,7 @@ her voice + scoring before publishing live.
 
 Mira is the team's platform reliability observer — read-only by default, focused on detecting platform bugs/anomalies in
 operator health, agent readiness, pod restarts, runtime storage, release posture, upgrade safety, and resource pressure.
-Her hourly heartbeat runs `platform-health`, records a compact Kubernetes/platform snapshot, and begins historical
+Her daily heartbeat runs `platform-health`, records a compact Kubernetes/platform snapshot, and begins historical
 analysis once at least three snapshots exist or history spans 24 hours. When something looks problematic, she sends a
 distilled finding to zora to route the fix. Systemic, repeated, or fix-needed issues should always become a zora
 handoff, not just a private memory entry. Same deployment shape as the other self agents; run it deliberately so her
@@ -449,6 +449,8 @@ mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/mi
   --backend-env codex:CONVERSATIONS_AUTH_DISABLED=true \
   --backend-env codex:CODEX_MODEL=gpt-5.5 \
   --backend-env codex:CODEX_REASONING_EFFORT=xhigh \
+  --backend-env codex:CODEX_MAX_TOOL_ITERATIONS=10 \
+  --backend-env codex:CODEX_DEFAULT_MAX_TOKENS=30000 \
   --backend-env codex:CODEX_STUB_MODE=false \
   --backend-env codex:CODEX_SHELL_ENABLED=true \
   --backend-env codex:CODEX_SHELL_TIMEOUT_SECONDS=45 \
@@ -466,10 +468,13 @@ Mira is intentionally Codex-only in this bootstrap. Her `.witwave/backend.yaml` 
 model `gpt-5.5`, her primary loaded identity document is `.codex/AGENTS.md`, and her Codex skill mirror lives under
 `.codex/skills/`. Keep her `.claude/` folder parked in the repo so she can switch back to Claude later without
 rebuilding her identity from scratch; when one surface changes, keep the other semantically aligned. Her Codex backend
-also sets `CODEX_REASONING_EFFORT=xhigh` for the requested extra-high reasoning posture and roots the Codex memory tools
-at `/workspaces/witwave-self/memory/agents/mira`.
+also sets `CODEX_REASONING_EFFORT=xhigh` for the requested extra-high reasoning posture, caps Codex function-tool loops
+with `CODEX_MAX_TOOL_ITERATIONS=10`, gives ad-hoc Codex requests a default `CODEX_DEFAULT_MAX_TOKENS=30000` budget, and
+roots the Codex memory tools at `/workspaces/witwave-self/memory/agents/mira`. Her heartbeat also adds
+`max-tokens: 30000` so routine platform observation has a hard per-dispatch budget in addition to the daily cadence and
+prompt-level tool-call limit.
 
-After Mira is deployed, run her `platform-health` skill once manually before relying on the hourly heartbeat. The first
+After Mira is deployed, run her `platform-health` skill once manually before relying on the daily heartbeat. The first
 run should report whether the deployed container actually has the read-only tools it needs (`ww`, `kubectl`, `gh`),
 create the platform-health snapshot directory under memory, and confirm whether she can send a distilled anomaly report
 to zora when needed. Historical anomaly detection will become useful after several heartbeat snapshots accumulate.

@@ -44,17 +44,21 @@ execution layer.
 | SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex emits a placeholder but uses a JSON response-session store rather than the shared SQLite path.   |
 | Focused regression tests              | Partial | Full    | Partial | Full    | Codex now has split A2A, auth, health, MCP, hooks, memory, trace/session-stream, and metrics coverage. |
 
-## Highest-Value Gaps
+## Highest-Value Follow-Ups
 
-1. Codex remaining metric semantics: placeholder series now exist for Python-specific families; decide which should
+1. Codex rollout and runtime proof: use
+   `ww doctor release --agent <namespace>/<agent> --require-backend codex --strict-agent-tags` as the first no-token
+   smoke gate after each Codex release, then `ww agent metrics <agent>` to verify the live model, reasoning effort,
+   default token budget, tool-iteration cap, streaming mode, and stub-mode state.
+2. Codex remaining metric semantics: placeholder series now exist for Python-specific families; decide which should
    become active Node instrumentation and which should stay documented as runtime-specific.
-2. Cross-backend regression symmetry: use Codex's focused contract-test shape as the pattern when tightening any backend
+3. Cross-backend regression symmetry: use Codex's focused contract-test shape as the pattern when tightening any backend
    that still relies on broad or mixed-purpose tests.
-3. Hook enforcement parity: the backend guide now states each backend's interception boundary; remaining work is making
+4. Hook enforcement parity: the backend guide now states each backend's interception boundary; remaining work is making
    OpenAI/Gemini enforcement converge where their SDKs allow it.
-4. MCP transport documentation: tighten backend docs so the distinction between stdio SDK MCP and in-cluster HTTP MCP is
+5. MCP transport documentation: tighten backend docs so the distinction between stdio SDK MCP and in-cluster HTTP MCP is
    clear and consistent.
-5. Memory semantics: document which backends have native file-memory tools, which only persist session history, and
+6. Memory semantics: document which backends have native file-memory tools, which only persist session history, and
    which should rely on workspace memory plus identity instructions.
 
 ## Practical Direction

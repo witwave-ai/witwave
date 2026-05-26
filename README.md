@@ -655,6 +655,10 @@ curl -s http://localhost:9000/metrics | head
 
 # From a laptop against a deployed agent, no port-forward required:
 ww agent metrics mira --namespace witwave-self | head
+
+# For a Codex-backed agent, prove the live runtime posture without spending tokens:
+ww agent metrics mira --namespace witwave-self \
+  | rg 'backend_runtime_(config_info|default_max_tokens|max_tool_iterations|responses_streaming_enabled|stub_mode_enabled)'
 ```
 
 ## Prompt env-var interpolation (#473)

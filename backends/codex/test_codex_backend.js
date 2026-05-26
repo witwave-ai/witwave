@@ -115,6 +115,7 @@ mcp = true
 
 [runtime]
 max_tool_iterations = 4
+default_max_tokens = 30000
 
 [paths]
 memory_root = "/workspaces/witwave-self/memory/agents/mira"
@@ -127,6 +128,7 @@ mcp_config = "/home/agent/.codex/mcp.json"
   assert.equal(config.tools.memory, false);
   assert.equal(config.tools.mcp, true);
   assert.equal(config.runtime.max_tool_iterations, 4);
+  assert.equal(config.runtime.default_max_tokens, 30000);
   assert.equal(config.paths.memory_root, "/workspaces/witwave-self/memory/agents/mira");
   assert.equal(config.paths.mcp_config, "/home/agent/.codex/mcp.json");
 });

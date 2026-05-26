@@ -163,6 +163,12 @@ Codex memory tools are rooted at `/workspaces/witwave-self/memory/agents/mira`. 
 repo as a parked fallback so the team can switch back later while keeping the two identity and skill surfaces
 semantically aligned. (`.agents/self/mira/`)
 
+Mira is deliberately cost-bounded even while using the top Codex reasoning posture: her heartbeat is daily, the
+heartbeat frontmatter sets `max-tokens: 30000`, her prompt asks for at most 10 tool calls unless a restart delta is
+detected, `.codex/config.toml` caps Codex function-tool loops at 10, and ad-hoc Codex requests fall back to a
+`default_max_tokens = 30000` backend budget when the caller does not provide one. Raise those guardrails only when the
+requested diagnostic scope explicitly needs deeper investigation.
+
 ## Topology
 
 ```text

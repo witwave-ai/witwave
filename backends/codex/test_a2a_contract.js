@@ -133,3 +133,10 @@ test("maxTokensForRequest accepts positive max_tokens metadata", () => {
   assert.equal(maxTokensForRequest({ max_tokens: "0" }), undefined);
   assert.equal(maxTokensForRequest({ max_tokens: "not-a-number" }), undefined);
 });
+
+test("maxTokensForRequest falls back to configured default budget", () => {
+  assert.equal(maxTokensForRequest({}, 30000), 30000);
+  assert.equal(maxTokensForRequest({ max_tokens: "" }, 30000), 30000);
+  assert.equal(maxTokensForRequest({ max_tokens: "0" }, 30000), 30000);
+  assert.equal(maxTokensForRequest({ max_tokens: "12000" }, 30000), 12000);
+});

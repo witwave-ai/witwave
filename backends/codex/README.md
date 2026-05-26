@@ -29,6 +29,8 @@ The first implementation is contract-first:
 - backend-local MCP client bridging for URL-shaped `.codex/mcp.json` entries
 - streaming-delta Prometheus counters with bounded `model` labels
 - common model request, request-duration, and JSONL log-write metrics for cross-backend dashboards
+- runtime posture metrics for active model, reasoning effort, default token budget, tool-iteration cap, streaming, and
+  stub mode
 - zero-value placeholders for runtime-specific Claude/Python metric families that do not apply to the Node backend
 - active `AGENTS.md` revision metrics for rollout verification
 - OpenTelemetry spans for A2A execution, MCP `tools/call`, Responses API calls, and function tools
@@ -52,6 +54,7 @@ the OpenAI Responses API.
 | `CODEX_SHELL_TIMEOUT_SECONDS`       | `30`                                         | Per-command timeout                                             |
 | `CODEX_SHELL_MAX_OUTPUT_BYTES`      | `12000`                                      | Per-stream output cap before truncation                         |
 | `CODEX_MAX_TOOL_ITERATIONS`         | `6`                                          | Maximum Responses API function-call loop iterations             |
+| `CODEX_DEFAULT_MAX_TOKENS`          | unset                                        | Default total-token budget when request metadata omits one      |
 | `CODEX_MEMORY_ENABLED`              | `true`                                       | Enables bounded memory file tools                               |
 | `CODEX_MEMORY_ROOT`                 | `/home/agent/.codex/memory`                  | Root directory for memory file tools                            |
 | `CODEX_MEMORY_MAX_BYTES`            | `65536`                                      | Maximum bytes per memory read/write/append payload              |
@@ -100,17 +103,51 @@ mcp = true
 
 [runtime]
 max_tool_iterations = 6
+default_max_tokens = 30000
 
 [paths]
 memory_root = "/workspaces/witwave-self/memory/agents/mira"
 ```
 
 Additional path overrides are available under `[paths]`: `memory_root`, `mcp_config`, `hooks_config`, and
-`session_store`. Memory caps can be set under `[memory]` with `max_bytes` and `max_list_entries`.
+`session_store`. Memory caps can be set under `[memory]` with `max_bytes` and `max_list_entries`. A default token budget
+can be set with `[runtime].default_max_tokens`, `[budget].default_max_tokens`, `[budget].max_tokens`, or
+`CODEX_DEFAULT_MAX_TOKENS`.
 
 The backend stores the final `response.id` for each A2A session in `CODEX_SESSION_STORE_PATH` and sends it back as
 `previous_response_id` on the next turn. The harness also sends `metadata.session_id` on first-turn A2A calls so Codex
 has a stable session key before `contextId` is present.
+
+## Cost Guardrails
+
+Codex cost control is layered rather than owned by one knob:
+
+- Use scheduler frontmatter `max-tokens:` on heartbeats, jobs, tasks, triggers, and continuations to set a hard
+  per-dispatch token budget. The harness forwards this as `metadata.max_tokens`, and Codex stops once observed Responses
+  API usage reaches the budget.
+- Set `CODEX_DEFAULT_MAX_TOKENS` or `[runtime].default_max_tokens` when a Codex agent should have a fallback budget for
+  ad-hoc A2A requests that do not arrive through a scheduled prompt file.
+- Keep routine autonomous checks on an explicit cadence. For example, Mira's platform-health heartbeat runs daily, not
+  continuously, because it is an observation loop rather than an incident-response loop.
+- Set `CODEX_MAX_TOOL_ITERATIONS` or `[runtime].max_tool_iterations` to bound function-tool loops. This is especially
+  useful for shell, memory, and MCP-heavy diagnostic prompts.
+- Treat `CODEX_REASONING_EFFORT=xhigh` as a deliberate high-quality posture. For always-on agents, pair it with a
+  conservative schedule, token budget, and tool-iteration cap before increasing cadence.
+
+The cheapest release smoke is still no-token: run `ww doctor release --agent <namespace>/<agent> --require-backend codex
+--strict-agent-tags` to prove the deployed agent carries Codex and matches the operator appVersion before firing real
+prompts.
+
+To prove the live pod is using the intended Codex posture, scrape the agent metrics and filter the runtime series:
+
+```bash
+ww agent metrics mira --namespace witwave-self \
+  | rg 'backend_runtime_(config_info|default_max_tokens|max_tool_iterations|responses_streaming_enabled|stub_mode_enabled)'
+```
+
+For Mira's normal active posture, expect `backend_runtime_config_info{...,model="gpt-5.5",reasoning_effort="xhigh"} 1`,
+`backend_runtime_default_max_tokens 30000`, `backend_runtime_max_tool_iterations 10`,
+`backend_runtime_responses_streaming_enabled 1`, and `backend_runtime_stub_mode_enabled 0`.
 
 When `SESSION_ID_SECRET` is set, caller-supplied session IDs are HMAC-bound to `metadata.caller_id` on A2A requests and
 to the bearer-token fingerprint on `/mcp` requests. This matches the Claude/Gemini posture: two callers presenting the
