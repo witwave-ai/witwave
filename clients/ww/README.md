@@ -636,6 +636,10 @@ backend container. The CLI discovers container ports named `metrics-*` and reads
 pod proxy, so no local port-forward is required. Output stays in Prometheus text format with lightweight comment headers
 per container.
 
+Metrics are optional. Agents created with `--no-metrics` or patched to `spec.metrics.enabled=false` have no `metrics-*`
+ports for the CLI to discover; in that case `ww agent metrics` exits with an explicit "no metrics ports found" error
+instead of returning an empty scrape.
+
 For Codex-backed agents with metrics enabled, the runtime posture is visible without spending model tokens:
 
 ```bash
