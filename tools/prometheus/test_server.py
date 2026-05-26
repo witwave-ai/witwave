@@ -149,9 +149,9 @@ def test_bearer_to_cloud_metadata_endpoint_refuses_to_start_even_with_plaintext_
 
     msg = str(excinfo.value)
     assert "1652" in msg, f"error message must cite #1652: {msg!r}"
-    assert "metadata" in msg.lower() or "169.254.169.254" in msg, (
-        f"error message must identify the metadata endpoint: {msg!r}"
-    )
+    assert (
+        "metadata" in msg.lower() or "169.254.169.254" in msg
+    ), f"error message must identify the metadata endpoint: {msg!r}"
 
     # Restore a healthy server module for any subsequent tests in the
     # session, so test isolation is preserved.
