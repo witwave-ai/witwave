@@ -220,6 +220,23 @@ and is pinned to the operator appVersion:
 ww doctor release --skip-harness --agent witwave-self/mira --require-backend codex --strict-agent-tags
 ```
 
+Runtime posture checks are opt-in because metrics are optional per agent. When an agent has metrics enabled, add
+expectation flags to prove the live backend process is running the intended model and guardrails without spending model
+tokens. If those flags are present and metrics are disabled or missing, the doctor fails with an explicit proof gap:
+
+```bash
+ww doctor release --skip-harness \
+  --agent witwave-self/mira \
+  --require-backend codex \
+  --strict-agent-tags \
+  --expect-runtime-model gpt-5.5 \
+  --expect-runtime-reasoning-effort xhigh \
+  --expect-runtime-default-max-tokens 30000 \
+  --expect-runtime-max-tool-iterations 10 \
+  --expect-runtime-streaming true \
+  --expect-runtime-stub-mode false
+```
+
 ### Streaming
 
 `ww tail` reconnects automatically with exponential backoff (100 ms → 10 s, with ±25 % jitter) and sends `Last-Event-ID`
@@ -619,7 +636,7 @@ backend container. The CLI discovers container ports named `metrics-*` and reads
 pod proxy, so no local port-forward is required. Output stays in Prometheus text format with lightweight comment headers
 per container.
 
-For Codex-backed agents, the runtime posture is visible without spending model tokens:
+For Codex-backed agents with metrics enabled, the runtime posture is visible without spending model tokens:
 
 ```bash
 ww agent metrics mira --namespace witwave-self \

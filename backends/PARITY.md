@@ -48,8 +48,9 @@ execution layer.
 
 1. Codex rollout and runtime proof: use
    `ww doctor release --agent <namespace>/<agent> --require-backend codex --strict-agent-tags` as the first no-token
-   smoke gate after each Codex release, then `ww agent metrics <agent>` to verify the live model, reasoning effort,
-   default token budget, tool-iteration cap, streaming mode, and stub-mode state.
+   smoke gate after each Codex release. For agents with metrics enabled, add the `--expect-runtime-*` flags to verify
+   the live model, reasoning effort, default token budget, tool-iteration cap, streaming mode, and stub-mode state from
+   the release doctor itself.
 2. Codex remaining metric semantics: placeholder series now exist for Python-specific families; decide which should
    become active Node instrumentation and which should stay documented as runtime-specific.
 3. Cross-backend regression symmetry: use Codex's focused contract-test shape as the pattern when tightening any backend

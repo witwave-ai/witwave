@@ -117,6 +117,17 @@ func TestPodMetricsProxyPath(t *testing.T) {
 	}
 }
 
+func TestScrapedMetricsPodCount(t *testing.T) {
+	got := scrapedMetricsPodCount([]ScrapedMetrics{
+		{Pod: "mira-a", Container: "harness"},
+		{Pod: "mira-a", Container: "codex"},
+		{Pod: "mira-b", Container: "harness"},
+	})
+	if got != 2 {
+		t.Fatalf("scrapedMetricsPodCount = %d, want 2", got)
+	}
+}
+
 func TestWriteMetricsSection(t *testing.T) {
 	var buf bytes.Buffer
 	ep := metricsEndpoint{

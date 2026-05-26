@@ -656,9 +656,21 @@ curl -s http://localhost:9000/metrics | head
 # From a laptop against a deployed agent, no port-forward required:
 ww agent metrics mira --namespace witwave-self | head
 
-# For a Codex-backed agent, prove the live runtime posture without spending tokens:
+# For a Codex-backed agent with metrics enabled, inspect the live runtime posture without spending tokens:
 ww agent metrics mira --namespace witwave-self \
   | rg 'backend_runtime_(config_info|default_max_tokens|max_tool_iterations|responses_streaming_enabled|stub_mode_enabled)'
+
+# Or make the release doctor fail if the live runtime posture is not what you expect:
+ww doctor release --skip-harness \
+  --agent witwave-self/mira \
+  --require-backend codex \
+  --strict-agent-tags \
+  --expect-runtime-model gpt-5.5 \
+  --expect-runtime-reasoning-effort xhigh \
+  --expect-runtime-default-max-tokens 30000 \
+  --expect-runtime-max-tool-iterations 10 \
+  --expect-runtime-streaming true \
+  --expect-runtime-stub-mode false
 ```
 
 ## Prompt env-var interpolation (#473)

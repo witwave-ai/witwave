@@ -138,7 +138,23 @@ The cheapest release smoke is still no-token: run
 `ww doctor release --agent <namespace>/<agent> --require-backend codex --strict-agent-tags` to prove the deployed agent
 carries Codex and matches the operator appVersion before firing real prompts.
 
-To prove the live pod is using the intended Codex posture, scrape the agent metrics and filter the runtime series:
+When metrics are enabled for the agent, `ww doctor release` can also prove the live pod is using the intended Codex
+posture:
+
+```bash
+ww doctor release --skip-harness \
+  --agent witwave-self/mira \
+  --require-backend codex \
+  --strict-agent-tags \
+  --expect-runtime-model gpt-5.5 \
+  --expect-runtime-reasoning-effort xhigh \
+  --expect-runtime-default-max-tokens 30000 \
+  --expect-runtime-max-tool-iterations 10 \
+  --expect-runtime-streaming true \
+  --expect-runtime-stub-mode false
+```
+
+For ad-hoc inspection, scrape the agent metrics and filter the runtime series:
 
 ```bash
 ww agent metrics mira --namespace witwave-self \

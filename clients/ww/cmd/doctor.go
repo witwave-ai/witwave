@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +26,13 @@ type doctorFlags struct {
 	requiredBackends   []string
 	requireAgentsReady bool
 	strictAgentTags    bool
+
+	runtimeModel             string
+	runtimeReasoningEffort   string
+	runtimeDefaultMaxTokens  string
+	runtimeMaxToolIterations string
+	runtimeStreaming         string
+	runtimeStubMode          string
 }
 
 type doctorStatus string
@@ -74,8 +82,13 @@ func newDoctorReleaseCmd(f *doctorFlags) *cobra.Command {
 			"tag skew are warnings by default because agents may be intentionally\n" +
 			"scaled down; use --agent or --require-agents-ready when this should\n" +
 			"act as a rollout gate. Use --require-backend with --agent to prove a\n" +
-			"specific backend, such as codex, is present on that rollout target.",
+			"specific backend, such as codex, is present on that rollout target.\n" +
+			"Runtime expectation flags scrape live pod metrics, which proves the\n" +
+			"backend process is running with the intended model and guardrails.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateDoctorFlags(*f); err != nil {
+				return err
+			}
 			return runDoctorRelease(cmd.Context(), *f)
 		},
 	}
@@ -93,7 +106,52 @@ func newDoctorReleaseCmd(f *doctorFlags) *cobra.Command {
 		"Fail when any inspected WitwaveAgent is not Ready")
 	cmd.Flags().BoolVar(&f.strictAgentTags, "strict-agent-tags", false,
 		"Fail when inspected agent harness/backend image tags differ from the operator appVersion")
+	cmd.Flags().StringVar(&f.runtimeModel, "expect-runtime-model", "",
+		"Require inspected backend runtime metrics to report this model")
+	cmd.Flags().StringVar(&f.runtimeReasoningEffort, "expect-runtime-reasoning-effort", "",
+		"Require inspected backend runtime metrics to report this reasoning effort")
+	cmd.Flags().StringVar(&f.runtimeDefaultMaxTokens, "expect-runtime-default-max-tokens", "",
+		"Require inspected backend runtime metrics to report this default max-token budget")
+	cmd.Flags().StringVar(&f.runtimeMaxToolIterations, "expect-runtime-max-tool-iterations", "",
+		"Require inspected backend runtime metrics to report this max tool-iteration cap")
+	cmd.Flags().StringVar(&f.runtimeStreaming, "expect-runtime-streaming", "",
+		"Require inspected backend runtime metrics to report streaming mode (true or false)")
+	cmd.Flags().StringVar(&f.runtimeStubMode, "expect-runtime-stub-mode", "",
+		"Require inspected backend runtime metrics to report stub mode (true or false)")
 	return cmd
+}
+
+func validateDoctorFlags(f doctorFlags) error {
+	if f.skipCluster && runtimeExpectationsConfigured(f) {
+		return fmt.Errorf("runtime expectation flags require cluster checks; remove --skip-cluster")
+	}
+	for flag, value := range map[string]string{
+		"--expect-runtime-streaming": valueOrEmpty(f.runtimeStreaming),
+		"--expect-runtime-stub-mode": valueOrEmpty(f.runtimeStubMode),
+	} {
+		if value == "" {
+			continue
+		}
+		if _, err := strconv.ParseBool(value); err != nil {
+			return fmt.Errorf("%s must be true or false", flag)
+		}
+	}
+	for flag, value := range map[string]string{
+		"--expect-runtime-default-max-tokens":  valueOrEmpty(f.runtimeDefaultMaxTokens),
+		"--expect-runtime-max-tool-iterations": valueOrEmpty(f.runtimeMaxToolIterations),
+	} {
+		if value == "" {
+			continue
+		}
+		if parsed, err := strconv.Atoi(value); err != nil || parsed < 0 {
+			return fmt.Errorf("%s must be a non-negative integer", flag)
+		}
+	}
+	return nil
+}
+
+func valueOrEmpty(value string) string {
+	return strings.TrimSpace(value)
 }
 
 func runDoctorRelease(ctx context.Context, f doctorFlags) error {
@@ -257,6 +315,11 @@ func runClusterReleaseChecks(ctx context.Context, f doctorFlags) []doctorCheck {
 		return checks
 	}
 	checks = append(checks, evaluateAgentSummaries(summaries, f, expectedOperatorVersion(status))...)
+	if runtimeExpectationsConfigured(f) {
+		filtered, _ := filterAgentSummaries(summaries, f.agents)
+		active, _ := splitAgentSummariesByEnabled(filtered)
+		checks = append(checks, evaluateRuntimeMetrics(ctx, cfg, active, f)...)
+	}
 	return checks
 }
 

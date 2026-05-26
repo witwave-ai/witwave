@@ -32,6 +32,30 @@ type MetricsOptions struct {
 	Out io.Writer
 }
 
+// ScrapeMetricsOptions controls direct metric scraping for callers that need
+// structured access to each endpoint instead of the concatenated CLI output.
+type ScrapeMetricsOptions struct {
+	Agent     string
+	Namespace string
+
+	// Pod, when non-empty, targets one specific pod instead of every
+	// non-terminal pod matching the agent label.
+	Pod string
+
+	// Timeout bounds the full multi-endpoint scrape. Zero uses the same safe
+	// default as Metrics.
+	Timeout time.Duration
+}
+
+// ScrapedMetrics is one raw /metrics response from one container endpoint.
+type ScrapedMetrics struct {
+	Pod       string
+	Container string
+	PortName  string
+	Port      int32
+	Body      []byte
+}
+
 type metricsEndpoint struct {
 	Pod       string
 	Container string
@@ -54,6 +78,40 @@ func Metrics(ctx context.Context, cfg *rest.Config, opts MetricsOptions) error {
 	if opts.Namespace == "" {
 		return fmt.Errorf("MetricsOptions.Namespace is required")
 	}
+	scrapes, err := ScrapeMetrics(ctx, cfg, ScrapeMetricsOptions{
+		Agent:     opts.Agent,
+		Namespace: opts.Namespace,
+		Pod:       opts.Pod,
+		Timeout:   opts.Timeout,
+	})
+	if err != nil {
+		return err
+	}
+
+	multiPod := scrapedMetricsPodCount(scrapes) > 1
+	for i, scrape := range scrapes {
+		ep := metricsEndpoint{
+			Pod:       scrape.Pod,
+			Container: scrape.Container,
+			PortName:  scrape.PortName,
+			Port:      scrape.Port,
+		}
+		if err := writeMetricsSection(opts.Out, opts.Agent, ep, scrape.Body, multiPod, i > 0); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ScrapeMetrics scrapes every named metrics port owned by the selected
+// WitwaveAgent pod(s) and returns one raw response per container endpoint.
+func ScrapeMetrics(ctx context.Context, cfg *rest.Config, opts ScrapeMetricsOptions) ([]ScrapedMetrics, error) {
+	if opts.Agent == "" {
+		return nil, fmt.Errorf("ScrapeMetricsOptions.Agent is required")
+	}
+	if opts.Namespace == "" {
+		return nil, fmt.Errorf("ScrapeMetricsOptions.Namespace is required")
+	}
 
 	timeout := opts.Timeout
 	if timeout <= 0 {
@@ -62,7 +120,7 @@ func Metrics(ctx context.Context, cfg *rest.Config, opts MetricsOptions) error {
 
 	k8s, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("build kubernetes client: %w", err)
+		return nil, fmt.Errorf("build kubernetes client: %w", err)
 	}
 
 	scrapeCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -70,10 +128,10 @@ func Metrics(ctx context.Context, cfg *rest.Config, opts MetricsOptions) error {
 
 	pods, err := selectAgentMetricPods(scrapeCtx, k8s, opts.Namespace, opts.Agent, opts.Pod)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(pods) == 0 {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"no running pods found for WitwaveAgent %q in namespace %s — is the agent Ready? Run `ww agent status %s`",
 			opts.Agent, opts.Namespace, opts.Agent,
 		)
@@ -84,20 +142,32 @@ func Metrics(ctx context.Context, cfg *rest.Config, opts MetricsOptions) error {
 		endpoints = append(endpoints, metricsEndpointsForPod(pod)...)
 	}
 	if len(endpoints) == 0 {
-		return fmt.Errorf("no metrics ports found for agent %s/%s; is spec.metrics.enabled=false?", opts.Namespace, opts.Agent)
+		return nil, fmt.Errorf("no metrics ports found for agent %s/%s; is spec.metrics.enabled=false?", opts.Namespace, opts.Agent)
 	}
 
-	multiPod := len(pods) > 1
-	for i, ep := range endpoints {
+	scrapes := make([]ScrapedMetrics, 0, len(endpoints))
+	for _, ep := range endpoints {
 		raw, err := scrapePodMetrics(scrapeCtx, k8s, opts.Namespace, ep)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if err := writeMetricsSection(opts.Out, opts.Agent, ep, raw, multiPod, i > 0); err != nil {
-			return err
-		}
+		scrapes = append(scrapes, ScrapedMetrics{
+			Pod:       ep.Pod,
+			Container: ep.Container,
+			PortName:  ep.PortName,
+			Port:      ep.Port,
+			Body:      raw,
+		})
 	}
-	return nil
+	return scrapes, nil
+}
+
+func scrapedMetricsPodCount(scrapes []ScrapedMetrics) int {
+	pods := map[string]bool{}
+	for _, scrape := range scrapes {
+		pods[scrape.Pod] = true
+	}
+	return len(pods)
 }
 
 func selectAgentMetricPods(ctx context.Context, k8s kubernetes.Interface, ns, agentName, explicitPod string) ([]corev1.Pod, error) {

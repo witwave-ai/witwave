@@ -176,6 +176,104 @@ func TestEvaluateAgentSummariesFailsWhenRequiredBackendMissing(t *testing.T) {
 	t.Fatalf("checks = %+v, want required backends check", checks)
 }
 
+func TestEvaluateRuntimeMetricSamplesPassesCodexPosture(t *testing.T) {
+	expect := buildRuntimeExpectations(doctorFlags{
+		runtimeModel:             "gpt-5.5",
+		runtimeReasoningEffort:   "xhigh",
+		runtimeDefaultMaxTokens:  "30000",
+		runtimeMaxToolIterations: "10",
+		runtimeStreaming:         "true",
+		runtimeStubMode:          "false",
+	})
+	scrapes := []agent.ScrapedMetrics{{
+		Container: "codex",
+		PortName:  "metrics-codex",
+		Port:      9001,
+		Body: []byte(strings.Join([]string{
+			`backend_runtime_config_info{agent="mira",backend="codex",model="gpt-5.5",reasoning_effort="xhigh"} 1`,
+			`backend_runtime_default_max_tokens{agent="mira",backend="codex"} 30000`,
+			`backend_runtime_max_tool_iterations{agent="mira",backend="codex"} 10`,
+			`backend_runtime_responses_streaming_enabled{agent="mira",backend="codex"} 1`,
+			`backend_runtime_stub_mode_enabled{agent="mira",backend="codex"} 0`,
+		}, "\n")),
+	}}
+
+	if got := evaluateRuntimeMetricSamples(scrapes, expect, []string{"codex"}); len(got) != 0 {
+		t.Fatalf("runtime mismatches = %+v, want none", got)
+	}
+}
+
+func TestEvaluateRuntimeMetricSamplesFailsMissingRuntimeMetrics(t *testing.T) {
+	expect := buildRuntimeExpectations(doctorFlags{runtimeModel: "gpt-5.5"})
+	scrapes := []agent.ScrapedMetrics{{
+		Container: "harness",
+		PortName:  "metrics-harness",
+		Port:      9000,
+		Body:      []byte(`harness_up 1`),
+	}}
+
+	got := evaluateRuntimeMetricSamples(scrapes, expect, []string{"codex"})
+	if len(got) != 1 || !strings.Contains(got[0], "no backend_runtime_* metrics found") {
+		t.Fatalf("runtime mismatches = %+v, want missing runtime metrics", got)
+	}
+}
+
+func TestEvaluateRuntimeMetricSamplesFailsMismatchedPosture(t *testing.T) {
+	expect := buildRuntimeExpectations(doctorFlags{
+		runtimeModel:             "gpt-5.5",
+		runtimeDefaultMaxTokens:  "30000",
+		runtimeMaxToolIterations: "10",
+		runtimeStreaming:         "true",
+		runtimeStubMode:          "false",
+	})
+	scrapes := []agent.ScrapedMetrics{{
+		Container: "codex",
+		PortName:  "metrics-codex",
+		Port:      9001,
+		Body: []byte(strings.Join([]string{
+			`backend_runtime_config_info{agent="mira",backend="codex",model="gpt-5.4",reasoning_effort="xhigh"} 1`,
+			`backend_runtime_default_max_tokens{agent="mira",backend="codex"} 12000`,
+			`backend_runtime_max_tool_iterations{agent="mira",backend="codex"} 10`,
+			`backend_runtime_responses_streaming_enabled{agent="mira",backend="codex"} 0`,
+			`backend_runtime_stub_mode_enabled{agent="mira",backend="codex"} 1`,
+		}, "\n")),
+	}}
+
+	got := strings.Join(evaluateRuntimeMetricSamples(scrapes, expect, []string{"codex"}), "; ")
+	for _, want := range []string{
+		`model on codex is "gpt-5.4", want "gpt-5.5"`,
+		`backend_runtime_default_max_tokens on codex is 12000, want 30000`,
+		`backend_runtime_responses_streaming_enabled on codex is 0, want 1`,
+		`backend_runtime_stub_mode_enabled on codex is 1, want 0`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("runtime mismatches = %q, want %q", got, want)
+		}
+	}
+}
+
+func TestValidateDoctorFlagsRejectsRuntimeExpectationsWithSkipCluster(t *testing.T) {
+	err := validateDoctorFlags(doctorFlags{skipCluster: true, runtimeModel: "gpt-5.5"})
+	if err == nil || !strings.Contains(err.Error(), "require cluster checks") {
+		t.Fatalf("validateDoctorFlags error = %v, want skip-cluster/runtime rejection", err)
+	}
+}
+
+func TestValidateDoctorFlagsRejectsInvalidRuntimeValues(t *testing.T) {
+	for name, flags := range map[string]doctorFlags{
+		"streaming":  {runtimeStreaming: "maybe"},
+		"stub":       {runtimeStubMode: "nope"},
+		"tokens":     {runtimeDefaultMaxTokens: "-1"},
+		"iterations": {runtimeMaxToolIterations: "many"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := validateDoctorFlags(flags); err == nil {
+				t.Fatal("validateDoctorFlags returned nil, want error")
+			}
+		})
+	}
+}
+
 func TestReleaseDoctorHealthProbeTargetsSkipsBackendSidecars(t *testing.T) {
 	targets, skipped := releaseDoctorHealthProbeTargets([]agentEntry{
 		{ID: "zora", Role: "witwave", URL: "http://localhost:8000"},
