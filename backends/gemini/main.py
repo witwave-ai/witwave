@@ -77,6 +77,15 @@ start_time: datetime = datetime.now(timezone.utc)
 
 
 def load_agent_description() -> str:
+    """Return the agent's description string for the A2A agent card / MCP tool description.
+
+    Prefers the contents of ``/home/agent/.gemini/agent-card.md`` (mounted
+    from a ConfigMap or volume), falling back to the ``AGENT_DESCRIPTION``
+    env var and then a generic ``"A Gemini backend agent."`` literal so
+    the card is always populated even when the file mount is missing.
+    Mirror of the claude / codex backends' loader so cross-backend
+    behaviour stays uniform.
+    """
     try:
         with open("/home/agent/.gemini/agent-card.md") as f:
             return f.read()
@@ -85,6 +94,15 @@ def load_agent_description() -> str:
 
 
 def build_agent_card() -> AgentCard:
+    """Return the A2A :class:`AgentCard` advertised at ``/.well-known``.
+
+    Uses the module-level ``AGENT_NAME`` / ``AGENT_URL`` / ``AGENT_VERSION``
+    constants (resolved from env at import time) and the description from
+    :func:`load_agent_description`. Declares a single ``general`` skill and
+    sets ``streaming=False``: the per-chunk Message emission path was
+    removed for blocking-call correctness — see the equivalent comment
+    in ``backends/claude/main.py``.
+    """
     return AgentCard(
         name=AGENT_NAME,
         description=load_agent_description(),
@@ -121,6 +139,15 @@ def _set_health_executor(executor: "AgentExecutor") -> None:
 
 
 async def health_start(request: Request) -> JSONResponse:
+    """Kubernetes STARTUP probe handler — serves ``/health/start`` (#1686).
+
+    Returns HTTP 200 once :data:`_ready` has been flipped to True by
+    :func:`_set_ready_when_started` (i.e. uvicorn has bound the listener)
+    and HTTP 503 with ``{"status": "starting"}`` before that. Mirrors the
+    harness + claude backends' ``health_start`` so the three-probe
+    contract is uniform across the platform. Increments
+    ``backend_health_checks_total`` with ``probe="start"``.
+    """
     # #1686: /health/start is the STARTUP probe — 200 once _ready, 503
     # with {"status": "starting"} while warming up. Closes the
     # three-probe parity gap with the harness (docs/product-vision.md:74).
@@ -134,6 +161,28 @@ async def health_start(request: Request) -> JSONResponse:
 
 
 async def health(request: Request) -> JSONResponse:
+    """Kubernetes LIVENESS probe handler — serves ``/health`` and ``/health/live`` (#1608, #1672).
+
+    Returns HTTP 200 unconditionally so kubelet does not CrashLoopBackOff
+    a degraded pod — pre-ready state is surfaced via the body's
+    ``status`` field (``"starting"`` vs ``"ok"``) rather than the HTTP
+    code. For readiness gating point K8s readinessProbe at
+    :func:`health_ready` instead. Body also exposes:
+
+    - ``hooks_enforcement_mode`` — currently always ``"skeleton"`` because
+      Gemini's automatic function calling (AFC) bypasses the hooks engine
+      (#736); flips to a real mode once #640 disables AFC and hand-rolls
+      the tool loop.
+    - ``mcp_servers_active`` / ``session_cache_utilization_percent`` /
+      ``history_save_failed`` — subsystem dimensions read from the
+      executor registered via :func:`_set_health_executor` (#1099),
+      snapshotted via ``dict(...)`` / ``set(...)`` before counting to
+      stay safe against concurrent mutators (#1515). Each read is
+      best-effort; a degraded executor still answers the probe.
+    - ``agent_owner`` / ``agent_id`` — metric-label join parity (#1341).
+
+    Increments ``backend_health_checks_total`` with ``probe="health"``.
+    """
     if backend_health_checks_total is not None:
         backend_health_checks_total.labels(
             agent=AGENT_OWNER, agent_id=AGENT_ID, backend=_BACKEND_ID, probe="health"
@@ -206,6 +255,17 @@ async def health(request: Request) -> JSONResponse:
 
 
 async def health_ready(request: Request) -> JSONResponse:
+    """Kubernetes READINESS probe handler — serves ``/health/ready`` (#1608, #1672).
+
+    Returns HTTP 503 when :data:`_ready` is False — either still starting
+    OR readiness was dropped by :func:`_guarded` after a critical-task
+    crash (the gemini variant of _guarded flips ``_ready=False`` on
+    persistent watcher failures). Returns HTTP 200 with ``status="ready"``
+    once the gate passes. Operators upgrading from <=v0.5.0 must repoint
+    their K8s readinessProbe at this path; previously ``/health``
+    conflated liveness with readiness. Increments
+    ``backend_health_checks_total`` with ``probe="ready"``.
+    """
     # #1608 + #1672: /health/ready is the READINESS probe — it returns
     # 503 when ``_ready`` is False (still starting or readiness dropped
     # by a critical-task crash via _guarded()) and 200 once fully ready.
@@ -378,6 +438,43 @@ async def _set_ready_when_started(server: uvicorn.Server) -> None:
 
 
 async def main():
+    """Process entry point — boot the Gemini backend's A2A + MCP + metrics surface.
+
+    Bootstraps in a fixed order so each subsystem sees the state it needs:
+
+    1. Bind the running asyncio loop for cross-thread event publishers
+       (OTel span processor worker thread; #1144) BEFORE OTel init.
+    2. Initialise OTel if ``OTEL_ENABLED`` is truthy (#469).
+    3. Build the agent card + executor, then call
+       :meth:`executor.bind_to_event_loop` (#1509) so loop-scoped
+       primitives like ``_mcp_servers_lock`` are constructed against
+       the serving loop rather than lazily on the first request.
+    4. Register the executor with :func:`_set_health_executor` so the
+       liveness handler can surface ``mcp_servers_active`` /
+       ``session_cache_utilization_percent`` / ``history_save_failed``
+       (#1099) without threading the executor through globals.
+    5. Select :class:`SqliteTaskStore` when ``TASK_STORE_PATH`` is set,
+       else :class:`InMemoryTaskStore` with a WARN about lost in-flight
+       task state on restart.
+    6. Register Prometheus startup gauges (``backend_up``,
+       ``backend_info``, ``backend_sdk_info`` from
+       ``importlib.metadata.version('google-genai')`` for #1092 SDK
+       drift detection) when ``metrics_enabled``.
+    7. Wire ``/conversations`` + ``/trace`` + ``/mcp`` + ``/api/traces``
+       + ``/api/sessions/{id}/stream`` routes, then mount the built A2A
+       sub-app at ``/``. Metrics live on a dedicated ``METRICS_PORT``
+       listener, NOT on the main app (#643, #648), started inside the
+       lifespan hook.
+    8. The ``lifespan`` context drives the A2A sub-app's lifespan
+       protocol via :func:`_sub_app_lifespan` and closes the executor
+       on shutdown.
+    9. Spawn the (currently empty) MCP watcher list via :func:`_guarded`
+       for structural parity with claude, plus the session_stream
+       registry idle sweeper (#1735) to prevent multi-day uptime OOM.
+    10. ``asyncio.gather`` the uvicorn server, event-loop-lag monitor,
+        sweeper, and :func:`_set_ready_when_started` so a failure in any
+        coroutine propagates immediately.
+    """
     global start_time, _startup_mono
     start_time = datetime.now(timezone.utc)
     _startup_mono = time.monotonic()

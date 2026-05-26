@@ -149,6 +149,13 @@ from mcp_body_cap import read_capped_body as _read_capped_body  # noqa: E402
 
 
 def load_agent_description() -> str:
+    """Return the agent's description string for the A2A agent card / MCP tool description.
+
+    Prefers the contents of ``/home/agent/.claude/agent-card.md`` (mounted
+    from a ConfigMap or volume), falling back to the ``AGENT_DESCRIPTION``
+    env var and then a generic ``"A Claude backend agent."`` literal so
+    the card is always populated even when the file mount is missing.
+    """
     try:
         with open("/home/agent/.claude/agent-card.md") as f:
             return f.read()
@@ -157,6 +164,17 @@ def load_agent_description() -> str:
 
 
 def build_agent_card() -> AgentCard:
+    """Return the A2A :class:`AgentCard` advertised at ``/.well-known``.
+
+    Uses the module-level ``AGENT_NAME`` / ``AGENT_URL`` / ``AGENT_VERSION``
+    constants (resolved from env at import time) and the description from
+    :func:`load_agent_description`. Declares a single ``general`` skill and
+    sets ``streaming=False``: per-chunk Message emission was removed for
+    blocking-call correctness (see ``executor.py``'s ``_emit_chunk`` note),
+    so the card now reflects the actual wire behaviour. If chunk emission
+    via ``TaskStatusUpdateEvent`` is reintroduced, flip this back to True
+    alongside the executor change.
+    """
     return AgentCard(
         name=AGENT_NAME,
         description=load_agent_description(),
@@ -184,6 +202,16 @@ def build_agent_card() -> AgentCard:
 
 
 async def health_start(request: Request) -> JSONResponse:
+    """Kubernetes STARTUP probe handler — serves ``/health/start`` (#1686).
+
+    Returns HTTP 200 once :data:`_ready` has been flipped to True by
+    :func:`_set_ready_when_started` (i.e. uvicorn has bound the listener
+    and initial loads have completed) and HTTP 503 with
+    ``{"status": "starting"}`` before that. Mirrors the harness's
+    ``health_start`` so the documented three-probe contract holds across
+    the platform. Increments ``backend_health_checks_total`` with
+    ``probe="start"``.
+    """
     # #1686: /health/start is the STARTUP probe — it returns 200 once
     # the process has finished initial loads (_ready=True) and 503 with
     # `{"status": "starting"}` while still warming up. K8s startupProbe
@@ -202,6 +230,18 @@ async def health_start(request: Request) -> JSONResponse:
 
 
 async def health(request: Request) -> JSONResponse:
+    """Kubernetes LIVENESS probe handler — serves ``/health`` and ``/health/live``.
+
+    Returns HTTP 200 unconditionally so kubelet does not CrashLoopBackOff
+    a pod that is merely starting or boot-degraded — pre-ready state is
+    surfaced via the body's ``status`` field (``"starting"`` vs ``"ok"``)
+    rather than the HTTP code, and boot-degraded state via the optional
+    ``boot_degraded`` field (#1368). For readiness gating point K8s
+    readinessProbe at :func:`health_ready` instead. Also exposes
+    ``hooks_enforcement_mode`` (the executor's PreToolUse posture) and
+    ``agent_owner``/``agent_id`` for metric-label join parity (#1341).
+    Increments ``backend_health_checks_total`` with ``probe="health"``.
+    """
     # #1608 + 5e5d5a9b unification: /health is the LIVENESS probe — it
     # returns 200 unconditionally so kubelet does not CrashLoopBackOff a
     # pod that is merely starting or degraded. Pre-ready state is surfaced
@@ -240,6 +280,18 @@ async def health(request: Request) -> JSONResponse:
 
 
 async def health_ready(request: Request) -> JSONResponse:
+    """Kubernetes READINESS probe handler — serves ``/health/ready`` (#1608).
+
+    Returns HTTP 503 when the process is still starting (:data:`_ready`
+    is False) OR when boot finished in a degraded state
+    (:data:`_boot_degraded_reason` is set, e.g.
+    ``perform_initial_loads`` timed out and the executor came up with
+    empty MCP/agent_md/hooks). 503 here removes the pod from Service
+    endpoints without restarting it; the degraded flag is not cleared
+    automatically and requires manual intervention or a pod restart.
+    Returns HTTP 200 with ``status="ready"`` once both gates pass.
+    Increments ``backend_health_checks_total`` with ``probe="ready"``.
+    """
     # #1608: /health/ready is the READINESS probe — it returns 503 when
     # the process is still starting (_ready is False) OR when boot
     # finished in a degraded state (_boot_degraded_reason is set, e.g.
@@ -455,6 +507,45 @@ async def _set_ready_when_started(server: uvicorn.Server) -> None:
 
 
 async def main():
+    """Process entry point — boot the Claude backend's A2A + MCP + metrics surface.
+
+    Bootstraps in a fixed order so each subsystem sees the state it needs:
+
+    1. Bind the running asyncio loop for cross-thread event publishers
+       (OTel span processor worker thread; #1144) BEFORE OTel init so the
+       first span's ``on_end`` callback already has a loop reference.
+    2. Initialise OTel if ``OTEL_ENABLED`` is truthy (#469).
+    3. Build the agent card + executor, select :class:`SqliteTaskStore`
+       when ``TASK_STORE_PATH`` is set (else :class:`InMemoryTaskStore`
+       with a WARN about lost in-flight task state on restart), and
+       register the executor with :func:`_set_health_executor` so the
+       liveness handler can read its enforcement mode.
+    4. Register Prometheus startup gauges (``backend_up``,
+       ``backend_info``, ``backend_sdk_info`` from
+       ``importlib.metadata.version('claude-agent-sdk')`` for #1092
+       drift detection) when ``metrics_enabled``.
+    5. Wire ``/conversations`` + ``/trace`` + ``/mcp`` + ``/api/traces``
+       + ``/api/sessions/{id}/stream`` routes, then mount the built A2A
+       sub-app at ``/``. Metrics live on a dedicated ``METRICS_PORT``
+       listener, NOT on the main app (#643, #646), started inside the
+       lifespan hook.
+    6. The ``lifespan`` context drives the A2A sub-app's lifespan
+       protocol via :func:`_sub_app_lifespan` and closes the executor
+       + task_store (if it has a ``close()``; #713) on shutdown.
+    7. Run :meth:`executor.perform_initial_loads` synchronously with a
+       ``INITIAL_LOADS_TIMEOUT_SECONDS`` (default 10s; #985) bound so a
+       wedged ConfigMap mount can't stall startup. On timeout / error
+       set :data:`_boot_degraded_reason` so ``/health/ready`` returns
+       503 (#1368).
+    8. Spawn MCP / hooks / agent_md watcher tasks via
+       :func:`_guarded` with ``critical=True`` so persistent crashes
+       take readiness down via ``WORKER_MAX_RESTARTS`` rather than
+       silently looping (#585), plus the session_stream registry idle
+       sweeper (#1735) to prevent multi-day uptime OOM.
+    9. ``asyncio.gather`` the uvicorn server, event-loop-lag monitor,
+       sweeper, and :func:`_set_ready_when_started` so a failure in any
+       coroutine propagates immediately.
+    """
     global start_time, _startup_mono
     start_time = datetime.now(timezone.utc)
     _startup_mono = time.monotonic()
