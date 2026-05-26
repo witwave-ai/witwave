@@ -52,6 +52,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Type-check + build (matches `npm run build`)
         # vue-tsc --noEmit is the strict TypeScript gate; the build
         # step catches compile-time errors that tests don't exercise
