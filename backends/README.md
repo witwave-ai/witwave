@@ -136,6 +136,29 @@ The LLM-backed backends should converge on these platform contracts:
 
 `echo` is the intentional exception. It proves the platform plumbing, not backend parity.
 
+## MCP Transport Shapes
+
+There are two MCP directions in Witwave, and they solve different problems:
+
+- **Inbound MCP to a backend** lets an external MCP host call the backend's `POST /mcp` endpoint and invoke the
+  backend-neutral `ask_agent` tool. This path is protected by `CONVERSATIONS_AUTH_TOKEN` and is part of the shared
+  inspection/control surface.
+- **Outbound MCP from a backend to tools** lets a backend call tool servers or stdio commands while handling work. This
+  path is configured by backend-local `mcp.json` files, and the supported transports depend on the backend runtime.
+
+| Backend  | Outbound MCP shape                           | Notes                                                                                                                |
+| -------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `claude` | Stdio-oriented Claude SDK MCP configuration. | Mature SDK path with command/cwd allow-lists and hot-reload support.                                                 |
+| `openai` | Stdio and streamable HTTP entries.           | `command` entries become stdio MCP servers; `url` entries become streamable HTTP MCP servers through the Agents SDK. |
+| `codex`  | URL-shaped streamable HTTP entries.          | HTTP MCP tools are surfaced as Codex-owned function tools and pass through the Codex hook gate; stdio is ignored.    |
+| `gemini` | Stdio MCP sessions today.                    | HTTP MCP support is a future parity target if the Gemini runtime needs to consume shared in-cluster MCP services.    |
+| `echo`   | None.                                        | Smoke backend only.                                                                                                  |
+
+The shared MCP components under `tools/` are long-running streamable HTTP services, usually deployed once per cluster
+and consumed over Kubernetes service DNS. That is separate from backend-local stdio MCP processes. The important
+contract is that backend docs state which transport they actually support rather than implying that every MCP shape is
+portable across every SDK.
+
 ## Hook Boundaries
 
 Hook support is not identical across backends. The important question is where the backend can intercept a tool call

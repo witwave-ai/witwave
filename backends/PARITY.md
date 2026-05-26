@@ -57,8 +57,9 @@ execution layer.
    that still relies on broad or mixed-purpose tests.
 4. Hook enforcement parity: the backend guide now states each backend's interception boundary; remaining work is making
    OpenAI/Gemini enforcement converge where their SDKs allow it.
-5. MCP transport documentation: tighten backend docs so the distinction between stdio SDK MCP and in-cluster HTTP MCP is
-   clear and consistent.
+5. MCP transport implementation: the backend guide now separates inbound `/mcp`, outbound stdio MCP, and outbound
+   streamable HTTP MCP. Remaining work is deciding whether Gemini should add HTTP MCP consumption and whether Codex
+   should ever accept backend-local stdio MCP commands.
 6. Memory semantics: document which backends have native file-memory tools, which only persist session history, and
    which should rely on workspace memory plus identity instructions.
 
