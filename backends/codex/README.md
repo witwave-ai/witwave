@@ -24,6 +24,7 @@ The first implementation is contract-first:
   tools)
 - persisted Responses API session continuity via `previous_response_id`
 - recoverable stale-session retry metrics when a stored `previous_response_id` can no longer resume
+- session-store write failure metrics for the Codex Responses session map
 - caller-bound session derivation when `SESSION_ID_SECRET` is set
 - per-dispatch `max_tokens` budget checks from Responses API usage
 - a minimal `/mcp` surface with the backend-neutral `ask_agent` tool name

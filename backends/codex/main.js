@@ -255,6 +255,7 @@ const metrics = {
   contextUsagePercentSum: 0,
   contextWarningsTotal: 0,
   contextExhaustionTotal: 0,
+  sessionHistorySaveErrorsTotal: 0,
   sessionStartsTotal: 0,
   sessionEvictionsTotal: 0,
   sessionAgeSecondsCount: 0,
@@ -1287,6 +1288,7 @@ function saveSessionStore() {
       "utf8",
     );
   } catch (error) {
+    metrics.sessionHistorySaveErrorsTotal += 1;
     console.error(`codex backend: failed to write ${CODEX_SESSION_STORE_PATH}:`, error);
   }
 }
@@ -3453,11 +3455,6 @@ function appendRuntimeSpecificMetricPlaceholders(lines) {
   );
   appendPlaceholderCounter(
     lines,
-    "backend_session_history_save_errors_total",
-    "Placeholder for file-backed SDK session history save errors; Codex uses the Responses session store.",
-  );
-  appendPlaceholderCounter(
-    lines,
     "backend_session_path_mismatch_total",
     "Placeholder for SDK session path drift checks; Codex does not depend on Claude SDK session files.",
     { reason: "not_applicable" },
@@ -3680,6 +3677,9 @@ export function renderMetrics() {
     "# HELP backend_context_exhaustion_total Total Codex queries whose observed token usage reached or exceeded max_tokens.",
     "# TYPE backend_context_exhaustion_total counter",
     metricLine("backend_context_exhaustion_total", metrics.contextExhaustionTotal, labels()),
+    "# HELP backend_session_history_save_errors_total Total failures writing the Codex Responses session store.",
+    "# TYPE backend_session_history_save_errors_total counter",
+    metricLine("backend_session_history_save_errors_total", metrics.sessionHistorySaveErrorsTotal, labels()),
     "# HELP backend_active_sessions Active persisted Codex response sessions.",
     "# TYPE backend_active_sessions gauge",
     metricLine("backend_active_sessions", loadSessionStore().size, labels()),

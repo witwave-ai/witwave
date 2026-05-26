@@ -102,7 +102,6 @@ test("renderMetrics exposes the common backend label shape", async () => {
     "backend_event_loop_lag_seconds_count",
     "backend_task_restarts_total",
     "backend_task_timeout_headroom_seconds_count",
-    "backend_session_history_save_errors_total",
     "backend_session_path_mismatch_total",
     "backend_sdk_subprocess_spawn_duration_seconds_count",
     "backend_sdk_context_fetch_errors_total",
@@ -156,4 +155,34 @@ test("task retry metric records recoverable Responses session resume retries", a
   assert.equal(calls, 2);
   assert.equal(response.id, "resp-after-retry");
   assert.match(renderMetrics(), /backend_task_retries_total\{.*backend="codex".*\} [1-9]/);
+});
+
+test("session history save error metric records Responses session store write failures", async () => {
+  fs.rmSync(process.env.CODEX_SESSION_STORE_PATH, { force: true, recursive: true });
+  fs.mkdirSync(process.env.CODEX_SESSION_STORE_PATH, { recursive: true });
+
+  const client = {
+    responses: {
+      create: async (request) => {
+        if (request.previous_response_id) {
+          throw new Error("previous_response_id not found");
+        }
+        return { id: "resp-after-save-error", output: [] };
+      },
+    },
+  };
+
+  const originalConsoleError = console.error;
+  console.error = () => undefined;
+  try {
+    await createResponseWithSessionFallback(
+      client,
+      { model: "gpt-5.5", input: "save error probe", previous_response_id: "resp-stale" },
+      "session-save-error-probe",
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.match(renderMetrics(), /backend_session_history_save_errors_total\{.*backend="codex".*\} [1-9]/);
 });
