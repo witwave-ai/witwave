@@ -124,6 +124,11 @@ backend_mcp_request_duration_seconds: prometheus_client.Histogram | None = None
 # File watcher metrics
 backend_watcher_events_total: prometheus_client.Counter | None = None
 backend_file_watcher_restarts_total: prometheus_client.Counter | None = None
+# CLAUDE.md hot-reload rollout tracking. The `revision` label is the SHA-256
+# hex prefix (first 12 chars) of the currently-active CLAUDE.md content; the
+# gauge value is always 1 when set. On hot-reload the previous revision's
+# label set is removed so only the live revision reports 1.
+backend_agent_md_revision: prometheus_client.Gauge | None = None
 
 # Hooks / tool-audit metrics (#467)
 backend_hooks_blocked_total: prometheus_client.Counter | None = None
@@ -621,6 +626,12 @@ if _enabled:
         "backend_file_watcher_restarts_total",
         "Total file watcher restart events due to missing or deleted directory.",
         ["agent", "agent_id", "backend", "watcher"],
+    )
+    backend_agent_md_revision = prometheus_client.Gauge(
+        "backend_agent_md_revision",
+        "Currently-active CLAUDE.md revision (SHA-256 hex prefix, first 12 chars). "
+        "Gauge value is 1 when set; previous revision is cleared on hot-reload.",
+        ["agent", "agent_id", "backend", "revision"],
     )
 
     # Hooks / tool-audit (#467)

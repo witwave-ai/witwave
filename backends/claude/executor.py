@@ -34,6 +34,7 @@ from metrics import (
     backend_a2a_request_duration_seconds,
     backend_a2a_requests_total,
     backend_active_sessions,
+    backend_agent_md_revision,
     backend_budget_exceeded_total,
     backend_concurrent_queries,
     backend_context_exhaustion_total,
@@ -655,6 +656,11 @@ def _load_agent_md() -> str:
             return f.read()
     except OSError:
         return ""
+
+
+def _compute_agent_md_revision(content: str) -> str:
+    """Return the SHA-256 hex prefix (first 12 chars) of CLAUDE.md content."""
+    return hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()[:12]
 
 
 def _utf8_byte_length(s: str) -> int:
@@ -2288,6 +2294,8 @@ class AgentExecutor(A2AAgentExecutor):
         self._mcp_reload_lock: asyncio.Lock | None = None
         self._mcp_generation: int = 0
         self._agent_md_content: str = _load_agent_md()
+        self._agent_md_revision: str = _compute_agent_md_revision(self._agent_md_content)
+        self._stamp_agent_md_revision(self._agent_md_revision, previous=None)
         self._mcp_watcher_tasks: list[asyncio.Task] = []
         # Hook policy state (#467). The baseline is loaded eagerly; the
         # hooks_config_watcher populates `extensions` and keeps it in sync
@@ -2351,6 +2359,27 @@ class AgentExecutor(A2AAgentExecutor):
             return "enforcing" if rule_count > 0 else "disabled"
         except Exception:
             return "unknown"
+
+    def _stamp_agent_md_revision(self, current: str, previous: str | None) -> None:
+        """Update backend_agent_md_revision for a possibly-new CLAUDE.md revision."""
+        if backend_agent_md_revision is None:
+            return
+        if previous is not None and previous != current:
+            try:
+                backend_agent_md_revision.remove(
+                    _LABELS["agent"],
+                    _LABELS["agent_id"],
+                    _LABELS["backend"],
+                    previous,
+                )
+            except (KeyError, ValueError):
+                pass
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.debug("agent_md_revision remove failed for %r: %r", previous, exc)
+        try:
+            backend_agent_md_revision.labels(**_LABELS, revision=current).set(1)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug("agent_md_revision set failed for %r: %r", current, exc)
 
     def _get_mcp_reload_lock(self) -> asyncio.Lock:
         """Lazily create the MCP reload lock (#1051).
@@ -2432,6 +2461,11 @@ class AgentExecutor(A2AAgentExecutor):
         except Exception as exc:
             logger.warning("CLAUDE.md initial load failed: %r (keeping __init__ value)", exc)
         else:
+            previous = self._agent_md_revision
+            current = _compute_agent_md_revision(self._agent_md_content)
+            if current != previous:
+                self._agent_md_revision = current
+                self._stamp_agent_md_revision(current, previous=previous)
             self._initial_agent_md_loaded = True
 
         # hooks.yaml extensions. Only mark 'done' on success (#978).
@@ -2550,6 +2584,11 @@ class AgentExecutor(A2AAgentExecutor):
         # Skipped when perform_initial_loads already ran on startup (#869).
         if not getattr(self, "_initial_agent_md_loaded", False):
             self._agent_md_content = _load_agent_md()
+            previous = self._agent_md_revision
+            current = _compute_agent_md_revision(self._agent_md_content)
+            if current != previous:
+                self._agent_md_revision = current
+                self._stamp_agent_md_revision(current, previous=previous)
             logger.info("CLAUDE.md loaded from %s", AGENT_MD)
 
         watch_dir = os.path.dirname(os.path.abspath(AGENT_MD))
@@ -2564,6 +2603,11 @@ class AgentExecutor(A2AAgentExecutor):
                 for _, path in changes:
                     if os.path.abspath(path) == os.path.abspath(AGENT_MD):
                         self._agent_md_content = _load_agent_md()
+                        previous = self._agent_md_revision
+                        current = _compute_agent_md_revision(self._agent_md_content)
+                        if current != previous:
+                            self._agent_md_revision = current
+                            self._stamp_agent_md_revision(current, previous=previous)
                         logger.info("CLAUDE.md reloaded from %s", AGENT_MD)
                         break
             logger.warning("CLAUDE.md directory watcher exited — retrying in 10s.")
