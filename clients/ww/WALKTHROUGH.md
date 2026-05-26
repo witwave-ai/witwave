@@ -164,7 +164,7 @@ You said: ping from the walkthrough
 
 This agent is running the echo backend, which returns canned responses
 so you can deploy and exercise an agent without any API keys. To swap
-in a real backend (claude, openai, or gemini), see `ww agent backend set --help`.
+in a real backend (claude, openai, codex, or gemini), see `ww agent backend add --help`.
 ```
 
 `ww agent send` hits the agent's harness via the Kubernetes apiserver's built-in Service proxy — no port-forwarding, no
@@ -738,9 +738,9 @@ Verbs already shipped — fully documented above:
   sensibly. If you want to split one namespace into unrelated cohorts, start with `ww agent team --help` and see
   [DESIGN.md](DESIGN.md) TEAM-1..5.
 - **Interactive TUI:** `ww tui` — `k9s`-style live agent list. `a` opens the long-form create modal (auth picker, gitOps
-  repo, namespace pre-fill from kubeconfig context); `d` opens the delete modal with the same three cleanup checkboxes
-  the CLI exposes; `l` drills into aggregate logs across all containers (`c` cycles individual ones); `r` forces a
-  refresh. Defaults persist to `[tui.create_defaults]` in `~/.witwave/config.toml` and reload on next launch.
+  repo, namespace pre-fill from kubeconfig context); `d` opens the delete modal with the same cleanup choices the CLI
+  exposes; `s` sends an A2A prompt; `l` drills into aggregate logs across all containers (`c` cycles individual ones);
+  `r` forces a refresh. Enter/details is still a stub.
 
 Verbs on the roadmap (shapes sketched in DESIGN.md, not yet implemented):
 

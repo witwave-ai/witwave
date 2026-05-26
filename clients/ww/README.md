@@ -184,6 +184,7 @@ Every command supports `--help`. Summary:
 | `ww team status`             | Aggregate recent conversation-backed activity across WitwaveAgents; add `--watch` / `--interval 10s` for a live-refreshing table.                                   |
 | `ww tail`                    | Stream SSE events from `/events/stream`. `--agent`, `--session`, `--types`, `--pretty`.                                                                             |
 | `ww send <agent> [text]`     | POST an A2A `message/send` to the harness. `--prompt-file -` reads stdin.                                                                                           |
+| `ww conversation [cmd]`      | Inspect backend conversation logs across deployed agents: `list` recent sessions or `show` one transcript.                                                          |
 | `ww jobs [list\|view\|run]`  | Read the `/jobs` snapshot, or fire a named job immediately through `/jobs/<name>/run` using `run_token`.                                                            |
 | `ww tasks [list\|view\|run]` | Read the `/tasks` snapshot, or fire a named task immediately through `/tasks/<name>/run` using `run_token`.                                                         |
 | `ww heartbeat [view\|run]`   | Read `/heartbeat`, or fire the configured heartbeat immediately through `/heartbeat/run` using `run_token`.                                                         |
@@ -192,10 +193,13 @@ Every command supports `--help`. Summary:
 | `ww validate <file>`         | POST a file to `/validate` using `run_token`. Kind inferred from path or passed via `--kind`.                                                                       |
 | `ww version`                 | Print the version, commit, and build date. `--short` prints just the semver.                                                                                        |
 | `ww doctor release`          | Run read-only post-release checks against the local `ww` binary, harness, operator, CRDs, and WitwaveAgents.                                                        |
+| `ww agent [cmd]`             | Manage `WitwaveAgent` CRs: create, list, send, logs, metrics, storage, Kubernetes API access, GitOps wiring, backend lifecycle, team labels, upgrade, and delete.   |
 | `ww operator [cmd]`          | Install / upgrade / inspect / uninstall the witwave-operator Helm release on a Kubernetes cluster; plus `logs` and `events` for diagnostics. See below.             |
 | `ww workspace [cmd]`         | Manage `WitwaveWorkspace` CRs: `create`, `list`, `get`, `status`, `delete`, `bind`, `unbind`. See [WitwaveWorkspace management](#witwaveworkspace-management).      |
 | `ww config [cmd]`            | Read, write, and inspect `ww` configuration values — `get`, `set`, `unset`, `list-keys`, `path`. See [Managing config from the CLI](#managing-config-from-the-cli). |
 | `ww update`                  | Check for and install a newer `ww` release. See [Staying up to date](#staying-up-to-date).                                                                          |
+| `ww tui`                     | Open the interactive terminal UI with a live agent list plus add/delete/send/logs row actions.                                                                      |
+| `ww completion <shell>`      | Generate shell completion scripts.                                                                                                                                  |
 
 ### Release doctor
 
@@ -218,6 +222,23 @@ event.
 `ww tail --agent iris` bypasses the dashboard proxy and hits the harness URL reported by the harness's `/agents`
 directory directly. `ww tail --agent iris --session abc` switches to the backend-local per-session drill-down stream at
 `/api/sessions/<id>/stream`.
+
+### Conversation logs
+
+`ww conversation` reads deployed agents' backend conversation logs through the harness `/conversations` surface. Use it
+when you need the actual recorded prompt/reply/tool-call evidence rather than an agent's current health summary.
+
+```bash
+ww conversation list --namespace witwave-self --agent mira
+ww conversation list --namespace witwave-self --agent mira --expand
+ww conversation show <session-id> --namespace witwave-self
+ww conversation show <session-id> --namespace witwave-self --follow
+```
+
+`list` prints recent sessions sorted by last activity; `--expand` renders the transcript inline, and `--follow` keeps
+new turns streaming into the view. `show` finds the owning agent for a session id and prints the full transcript; use
+`--format json` or `--format jsonl` for script-friendly one-shot output. Scope with `--namespace`, `--all-namespaces`,
+and `--agent`; pass `--token` when automatic bearer-token discovery is not available.
 
 ### Sending
 
@@ -700,16 +721,17 @@ out-of-band (another CLI session, kubectl, Helm, another operator) update in pla
 
 Keybindings on the list:
 
-| Key            | Action                                                                                                          |
-| -------------- | --------------------------------------------------------------------------------------------------------------- |
-| `↑` / `↓`      | Move selection                                                                                                  |
-| `a`            | Open the create-agent modal — long-form: name, namespace, backend, team, auth, gitOps repo                      |
-| `d`            | Open the delete-confirm modal — three checkboxes for `--remove-repo-folder`, `--delete-git-secret`, `--purge`   |
-| `l`            | Drill into the selected agent's logs — aggregate-across-containers by default; `c` cycles individual containers |
-| `r`            | Force-refresh the snapshot                                                                                      |
-| `↵`            | Reserved for the per-agent details view (status / events / send / config); flashes a stub hint until that lands |
-| `q` / `Ctrl-C` | Quit                                                                                                            |
-| `ESC`          | Page-aware: in logs / modal → back; on the list → quit                                                          |
+| Key            | Action                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `↑` / `↓`      | Move selection                                                                                                     |
+| `a`            | Open the create-agent modal — long-form: name, namespace, backend, team, auth, gitOps repo                         |
+| `d`            | Open the delete-confirm modal — mirrors `ww agent delete` cleanup choices                                          |
+| `s`            | Open the send modal — send an A2A prompt to the selected agent, optionally targeting a specific backend            |
+| `l`            | Drill into the selected agent's logs — aggregate-across-containers by default; `c` cycles individual containers    |
+| `r`            | Force-refresh the snapshot                                                                                         |
+| `↵`            | Reserved for the per-agent details view (status / events / conversation log); flashes a stub hint until that lands |
+| `q` / `Ctrl-C` | Quit                                                                                                               |
+| `ESC`          | Page-aware: in logs / modal → back; on the list → quit                                                             |
 
 The create modal's auth picker mirrors the CLI's four modes (`none` / `profile` / `from-env` / `existing-secret` /
 `set-inline`); the `set-inline` mode takes a comma-separated list of `KEY=VALUE` pairs in the value field, equivalent to

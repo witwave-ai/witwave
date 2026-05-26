@@ -9,23 +9,22 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// newTuiCmd wires `ww tui` — the interactive terminal surface
-// tracked in #1450. Currently a stub: single-screen welcome + live
-// kubeconfig-context confirmation + tracking-issue pointer, no
-// cluster API calls, no feature panels. Establishes the tview
-// framework so future PRs add panels rather than set up
-// infrastructure.
+// newTuiCmd wires `ww tui` — the interactive terminal surface tracked
+// in #1450. It is intentionally lighter than the full web dashboard,
+// but it already provides a live agent list plus common per-agent
+// actions; only the Enter-driven details page remains a stub.
 func newTuiCmd() *cobra.Command {
 	var kubeconfig, contextName, namespace string
 	cmd := &cobra.Command{
 		Use:   "tui",
-		Short: "Open the interactive ww terminal UI (stub — full dashboard coming in #1450)",
-		Long: "Launches a tview-based terminal UI for ww. Currently a\n" +
-			"stub that shows a welcome banner and confirms the target\n" +
-			"Kubernetes context you're about to work against. Full\n" +
-			"operator status / logs / events / session panels are\n" +
-			"tracked in #1450.\n\n" +
-			"Exit with q, esc, or ctrl-c.",
+		Short: "Open the interactive ww terminal UI",
+		Long: "Launches a tview-based terminal UI for ww. The current\n" +
+			"surface shows a live WitwaveAgent list, refreshes from the\n" +
+			"Kubernetes API, and supports common row actions: add, delete,\n" +
+			"send, and logs. Enter is reserved for a future per-agent\n" +
+			"details page and currently displays a short hint.\n\n" +
+			"Keybindings: ↑/↓ move, a add, d delete, s send, l logs,\n" +
+			"r refresh, q/Esc/Ctrl-C quit.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTui(kubeconfig, contextName, namespace, Version)
 		},
@@ -35,7 +34,7 @@ func newTuiCmd() *cobra.Command {
 	cmd.Flags().StringVar(&contextName, "context", "",
 		"Kubeconfig context to use (defaults to current-context)")
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", "",
-		"Namespace to display in the context block (defaults to the context's namespace)")
+		"Namespace to display and operate in (defaults to the context's namespace)")
 	return cmd
 }
 

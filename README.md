@@ -652,6 +652,9 @@ For the full catalog, read each component's `metrics.py`. For the rendered view,
 
 ```bash
 curl -s http://localhost:9000/metrics | head
+
+# From a laptop against a deployed agent, no port-forward required:
+ww agent metrics mira --namespace witwave-self | head
 ```
 
 ## Prompt env-var interpolation (#473)
