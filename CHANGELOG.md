@@ -6,6 +6,23 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.32.1] — 2026-05-26
+
+Quiet patch — a dashboard dependency audit on the markdown renderer, a CLI/TUI docs refresh, and routine self-team
+hygiene. No runtime behaviour change.
+
+### Fixed
+
+- **dashboard**: Audit the markdown renderer dependency chain and refresh the lockfile.
+
+### Documentation
+
+- **ww**: Refresh the CLI README and TUI help text so the documented surface matches current command behaviour.
+
+### Agent identity
+
+- **self-team**: Slow Mira's heartbeat; routine self-tidy across Piper and Zora.
+
 ## [0.32.0] — 2026-05-25
 
 Backends now publish their hook enforcement mode through both a dedicated endpoint and the health surface, so the
