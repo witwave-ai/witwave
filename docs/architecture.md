@@ -197,9 +197,11 @@ Agent identity and behavior are entirely file-based. No identity is baked into a
 | ----------- | ----------------------- | ------------------------------------------------------------------- |
 | `CLAUDE.md` | `/home/agent/.claude/`  | Behavioral instructions injected into the Claude backend at startup |
 | `AGENTS.md` | `/home/agent/.openai/`  | Behavioral instructions injected into the OpenAI backend at startup |
+| `AGENTS.md` | `/home/agent/.codex/`   | Behavioral instructions injected into the Codex backend at startup  |
 | `GEMINI.md` | `/home/agent/.gemini/`  | Behavioral instructions injected into the Gemini backend at startup |
 | `memory/`   | `<name>/claude/memory/` | Persistent markdown memory files for Claude backend                 |
 | `memory/`   | `<name>/openai/memory/` | Persistent markdown memory files for OpenAI backend                 |
+| `memory/`   | `<name>/codex/memory/`  | Bounded Codex memory-tool files or workspace memory mount target    |
 | `memory/`   | `<name>/gemini/memory/` | JSON session history for Gemini backend (`sessions/`)               |
 
 Backend-specific `agent-card.md` files may be mounted for direct backend-sidecar discovery, but the Kubernetes Service

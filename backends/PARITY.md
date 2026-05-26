@@ -60,8 +60,9 @@ execution layer.
 5. MCP transport implementation: the backend guide now separates inbound `/mcp`, outbound stdio MCP, and outbound
    streamable HTTP MCP. Remaining work is deciding whether Gemini should add HTTP MCP consumption and whether Codex
    should ever accept backend-local stdio MCP commands.
-6. Memory semantics: document which backends have native file-memory tools, which only persist session history, and
-   which should rely on workspace memory plus identity instructions.
+6. Memory implementation parity: the backend guide now separates session continuity, backend-local memory, and workspace
+   memory. Remaining work is deciding whether OpenAI/Gemini need dedicated bounded file-memory tools or should rely on
+   workspace memory through MCP/filesystem support.
 
 ## Practical Direction
 

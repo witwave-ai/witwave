@@ -136,6 +136,27 @@ The LLM-backed backends should converge on these platform contracts:
 
 `echo` is the intentional exception. It proves the platform plumbing, not backend parity.
 
+## Memory and Session Semantics
+
+"Memory" covers three related surfaces in Witwave:
+
+- **Session continuity** keeps a backend conversation alive across turns and, where supported, across restarts.
+- **Backend-local memory** is private to one backend instance and lives under that backend's mounted runtime directory.
+- **Workspace memory** is a shared team volume, usually mounted at `/workspaces/<workspace>/memory`, and should be
+  referenced explicitly from identity documents when cross-backend behavior matters.
+
+| Backend  | Session continuity                                  | File memory surface                                                                                       | Practical guidance                                                                                 |
+| -------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `claude` | Claude SDK session files plus backend LRU tracking. | Mounted `memory/` directory; Claude's local tool surface can use it when identity docs instruct it.       | Strongest mature local-memory posture today.                                                       |
+| `openai` | SQLite-backed Agents SDK sessions.                  | Mounted `memory/` directory, but no dedicated bounded memory function tools.                              | Treat as partial file-memory parity; encode shared memory behavior in `.openai/AGENTS.md`.         |
+| `codex`  | Persistent `previous_response_id` session map.      | Dedicated bounded memory functions rooted at `CODEX_MEMORY_ROOT`, optionally pointed at workspace memory. | Strong explicit memory-tool contract with path, size, and listing limits.                          |
+| `gemini` | JSON session history under `memory/sessions/`.      | No native filesystem memory tool today.                                                                   | Same-session recall is supported; file-backed memory parity needs a filesystem or MCP memory tool. |
+| `echo`   | None.                                               | None.                                                                                                     | Smoke backend only.                                                                                |
+
+For behavior that must survive backend swaps, prefer workspace memory plus instructions in `CLAUDE.md`, `AGENTS.md`, or
+`GEMINI.md`. Backend-local memory is still useful, but it should not be treated as a uniform cross-provider contract
+unless the backend has a real tool path to read and write it.
+
 ## MCP Transport Shapes
 
 There are two MCP directions in Witwave, and they solve different problems:
