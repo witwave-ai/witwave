@@ -1,5 +1,11 @@
 claude-agent-sdk==0.1.55
 a2a-sdk[http-server]==0.3.25
+# Transitive via a2a-sdk[http-server]; pin to last clean 0.136.x release.
+# fastapi 0.136.3 was flagged malicious (OSV MAL-2026-4750, published 2026-05-23):
+# the release silently added `fastar>=0.9.0` to [standard] extras as a typosquat
+# install-time dropper. We don't pull [standard], but pinning prevents pip from
+# resolving to the malicious tarball in dev/CI/Docker rebuilds.
+fastapi==0.136.1
 mcp>=1.0.0,<2.0.0
 prometheus-client==0.24.1
 pyyaml==6.0.2
