@@ -19,30 +19,30 @@ execution layer.
 
 ## Contract Matrix
 
-| Capability                            | Claude  | OpenAI  | Codex   | Gemini  | Notes                                                                                                                 |
-| ------------------------------------- | ------- | ------- | ------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| A2A discovery and task endpoint       | Full    | Full    | Full    | Full    | All expose agent discovery and JSON-RPC task handling.                                                                |
-| Split liveness/readiness routes       | Full    | Full    | Full    | Full    | `/health` and `/health/ready` are present on all LLM backends.                                                        |
-| Dedicated Prometheus listener         | Full    | Full    | Full    | Full    | All expose `/metrics` on the dedicated metrics port when enabled.                                                     |
-| Protected conversation and trace APIs | Full    | Full    | Full    | Full    | `/conversations`, `/trace`, `/api/traces`, and session SSE are present.                                               |
-| Caller-bound session IDs              | Full    | Full    | Full    | Full    | All use caller identity or bearer fingerprint binding when configured.                                                |
-| Persistent session continuity         | Full    | Full    | Full    | Full    | The persistence mechanism differs by SDK/runtime.                                                                     |
-| Conversation and tool/activity logs   | Full    | Full    | Full    | Full    | Codex now writes Claude-shaped tool trace rows for its owned tools.                                                   |
-| Primary identity document             | Full    | Full    | Full    | Full    | `CLAUDE.md`, `.openai/AGENTS.md`, `.codex/AGENTS.md`, and `GEMINI.md`.                                                |
-| Identity revision metric              | Full    | Full    | Full    | Full    | All LLM backends report the active primary identity document revision.                                                |
-| Skill-folder convention               | Full    | Partial | Partial | Gap     | Claude has the strongest convention; OpenAI/Codex can mirror docs, Gemini lacks a native skill folder.                |
-| Memory surface                        | Full    | Partial | Full    | Partial | Codex has bounded memory tools; Gemini persists sessions but lacks native file-memory tooling.                        |
-| MCP consumption                       | Full    | Full    | Partial | Partial | Codex supports URL-shaped MCP tools; SDK-backed transports differ by backend.                                         |
-| Hook enforcement                      | Full    | Partial | Partial | Partial | `backend_hooks_enforcement_mode` reports full, partial/skeleton, or disabled coverage per backend.                    |
-| OpenTelemetry trace integration       | Full    | Full    | Full    | Full    | All expose trace APIs and continue inbound trace context.                                                             |
-| Prompt-size rejection                 | Full    | Full    | Full    | Full    | `MAX_PROMPT_BYTES` now covers all LLM-backed A2A paths.                                                               |
-| Token budget handling                 | Full    | Full    | Full    | Full    | `max_tokens` style budget checks exist across the LLM backends.                                                       |
-| Task-level metrics                    | Full    | Full    | Full    | Full    | Codex maps A2A work to backend task counters, durations, and last-run timestamps.                                     |
-| Context/token metrics                 | Full    | Full    | Full    | Full    | Codex reports budget-derived usage, warning, and exhaustion counters.                                                 |
-| SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex covers query/session/MCP caller-cardinality/tool-audit/error families; some SDK-specific series remain thinner. |
-| File watcher/reload metrics           | Full    | Full    | Partial | Full    | Codex emits placeholders for Python watcher families but does not run Python-style file watchers.                     |
-| SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex emits a placeholder but uses a JSON response-session store rather than the shared SQLite path.                  |
-| Focused regression tests              | Partial | Full    | Partial | Full    | Codex now has split A2A, auth, health, MCP, hooks, memory, trace/session-stream, and metrics coverage.                |
+| Capability                            | Claude  | OpenAI  | Codex   | Gemini  | Notes                                                                                                                                 |
+| ------------------------------------- | ------- | ------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| A2A discovery and task endpoint       | Full    | Full    | Full    | Full    | All expose agent discovery and JSON-RPC task handling.                                                                                |
+| Split liveness/readiness routes       | Full    | Full    | Full    | Full    | `/health` and `/health/ready` are present on all LLM backends.                                                                        |
+| Dedicated Prometheus listener         | Full    | Full    | Full    | Full    | All expose `/metrics` on the dedicated metrics port when enabled.                                                                     |
+| Protected conversation and trace APIs | Full    | Full    | Full    | Full    | `/conversations`, `/trace`, `/api/traces`, and session SSE are present.                                                               |
+| Caller-bound session IDs              | Full    | Full    | Full    | Full    | All use caller identity or bearer fingerprint binding when configured.                                                                |
+| Persistent session continuity         | Full    | Full    | Full    | Full    | The persistence mechanism differs by SDK/runtime.                                                                                     |
+| Conversation and tool/activity logs   | Full    | Full    | Full    | Full    | Codex now writes Claude-shaped tool trace rows for its owned tools.                                                                   |
+| Primary identity document             | Full    | Full    | Full    | Full    | `CLAUDE.md`, `.openai/AGENTS.md`, `.codex/AGENTS.md`, and `GEMINI.md`.                                                                |
+| Identity revision metric              | Full    | Full    | Full    | Full    | All LLM backends report the active primary identity document revision.                                                                |
+| Skill-folder convention               | Full    | Partial | Partial | Gap     | Claude has the strongest convention; OpenAI/Codex can mirror docs, Gemini lacks a native skill folder.                                |
+| Memory surface                        | Full    | Partial | Full    | Partial | Codex has bounded memory tools; Gemini persists sessions but lacks native file-memory tooling.                                        |
+| MCP consumption                       | Full    | Full    | Partial | Partial | Codex supports URL-shaped MCP tools; SDK-backed transports differ by backend.                                                         |
+| Hook enforcement                      | Full    | Partial | Partial | Partial | `backend_hooks_enforcement_mode` reports full, partial/skeleton, or disabled coverage per backend.                                    |
+| OpenTelemetry trace integration       | Full    | Full    | Full    | Full    | All expose trace APIs and continue inbound trace context.                                                                             |
+| Prompt-size rejection                 | Full    | Full    | Full    | Full    | `MAX_PROMPT_BYTES` now covers all LLM-backed A2A paths.                                                                               |
+| Token budget handling                 | Full    | Full    | Full    | Full    | `max_tokens` style budget checks exist across the LLM backends.                                                                       |
+| Task-level metrics                    | Full    | Full    | Full    | Full    | Codex maps A2A work to backend task counters, durations, and last-run timestamps.                                                     |
+| Context/token metrics                 | Full    | Full    | Full    | Full    | Codex reports budget-derived usage, warning, and exhaustion counters.                                                                 |
+| SDK/tool metrics                      | Full    | Full    | Partial | Full    | Codex covers query/session/MCP caller-cardinality/session-binding/tool-audit/error families; some SDK-specific series remain thinner. |
+| File watcher/reload metrics           | Full    | Full    | Partial | Full    | Codex emits placeholders for Python watcher families but does not run Python-style file watchers.                                     |
+| SQLite task-store metrics             | Full    | Full    | Gap     | Full    | Codex emits a placeholder but uses a JSON response-session store rather than the shared SQLite path.                                  |
+| Focused regression tests              | Partial | Full    | Partial | Full    | Codex now has split A2A, auth, health, MCP, hooks, memory, trace/session-stream, and metrics coverage.                                |
 
 ## Highest-Value Follow-Ups
 

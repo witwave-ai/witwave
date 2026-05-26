@@ -31,7 +31,7 @@ The first implementation is contract-first:
 - common model request, request-duration, and JSONL log-write metrics for cross-backend dashboards
 - runtime posture metrics for active model, reasoning effort, default token budget, tool-iteration cap, streaming, and
   stub mode
-- bounded `/mcp` caller-cardinality metrics for session-binding posture checks
+- bounded `/mcp` caller-cardinality metrics and session-binding fallback counters for auth posture checks
 - zero-value placeholders for runtime-specific Claude/Python metric families that do not apply to the Node backend
 - active `AGENTS.md` revision metrics for rollout verification
 - OpenTelemetry spans for A2A execution, MCP `tools/call`, Responses API calls, and function tools

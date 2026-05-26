@@ -19,7 +19,7 @@ fs.writeFileSync(
   "utf8",
 );
 
-const { handleA2A, publishSessionChunk, renderMetrics } = await import("./main.js");
+const { deriveSessionId, handleA2A, publishSessionChunk, renderMetrics } = await import("./main.js");
 
 test("streaming delta metrics use bounded model labels", () => {
   publishSessionChunk("00000000-0000-4000-8000-000000000201", {
@@ -112,7 +112,6 @@ test("renderMetrics exposes the common backend label shape", async () => {
     "backend_file_watcher_restarts_total",
     "backend_hooks_shed_total",
     "backend_allowed_tools_reload_total",
-    "backend_session_binding_fallback_total",
     "backend_sqlite_task_store_lock_wait_seconds_count",
   ]) {
     assert.ok(body.includes(placeholderMetric), `expected ${placeholderMetric} placeholder metric`);
@@ -121,4 +120,14 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_session_caller_cardinality\{.*backend="codex".*\} 0/);
   assert.match(body, /agent="/);
   assert.match(body, /backend="codex"/);
+});
+
+test("session binding fallback metrics record Node derivation fallback reasons", () => {
+  deriveSessionId("", undefined, "");
+  deriveSessionId("shared-session", undefined, "session-secret");
+
+  const body = renderMetrics();
+  assert.match(body, /backend_session_binding_fallback_total\{.*reason="secret_unset".*\} [1-9]/);
+  assert.match(body, /backend_session_binding_fallback_total\{.*reason="empty_raw_sid".*\} [1-9]/);
+  assert.match(body, /backend_session_binding_fallback_total\{.*reason="caller_identity_missing".*\} [1-9]/);
 });

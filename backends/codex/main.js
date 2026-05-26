@@ -260,6 +260,7 @@ const metrics = {
   sessionAgeSecondsSum: 0,
   sessionIdleSecondsCount: 0,
   sessionIdleSecondsSum: 0,
+  sessionBindingFallbacks: new Map(),
   streamingEventsEmitted: new Map(),
   streamingChunksDropped: new Map(),
   hookDenials: new Map(),
@@ -1032,15 +1033,22 @@ function sanitizeRawSessionId(raw) {
     .join("");
 }
 
+function bumpSessionBindingFallback(reason) {
+  inc(metrics.sessionBindingFallbacks, reason || "unknown");
+}
+
 export function deriveSessionId(rawSessionId, callerIdentity, secret = SESSION_ID_SECRET) {
   const raw = sanitizeRawSessionId(rawSessionId);
   if (!raw) {
+    bumpSessionBindingFallback("empty_raw_sid");
     return crypto.randomUUID();
   }
   if (!secret) {
+    bumpSessionBindingFallback("secret_unset");
     return legacySessionId(raw);
   }
   if (!callerIdentity) {
+    bumpSessionBindingFallback("caller_identity_missing");
     console.warn(
       "codex backend: SESSION_ID_SECRET is set but no caller identity is available; using legacy session derivation",
     );
@@ -3504,12 +3512,6 @@ function appendRuntimeSpecificMetricPlaceholders(lines) {
     "Placeholder for Claude settings.json ALLOWED_TOOLS reloads; Codex uses hooks.yaml and config.toml.",
     { direction: "none" },
   );
-  appendPlaceholderCounter(
-    lines,
-    "backend_session_binding_fallback_total",
-    "Placeholder for shared Python session-binding fallback paths; Codex derives session IDs in Node.",
-    { reason: "none" },
-  );
   appendPlaceholderSummary(
     lines,
     "backend_sqlite_task_store_lock_wait_seconds",
@@ -3686,6 +3688,17 @@ export function renderMetrics() {
     "# HELP backend_session_caller_cardinality Distinct caller identities observed on /mcp since process start, capped by MCP_CALLER_CARDINALITY_CAP.",
     "# TYPE backend_session_caller_cardinality gauge",
     metricLine("backend_session_caller_cardinality", mcpCallerIdentities.size, labels()),
+    "# HELP backend_session_binding_fallback_total Session-binding derivations that fell back to legacy or fresh-id behavior.",
+    "# TYPE backend_session_binding_fallback_total counter",
+  );
+  if (metrics.sessionBindingFallbacks.size === 0) {
+    lines.push(metricLine("backend_session_binding_fallback_total", 0, labels({ reason: "none" })));
+  } else {
+    for (const [reason, value] of metrics.sessionBindingFallbacks.entries()) {
+      lines.push(metricLine("backend_session_binding_fallback_total", value, labels({ reason })));
+    }
+  }
+  lines.push(
     "# HELP backend_session_starts_total Sessions first seen by this backend process.",
     "# TYPE backend_session_starts_total counter",
     metricLine("backend_session_starts_total", metrics.sessionStartsTotal, labels()),
