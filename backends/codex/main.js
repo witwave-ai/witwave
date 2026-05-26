@@ -227,6 +227,7 @@ const metrics = {
   taskLastSuccessTimestamp: 0,
   taskLastErrorTimestamp: 0,
   taskCancellationsTotal: 0,
+  taskRetriesTotal: 0,
   modelRequests: new Map(),
   mcpRequests: new Map(),
   mcpDurationCounts: new Map(),
@@ -2593,7 +2594,7 @@ async function createResponse(client, request, onTextDelta, spanAttributes = {})
   );
 }
 
-async function createResponseWithSessionFallback(client, request, sessionId, onTextDelta, spanAttributes = {}) {
+export async function createResponseWithSessionFallback(client, request, sessionId, onTextDelta, spanAttributes = {}) {
   try {
     return await createResponse(client, request, onTextDelta, spanAttributes);
   } catch (error) {
@@ -2606,6 +2607,7 @@ async function createResponseWithSessionFallback(client, request, sessionId, onT
     }
     loadSessionStore().delete(sessionId);
     saveSessionStore();
+    metrics.taskRetriesTotal += 1;
     const retry = { ...request };
     delete retry.previous_response_id;
     return await createResponse(client, retry, onTextDelta, { ...spanAttributes, "llm.request.session_retry": "true" });
@@ -3484,11 +3486,6 @@ function appendRuntimeSpecificMetricPlaceholders(lines) {
   );
   appendPlaceholderCounter(
     lines,
-    "backend_task_retries_total",
-    "Placeholder for retries caused by SDK session contention; Codex resumes Responses sessions by response id.",
-  );
-  appendPlaceholderCounter(
-    lines,
     "backend_watcher_events_total",
     "Placeholder for Python file-watcher events; Codex loads config synchronously on demand.",
     { watcher: "none" },
@@ -3618,6 +3615,9 @@ export function renderMetrics() {
     "# HELP backend_task_cancellations_total Total Codex task cancellation requests.",
     "# TYPE backend_task_cancellations_total counter",
     metricLine("backend_task_cancellations_total", metrics.taskCancellationsTotal, labels()),
+    "# HELP backend_task_retries_total Total Codex task retries after recoverable Responses session resume failures.",
+    "# TYPE backend_task_retries_total counter",
+    metricLine("backend_task_retries_total", metrics.taskRetriesTotal, labels()),
     "# HELP backend_log_entries_total Total entries written to backend JSONL logs.",
     "# TYPE backend_log_entries_total counter",
   );

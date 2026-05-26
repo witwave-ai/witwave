@@ -23,6 +23,7 @@ The first implementation is contract-first:
 - PreToolUse-style hook gating for Codex-owned function tools (`run_shell_command`, memory tools, and URL-shaped MCP
   tools)
 - persisted Responses API session continuity via `previous_response_id`
+- recoverable stale-session retry metrics when a stored `previous_response_id` can no longer resume
 - caller-bound session derivation when `SESSION_ID_SECRET` is set
 - per-dispatch `max_tokens` budget checks from Responses API usage
 - a minimal `/mcp` surface with the backend-neutral `ask_agent` tool name

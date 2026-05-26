@@ -12,6 +12,7 @@ process.env.CODEX_MEMORY_ROOT = path.join(tmp, "memory");
 process.env.CONVERSATIONS_AUTH_DISABLED = "true";
 process.env.CODEX_CONFIG_TOML = path.join(tmp, "config.toml");
 process.env.CODEX_AGENT_MD = path.join(tmp, "AGENTS.md");
+process.env.CODEX_SESSION_STORE_PATH = path.join(tmp, "sessions", "responses.json");
 fs.writeFileSync(process.env.CODEX_AGENT_MD, "# Metrics contract test identity\n", "utf8");
 fs.writeFileSync(
   process.env.CODEX_CONFIG_TOML,
@@ -19,7 +20,8 @@ fs.writeFileSync(
   "utf8",
 );
 
-const { deriveSessionId, handleA2A, publishSessionChunk, renderMetrics } = await import("./main.js");
+const { createResponseWithSessionFallback, deriveSessionId, handleA2A, publishSessionChunk, renderMetrics } =
+  await import("./main.js");
 
 test("streaming delta metrics use bounded model labels", () => {
   publishSessionChunk("00000000-0000-4000-8000-000000000201", {
@@ -106,7 +108,6 @@ test("renderMetrics exposes the common backend label shape", async () => {
     "backend_sdk_context_fetch_errors_total",
     "backend_stderr_lines_per_task_count",
     "backend_tasks_with_stderr_total",
-    "backend_task_retries_total",
     "backend_watcher_events_total",
     "backend_file_watcher_restarts_total",
     "backend_hooks_shed_total",
@@ -130,4 +131,29 @@ test("session binding fallback metrics record Node derivation fallback reasons",
   assert.match(body, /backend_session_binding_fallback_total\{.*reason="secret_unset".*\} [1-9]/);
   assert.match(body, /backend_session_binding_fallback_total\{.*reason="empty_raw_sid".*\} [1-9]/);
   assert.match(body, /backend_session_binding_fallback_total\{.*reason="caller_identity_missing".*\} [1-9]/);
+});
+
+test("task retry metric records recoverable Responses session resume retries", async () => {
+  let calls = 0;
+  const client = {
+    responses: {
+      create: async (request) => {
+        calls += 1;
+        if (request.previous_response_id) {
+          throw new Error("previous_response_id not found");
+        }
+        return { id: "resp-after-retry", output: [] };
+      },
+    },
+  };
+
+  const response = await createResponseWithSessionFallback(
+    client,
+    { model: "gpt-5.5", input: "retry probe", previous_response_id: "resp-stale" },
+    "session-retry-probe",
+  );
+
+  assert.equal(calls, 2);
+  assert.equal(response.id, "resp-after-retry");
+  assert.match(renderMetrics(), /backend_task_retries_total\{.*backend="codex".*\} [1-9]/);
 });
