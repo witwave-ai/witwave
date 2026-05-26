@@ -6,6 +6,16 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.33.1] — 2026-05-26
+
+Quiet security patch — pin `fastapi` to `0.136.1` across the Python surface to substantively mitigate MAL-2026-4750
+(HIGH). Routine ruff/prettier formatting and a CI-docs ergonomics tweak round out the release; no runtime behaviour
+change beyond the dependency pin.
+
+### Fixed
+
+- **deps**: Pin `fastapi==0.136.1` across the harness and Python services (5 sections) to close MAL-2026-4750 (HIGH).
+
 ## [0.33.0] — 2026-05-26
 
 Observability-heavy minor: the codex backend gains another round of Prometheus surface coverage (event-loop lag, session
