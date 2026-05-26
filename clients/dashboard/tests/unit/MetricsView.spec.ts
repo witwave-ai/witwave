@@ -34,7 +34,7 @@ function okText(data: string): Response {
 describe("MetricsView", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function () {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
       return {
         canvas: this,
         clearRect: vi.fn(),
