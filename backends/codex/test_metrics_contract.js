@@ -26,6 +26,7 @@ const {
   createResponseWithSessionFallback,
   deriveSessionId,
   handleA2A,
+  observeEventLoopLagSeconds,
   publishSessionChunk,
   renderMetrics,
 } = await import("./main.js");
@@ -92,6 +93,7 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_context_usage_percent_count/);
   assert.match(body, /backend_context_warnings_total/);
   assert.match(body, /backend_context_exhaustion_total/);
+  assert.match(body, /backend_event_loop_lag_seconds_count\{.*backend="codex".*\}/);
   assert.match(body, /backend_session_age_seconds_count/);
   assert.match(body, /backend_session_idle_seconds_count/);
   assert.match(body, /backend_lru_cache_utilization_percent/);
@@ -106,7 +108,6 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_runtime_stub_mode_enabled\{.*backend="codex".*\} 1/);
   for (const placeholderMetric of [
     "backend_sdk_info",
-    "backend_event_loop_lag_seconds_count",
     "backend_task_restarts_total",
     "backend_task_timeout_headroom_seconds_count",
     "backend_session_path_mismatch_total",
@@ -126,6 +127,14 @@ test("renderMetrics exposes the common backend label shape", async () => {
   assert.match(body, /backend_session_caller_cardinality\{.*backend="codex".*\} 0/);
   assert.match(body, /agent="/);
   assert.match(body, /backend="codex"/);
+});
+
+test("event loop lag metric records Node runtime samples", () => {
+  observeEventLoopLagSeconds(0.025);
+
+  const body = renderMetrics();
+  assert.match(body, /backend_event_loop_lag_seconds_count\{.*backend="codex".*\} [1-9]/);
+  assert.match(body, /backend_event_loop_lag_seconds_sum\{.*backend="codex".*\} 0\.025/);
 });
 
 test("session binding fallback metrics record Node derivation fallback reasons", () => {

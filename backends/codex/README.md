@@ -34,6 +34,7 @@ The first implementation is contract-first:
 - common model request, request-duration, and JSONL log-write metrics for cross-backend dashboards
 - runtime posture metrics for active model, reasoning effort, default token budget, tool-iteration cap, streaming, and
   stub mode
+- Node event-loop lag metrics for runtime saturation visibility
 - bounded `/mcp` caller-cardinality metrics and session-binding fallback counters for auth posture checks
 - zero-value placeholders for runtime-specific Claude/Python metric families that do not apply to the Node backend
 - active `AGENTS.md` revision metrics for rollout verification
@@ -84,6 +85,7 @@ the OpenAI Responses API.
 | `MAX_PROMPT_BYTES`                  | `10485760`                                   | Inbound prompt byte ceiling                                     |
 | `METRICS_ENABLED`                   | unset                                        | Enables the dedicated metrics listener                          |
 | `METRICS_PORT`                      | `9000`                                       | Dedicated Prometheus listener port                              |
+| `CODEX_EVENT_LOOP_LAG_INTERVAL_MS`  | `1000`                                       | Node event-loop lag sample interval; `0` disables sampling      |
 | `OTEL_ENABLED`                      | unset                                        | Enables OTLP/HTTP span export                                   |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`       | SDK default                                  | OTLP/HTTP collector endpoint when `OTEL_ENABLED=true`           |
 | `OTEL_IN_MEMORY_SPANS`              | `1000`                                       | In-memory trace ring size for `/api/traces`                     |
@@ -216,7 +218,7 @@ Codex also mirrors Claude's core tool metric names for cross-backend dashboards:
 `backend_sdk_tool_calls_per_query`, `backend_sdk_tool_duration_seconds`, tool input/result byte summaries,
 `backend_sdk_tool_errors_total`, and outbound MCP tool request/duration summaries.
 
-Some Claude metric families describe Python- or Claude-SDK-specific runtime behavior, such as asyncio event-loop lag,
+Some Claude metric families describe Python- or Claude-SDK-specific runtime behavior, such as guarded worker restarts,
 file watcher restarts, SDK subprocess stderr, and SQLite task-store lock wait. Codex emits zero-value placeholder series
 for those names so dashboards can union across `(agent, agent_id, backend)` without dropping the Codex backend. The
 placeholder is intentional: it preserves the metric contract without pretending the Node runtime has the same internal

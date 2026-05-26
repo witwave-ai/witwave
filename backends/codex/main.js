@@ -60,6 +60,7 @@ const CONTEXT_USAGE_WARN_THRESHOLD = (() => {
 })();
 const METRICS_ENABLED = parseBool(process.env.METRICS_ENABLED);
 const METRICS_PORT = Number.parseInt(process.env.METRICS_PORT || "9000", 10);
+const CODEX_EVENT_LOOP_LAG_INTERVAL_MS = parseNonNegativeInt(process.env.CODEX_EVENT_LOOP_LAG_INTERVAL_MS, 1000);
 const CONVERSATIONS_AUTH_TOKEN = process.env.CONVERSATIONS_AUTH_TOKEN || "";
 const CONVERSATIONS_AUTH_DISABLED = parseBool(process.env.CONVERSATIONS_AUTH_DISABLED);
 const LOG_REDACT = parseBool(process.env.LOG_REDACT);
@@ -247,6 +248,8 @@ const metrics = {
   budgetExceededTotal: 0,
   concurrentQueries: 0,
   runningTasks: 0,
+  eventLoopLagCount: 0,
+  eventLoopLagSum: 0,
   contextTokensCount: 0,
   contextTokensSum: 0,
   contextTokensRemainingCount: 0,
@@ -3384,6 +3387,25 @@ function metricBool(value) {
   return value ? 1 : 0;
 }
 
+export function observeEventLoopLagSeconds(value) {
+  metrics.eventLoopLagCount += 1;
+  metrics.eventLoopLagSum += Math.max(0, Number.isFinite(value) ? value : 0);
+}
+
+function startEventLoopLagMonitor() {
+  if (!METRICS_ENABLED || CODEX_EVENT_LOOP_LAG_INTERVAL_MS === 0) {
+    return null;
+  }
+  let expected = performance.now() + CODEX_EVENT_LOOP_LAG_INTERVAL_MS;
+  const timer = setInterval(() => {
+    const now = performance.now();
+    observeEventLoopLagSeconds((now - expected) / 1000);
+    expected = now + CODEX_EVENT_LOOP_LAG_INTERVAL_MS;
+  }, CODEX_EVENT_LOOP_LAG_INTERVAL_MS);
+  timer.unref?.();
+  return timer;
+}
+
 function runtimeConfigLabels() {
   return labels({
     model: sanitizeModelLabel(CODEX_MODEL),
@@ -3437,11 +3459,6 @@ function appendHookDenialCounter(lines, name, help) {
 
 function appendRuntimeSpecificMetricPlaceholders(lines) {
   const model = sanitizeModelLabel(CODEX_MODEL);
-  appendPlaceholderSummary(
-    lines,
-    "backend_event_loop_lag_seconds",
-    "Placeholder for Python asyncio event-loop lag; not applicable to the Node Codex runtime.",
-  );
   appendPlaceholderCounter(
     lines,
     "backend_task_restarts_total",
@@ -3549,6 +3566,10 @@ export function renderMetrics() {
     "# HELP backend_startup_duration_seconds Backend startup duration in seconds.",
     "# TYPE backend_startup_duration_seconds gauge",
     metricLine("backend_startup_duration_seconds", startupDurationSeconds.toFixed(3), labels()),
+    "# HELP backend_event_loop_lag_seconds Node.js event-loop lag observed by the Codex backend.",
+    "# TYPE backend_event_loop_lag_seconds summary",
+    metricLine("backend_event_loop_lag_seconds_count", metrics.eventLoopLagCount, labels()),
+    metricLine("backend_event_loop_lag_seconds_sum", metrics.eventLoopLagSum, labels()),
     "# HELP backend_concurrent_queries Current Codex queries running inside this backend.",
     "# TYPE backend_concurrent_queries gauge",
     metricLine("backend_concurrent_queries", metrics.concurrentQueries, labels()),
@@ -4093,12 +4114,13 @@ export function start() {
     });
   });
   const metricsServer = startMetricsServer();
+  const eventLoopLagTimer = startEventLoopLagMonitor();
   appServer.listen(BACKEND_PORT, AGENT_HOST, () => {
     startupDurationSeconds = (performance.now() - START_MONO) / 1000;
     ready = true;
     console.log(`codex backend listening on ${AGENT_HOST}:${BACKEND_PORT}`);
   });
-  return { appServer, metricsServer };
+  return { appServer, metricsServer, eventLoopLagTimer };
 }
 
 const entrypoint = process.argv[1] ? fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) : false;
