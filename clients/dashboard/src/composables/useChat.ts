@@ -1,4 +1,4 @@
-import { onUnmounted, ref, shallowRef } from "vue";
+import { onScopeDispose, ref, shallowRef } from "vue";
 import { apiGet, apiPost, ApiError } from "../api/client";
 import type { A2AResponse, ChatMessage, ConversationEntry } from "../types/chat";
 import { extractReplyText } from "../types/chat";
@@ -234,11 +234,11 @@ export function useChat(opts: UseChatOptions) {
     sendController?.abort();
   }
 
-  // The composable is recreated per agent via :key="member.name", so
-  // onUnmounted fires on both agent switch and full unmount. Aborting here
-  // guarantees the orphaned fetch releases its connection instead of
-  // outliving the panel until the tab reloads.
-  onUnmounted(() => {
+  // The composable is recreated per agent via :key="member.name", so this
+  // disposal runs on both agent switch and full unmount. onScopeDispose also
+  // keeps isolated unit-test effect scopes quiet without changing production
+  // teardown behavior.
+  onScopeDispose(() => {
     sendController?.abort();
     historyController?.abort();
   });

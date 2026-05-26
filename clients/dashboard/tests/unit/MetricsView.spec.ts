@@ -34,6 +34,40 @@ function okText(data: string): Response {
 describe("MetricsView", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function () {
+      return {
+        canvas: this,
+        clearRect: vi.fn(),
+        fillRect: vi.fn(),
+        restore: vi.fn(),
+        save: vi.fn(),
+        resetTransform: vi.fn(),
+        setTransform: vi.fn(),
+        translate: vi.fn(),
+        scale: vi.fn(),
+        rotate: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        bezierCurveTo: vi.fn(),
+        quadraticCurveTo: vi.fn(),
+        arc: vi.fn(),
+        arcTo: vi.fn(),
+        closePath: vi.fn(),
+        stroke: vi.fn(),
+        fill: vi.fn(),
+        clip: vi.fn(),
+        rect: vi.fn(),
+        setLineDash: vi.fn(),
+        getLineDash: vi.fn(() => []),
+        measureText: vi.fn(() => ({ width: 0 })),
+        createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+        createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+        createPattern: vi.fn(() => null),
+        fillText: vi.fn(),
+        strokeText: vi.fn(),
+      } as unknown as CanvasRenderingContext2D;
+    });
   });
 
   afterEach(() => {

@@ -14,6 +14,7 @@ function makeBackend(overrides: Partial<Agent> = {}): Agent {
   return {
     id: "iris-claude",
     url: "http://iris:8010",
+    family: "claude",
     // Casting because AgentCard has many optional fields we don't need
     // here; the component only reads `.card` for truthiness and
     // `.card?.name` for the title.

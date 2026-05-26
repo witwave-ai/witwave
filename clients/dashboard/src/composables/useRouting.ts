@@ -1,4 +1,4 @@
-import { onUnmounted, ref, watchEffect } from "vue";
+import { onScopeDispose, ref, watchEffect } from "vue";
 import { apiGet } from "../api/client";
 
 // useRouting — fetches the harness's /routing reflection (#638) for one
@@ -81,7 +81,7 @@ export function useRouting(agentName: () => string) {
   // Re-fetch whenever agentName changes (mount, switch-agent).
   watchEffect(load);
 
-  onUnmounted(() => aborter?.abort());
+  onScopeDispose(() => aborter?.abort());
 
   // Resolve the default backend for a given kind, falling back to
   // routing.default, then null. Callers typically use kind="a2a" since
