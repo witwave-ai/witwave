@@ -162,6 +162,7 @@ const CONVERSATION_STREAM_RING_MAX = Math.max(
 const SESSION_STREAM_MAX_PER_CALLER = parseNonNegativeInt(process.env.SESSION_STREAM_MAX_PER_CALLER, 8);
 const SESSION_ID_SECRET = process.env.SESSION_ID_SECRET || "";
 const SESSION_ID_SECRET_PREV = process.env.SESSION_ID_SECRET_PREV || "";
+const MCP_CALLER_CARDINALITY_CAP = parseNonNegativeInt(process.env.MCP_CALLER_CARDINALITY_CAP, 10000);
 const MCP_MAX_BODY_BYTES = Math.max(
   1,
   Number.parseInt(process.env.MCP_MAX_BODY_BYTES || String(4 * 1024 * 1024), 10) || 4 * 1024 * 1024,
@@ -311,6 +312,7 @@ let codexSessions = null;
 let toolAuditWritesSinceRotationCheck = 0;
 const sessionStreams = new Map();
 const sessionStreamCallerCounts = new Map();
+const mcpCallerIdentities = new Set();
 let mcpToolCache = {
   fingerprint: "",
   clients: new Map(),
@@ -1066,6 +1068,15 @@ function callerIdentityFromRequest(req) {
   const header = req?.headers?.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
   return token ? crypto.createHash("sha256").update(token).digest("hex") : undefined;
+}
+
+function observeMcpCallerIdentity(callerIdentity) {
+  if (!callerIdentity || MCP_CALLER_CARDINALITY_CAP <= 0) {
+    return;
+  }
+  if (mcpCallerIdentities.has(callerIdentity) || mcpCallerIdentities.size < MCP_CALLER_CARDINALITY_CAP) {
+    mcpCallerIdentities.add(callerIdentity);
+  }
 }
 
 function sessionStreamCallerFingerprint(req) {
@@ -3037,6 +3048,8 @@ async function handleMcp(req, res) {
   let status = "ok";
   let methodLabel = "unknown";
   let rpcId = null;
+  const callerIdentity = callerIdentityFromRequest(req);
+  observeMcpCallerIdentity(callerIdentity);
   const inboundTraceId = traceIdForMetadata({ traceparent: req.headers.traceparent });
   try {
     const declaredLength = Number.parseInt(String(req.headers["content-length"] || "-1"), 10);
@@ -3121,7 +3134,6 @@ async function handleMcp(req, res) {
         args.traceparent = req.headers.traceparent;
       }
       const rawSessionId = sanitizeRawSessionId(args.session_id || "");
-      const callerIdentity = callerIdentityFromRequest(req);
       const candidateSessionIds = deriveSessionCandidates(rawSessionId, callerIdentity);
       const resultText = await runWithSpan(
         "backend.mcp.tools_call",
@@ -3496,11 +3508,6 @@ function appendRuntimeSpecificMetricPlaceholders(lines) {
     "Placeholder for shared Python session-binding fallback paths; Codex derives session IDs in Node.",
     { reason: "none" },
   );
-  appendPlaceholderGauge(
-    lines,
-    "backend_session_caller_cardinality",
-    "Placeholder for /mcp caller cardinality tracking; Codex does not currently aggregate distinct caller buckets.",
-  );
   appendPlaceholderSummary(
     lines,
     "backend_sqlite_task_store_lock_wait_seconds",
@@ -3674,6 +3681,9 @@ export function renderMetrics() {
     "# HELP backend_active_sessions Active persisted Codex response sessions.",
     "# TYPE backend_active_sessions gauge",
     metricLine("backend_active_sessions", loadSessionStore().size, labels()),
+    "# HELP backend_session_caller_cardinality Distinct caller identities observed on /mcp since process start, capped by MCP_CALLER_CARDINALITY_CAP.",
+    "# TYPE backend_session_caller_cardinality gauge",
+    metricLine("backend_session_caller_cardinality", mcpCallerIdentities.size, labels()),
     "# HELP backend_session_starts_total Sessions first seen by this backend process.",
     "# TYPE backend_session_starts_total counter",
     metricLine("backend_session_starts_total", metrics.sessionStartsTotal, labels()),

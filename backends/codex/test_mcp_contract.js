@@ -81,6 +81,27 @@ test("MCP tools/list advertises the backend-neutral ask_agent tool name", async 
   });
 });
 
+test("MCP caller cardinality tracks distinct bearer identities", async () => {
+  await withTestServer(async (port) => {
+    for (const token of ["alpha", "beta", "alpha"]) {
+      const { status } = await postJson(
+        port,
+        "/mcp",
+        {
+          jsonrpc: "2.0",
+          id: token,
+          method: "tools/list",
+        },
+        { Authorization: `Bearer ${token}` },
+      );
+      assert.equal(status, 200);
+    }
+
+    const metricsBody = renderMetrics();
+    assert.match(metricsBody, /backend_session_caller_cardinality\{.*backend="codex".*\} 2/);
+  });
+});
+
 test("MCP initialize negotiates supported protocol version", async () => {
   await withTestServer(async (port) => {
     const { body: result } = await postJson(port, "/mcp", {
