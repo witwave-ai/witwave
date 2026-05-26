@@ -6,6 +6,38 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.33.0] — 2026-05-26
+
+Observability-heavy minor: the codex backend gains another round of Prometheus surface coverage (event-loop lag, session
+store save errors, stale-session retry attempts, unsupported stdio MCP entries, session binding fallback, MCP caller
+cardinality, runtime cost guardrails), `claude` exposes an identity-revision gauge, and `ww doctor release` now verifies
+runtime posture before declaring readiness. A dashboard test-mock typing fix and a backend docs refresh round out the
+release.
+
+### Added
+
+- **backends/codex**: Track event-loop lag, session-store save errors, stale-session retry attempts, unsupported stdio
+  MCP entries, session binding fallback metrics, MCP caller cardinality, and runtime cost guardrails so the codex
+  Prometheus surface aligns with the wider backend fleet.
+- **backends/claude**: Expose an identity-revision metric so consumers can see when the backend has picked up a fresh
+  agent identity without scraping the agent-card directly.
+- **ww**: `ww doctor release` now verifies runtime posture before declaring readiness, catching configuration drift that
+  would otherwise only surface at request time.
+
+### Fixed
+
+- **backends/codex**: Mirror hook denial alias metrics so denial counters land under both the canonical and alias label,
+  matching what the claude backend already emits.
+- **backends/openai**: Add the missing `backend_agent_md_revision` sibling test that the other backends already carry,
+  closing a coverage gap on a public surface.
+- **dashboard**: Type the canvas context mock so the test suite stops emitting type warnings under stricter TS configs.
+
+### Documentation
+
+- **ww**: Note that the agent metrics endpoint is optional so consumers can plan around backends that don't expose it.
+- **backends**: Clarify memory semantics and MCP transport shapes so the contract between the harness and each backend
+  is explicit.
+
 ## [0.32.1] — 2026-05-26
 
 Quiet patch — a dashboard dependency audit on the markdown renderer, a CLI/TUI docs refresh, and routine self-team
