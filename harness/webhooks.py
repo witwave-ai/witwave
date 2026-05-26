@@ -334,6 +334,23 @@ _HOOK_DECISION_SUB_KINDS: frozenset[str] = frozenset({"allow", "warn", "deny"})
 
 @dataclass
 class WebhookSubscription:
+    """One outbound webhook subscription parsed from a ``.md`` file in WEBHOOKS_DIR.
+
+    Fields are populated from the file's YAML frontmatter by
+    :func:`parse_webhook_file`; the markdown body after the closing ``---``
+    becomes ``context_template`` and is the LLM-extraction prompt context.
+    The module-level docstring documents the filter / delivery / extraction
+    semantics in detail — this dataclass is just the in-memory representation.
+
+    ``url_template`` and ``headers`` values may contain ``{{env.VAR}}``
+    references that are resolved at delivery time (URL templates additionally
+    forbid env refs and any unlisted built-in variable at parse time via
+    :func:`_url_template_has_forbidden_refs`, #524). ``extract`` maps each
+    variable name to an LLM prompt whose output is then substituted into
+    ``body_template``. ``events`` defaults to ``["completion"]`` so files
+    written before #633 keep the legacy completion-only fan-out behavior.
+    """
+
     path: str
     name: str
     url_template: str  # may contain {{env.VAR}}
@@ -1525,6 +1542,29 @@ async def _deliver_hook_decision(
 
 
 class WebhookRunner:
+    """File-watcher-driven registry that fans completion + hook.decision events out to webhook subscriptions.
+
+    Tails ``WEBHOOKS_DIR`` via :func:`utils.run_awatch_loop` (see
+    :meth:`run`), parsing each ``.md`` file with :func:`parse_webhook_file`
+    into a :class:`WebhookSubscription` that is then registered under its
+    file path. :meth:`fire` handles the legacy ``completion`` event kind and
+    :meth:`fire_hook_decision` handles ``hook.decision`` (#633); both
+    iterate ``self._items``, skip disabled subscriptions, evaluate
+    filter / event-kind matching, and schedule delivery as ``asyncio``
+    background tasks.
+
+    Concurrency is bounded twice: per subscription
+    (``sub.max_concurrent_deliveries``) and globally
+    (``WEBHOOK_MAX_CONCURRENT_DELIVERIES``); breaches log a warning and
+    increment ``harness_webhooks_delivery_shed_total``. In-flight tasks
+    (including retry tasks created inside :func:`deliver`) are tracked in
+    ``_active_deliveries`` and ``_deliveries_by_name`` so :meth:`close` can
+    drain them before closing the shared ``httpx.AsyncClient`` (#567). The
+    client itself is built eagerly in ``__init__`` and re-opened on demand by
+    :meth:`_get_client` after a prior close — mirroring the
+    :class:`A2ABackend` pattern (#398).
+    """
+
     def __init__(self, backends: dict | None = None, default_backend_id: str | None = None):
         self._items: dict[str, WebhookSubscription] = {}
         self._backends = backends
@@ -1800,6 +1840,21 @@ class WebhookRunner:
             _t.add_done_callback(_cleanup)
 
     async def run(self) -> None:
+        """Watch ``WEBHOOKS_DIR`` and (re)register subscriptions on file create / change / delete.
+
+        Delegates the inotify / poll loop to :func:`utils.run_awatch_loop`,
+        which first calls :meth:`_scan` to register every ``.md`` file
+        currently present, then dispatches change events to :meth:`_register`
+        (with ``count_reload=True`` so ``harness_webhooks_reloads_total``
+        ticks) and delete events to :meth:`_unregister`. If the watched
+        directory disappears the helper logs and retries every 10s,
+        incrementing ``harness_file_watcher_restarts_total`` on each
+        restart; on shutdown the cleanup hook unregisters every entry.
+
+        This coroutine runs for the lifetime of the harness — cancel it and
+        then ``await`` :meth:`close` to drain in-flight deliveries and shut
+        the shared httpx client before the loop exits.
+        """
         logger.info(f"Webhook runner watching {WEBHOOKS_DIR}")
 
         def _on_change(path: str) -> None:
