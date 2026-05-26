@@ -993,6 +993,18 @@ async def main():
         )
 
     async def agents_handler(request: Request) -> JSONResponse:
+        """Return this harness's agent card plus every backend's card.
+
+        Emits one entry per known agent. The first entry is the harness's
+        own card (``role: "witwave"``) built via :func:`build_agent_card`;
+        the rest are produced by fetching ``/.well-known/agent.json`` from
+        each backend whose ``url`` is configured. Backend fetches fan out
+        concurrently with a 5s timeout (#360) — an unreachable backend
+        appears in the response with ``card: null`` rather than failing
+        the whole call. The live ``executor._backends`` map is consulted
+        (not a re-read of ``backend.yaml``) so the result reflects the
+        same routing state as ``/metrics`` after a hot-reload (#288).
+        """
         # Use the live executor backends so this endpoint reflects the same state
         # as /metrics after a hot-reload (consistent with the fix in #288).
         backend_configs = [b._config for b in executor._backends.values()]
@@ -1111,6 +1123,17 @@ async def main():
     subscribe_hook_decision(_emit_hook_decision_event_stream)
 
     async def triggers_discovery(request: Request) -> JSONResponse:
+        """Advertise registered trigger endpoints (``/.well-known/agent-triggers.json``).
+
+        Returns a JSON array — one entry per :class:`TriggerItem` known
+        to ``trigger_runner`` — exposing its ``endpoint`` path,
+        operator-supplied ``name`` and ``description``, the fixed
+        ``methods: ["POST"]`` (every trigger is POST-only — see the
+        route table comment), and the trigger's ``session_id``. Used by
+        external systems (dashboards, integration setup pages) to
+        discover what trigger URLs the agent exposes without having to
+        re-parse the operator config.
+        """
         items = trigger_runner.items_by_endpoint()
         payload = [
             {
@@ -1201,6 +1224,45 @@ async def main():
         return JSONResponse(payload)
 
     async def trigger_handler(request: Request) -> JSONResponse:
+        """Dispatch an inbound trigger request through to the executor.
+
+        Per-endpoint POST handler for every operator-defined trigger.
+        Enforces, in order:
+
+        1. **Warmup shield** (#785) — 503 + ``Retry-After: 5`` while
+           ``backends_ready`` is unset so external callers (webhooks,
+           GitHub Apps) back off rather than dispatching into a
+           still-initialising backend.
+        2. **Lookup** — 404 if the endpoint isn't registered, 409 if a
+           run for this endpoint is already in flight.
+        3. **Slot claim** — adds ``endpoint`` to ``trigger_runner._running``
+           BEFORE the first ``await`` to close the concurrent-409 race;
+           ``CancelledError`` paths release the slot so a client
+           disconnect mid-stream doesn't pin the endpoint forever (#866).
+        4. **Pre-auth gate** (#529) — rejects with 401 before touching
+           the body unless the appropriate auth header is present, and
+           (#1318) validates the bearer VALUE pre-buffer so callers can't
+           force a 1 MiB body allocation with an arbitrary header.
+        5. **Body cap** — short-circuits on ``Content-Length`` > 1 MiB,
+           else streams chunks with a running-total cap (HMAC paths still
+           need the full body up to the cap).
+        6. **Full auth check** — :func:`_check_trigger_auth` validates
+           HMAC (if ``secret_env_var`` set) or the global bearer.
+        7. **Dispatch** — builds the prompt by concatenating an
+           operator-authored, env-interpolated body (#473 — untrusted
+           inbound bytes are never interpolated) with the scrubbed
+           request headers (#1269) and a truncated body (262144 bytes
+           UTF-8, falling back to a 4096-byte hex dump on decode error),
+           all inside ``<untrusted-request-*>`` fences. Fires the work
+           as a background task; the slot release moves to the task's
+           own ``finally`` block.
+
+        Returns 202 with ``delivery_id`` / ``session_id`` / ``endpoint``
+        on success. Every outcome increments
+        ``harness_triggers_requests_total{method, code}`` with the
+        appropriate response code so dispatch-vs-reject ratios are
+        observable per trigger.
+        """
         endpoint = request.path_params["endpoint"]
 
         # Warmup shield (#785): while backends_ready is unset, return 503
@@ -1560,6 +1622,25 @@ async def main():
         )
 
     async def jobs_run_handler(request: Request) -> JSONResponse:
+        """Ad-hoc-fire the named scheduled job (#788).
+
+        ``POST /jobs/{name}/run`` — operator-facing endpoint that
+        triggers a scheduled job outside its cron window. Gates the
+        request through the standard ad-hoc dispatch ladder:
+        :func:`_check_adhoc_auth` (distinct ``ADHOC_RUN_AUTH_TOKEN``
+        bearer, #700), :func:`_check_adhoc_csrf` (anti-CSRF header to
+        defang XSS-to-CSRF chains, #927), :func:`_adhoc_warmup_shield`
+        (503 + ``Retry-After`` while backends are still warming, #925),
+        and :func:`_drain_adhoc_body` (drop bodies > 64 KiB — the
+        prompt is derived from the job's ``.md`` file, not the
+        request body). Returns 404 if no job matches ``name``, 409 if
+        the job is already running, 500 on dispatch failure, else 202
+        with ``delivery_id`` / ``session_id`` / ``kind`` / ``name`` and
+        delegates execution to :func:`_dispatch_adhoc_job` so the
+        ad-hoc fire flows through the same ``_execute_job`` pipeline
+        the cron loop uses (#1293). Every response code increments
+        ``harness_adhoc_fires_total{kind="job", name, code}``.
+        """
         name = request.path_params["name"]
         if not _check_adhoc_auth(request):
             if harness_adhoc_fires_total is not None:
@@ -1603,6 +1684,21 @@ async def main():
         )
 
     async def tasks_run_handler(request: Request) -> JSONResponse:
+        """Ad-hoc-fire the named scheduled task (#788).
+
+        ``POST /tasks/{name}/run`` — the task counterpart to
+        :func:`jobs_run_handler`. Runs the same auth → CSRF → warmup-
+        shield → body-cap ladder, looks up the task by name (404 if
+        missing), rejects 409 if the task is already running, and on
+        success hands off to :func:`_dispatch_adhoc_task` which routes
+        through :func:`tasks.run_task` so ad-hoc fires share the
+        checkpoint / running-gauge / semaphore / telemetry the
+        scheduled path uses (#1298). Returns 202 with ``delivery_id``
+        / ``kind`` / ``name`` on success; ``session_id`` is omitted in
+        the response because :func:`run_task` derives it itself
+        (run-once vs. day-window). Every outcome increments
+        ``harness_adhoc_fires_total{kind="task", name, code}``.
+        """
         name = request.path_params["name"]
         if not _check_adhoc_auth(request):
             if harness_adhoc_fires_total is not None:
@@ -1642,6 +1738,24 @@ async def main():
         )
 
     async def heartbeat_run_handler(request: Request) -> JSONResponse:
+        """Ad-hoc-fire the agent's heartbeat (#788).
+
+        ``POST /heartbeat/run`` — runs the same auth → CSRF → warmup-
+        shield → body-cap ladder as the job/task ad-hoc handlers, then
+        loads ``HEARTBEAT.md`` via :func:`heartbeat.load_heartbeat`.
+        Returns 404 with ``"heartbeat not configured or disabled"`` if
+        the file is missing or disabled; otherwise builds a
+        :class:`Message` with the env-interpolated heartbeat body, the
+        constant ``HEARTBEAT_SESSION`` id, and the model / backend /
+        consensus / max-tokens loaded from ``HEARTBEAT.md``, then
+        delivers it via ``bus.try_send``. ``try_send`` preserves the
+        scheduled-heartbeat dedup semantic (#514) — if a scheduled
+        heartbeat is already in-flight, the ad-hoc fire is rejected with
+        409 rather than stacking. Returns 202 with ``delivery_id`` and
+        ``HEARTBEAT_SESSION`` on success. Every outcome increments
+        ``harness_adhoc_fires_total{kind="heartbeat", name="heartbeat",
+        code}``.
+        """
         if not _check_adhoc_auth(request):
             if harness_adhoc_fires_total is not None:
                 harness_adhoc_fires_total.labels(kind="heartbeat", name="heartbeat", code="401").inc()
@@ -2000,6 +2114,31 @@ async def main():
             return []
 
     async def otel_traces_list_handler(request: Request) -> JSONResponse:
+        """Serve the Jaeger-shape OTel trace list (``GET /api/traces``).
+
+        Merges the harness's own in-memory span ring (via
+        :func:`otel.get_in_memory_traces`) with the same endpoint on
+        every configured backend, fanned out concurrently. The merged
+        result is cached for ``OTEL_TRACES_LIST_CACHE_TTL`` seconds
+        behind a single-flight lock (#708) so the hot path serves
+        ``?limit=`` / ``?service=`` variants without re-fanning out.
+        Optional query params:
+
+        - ``limit`` — number of traces to return, clamped to ``[1,
+          1000]`` so ``?limit=-5`` doesn't slice ``traces[:-5]`` and
+          drop the newest, and ``?limit=99999999`` can't pressure
+          memory (#1412). Default 20.
+        - ``service`` — case-sensitive filter against each span's
+          ``process.serviceName``; a trace matches if any of its
+          spans does.
+
+        Bearer-gated with ``CONVERSATIONS_AUTH_TOKEN`` for parity with
+        ``/conversations`` / ``/trace`` and sibling backend
+        ``/api/traces`` endpoints (#1267). Returns the post-filter
+        traces sorted newest-first (by the minimum ``startTime``
+        across the trace's spans), truncated to ``limit``, alongside
+        the pre-truncation count.
+        """
         # #1267: bearer-gate parity with /conversations + /trace + sibling
         # backend /api/traces endpoints (CONVERSATIONS_AUTH_TOKEN).
         unauthorized = _require_conversations_auth(request)
@@ -2074,6 +2213,21 @@ async def main():
         return JSONResponse({"data": traces[:limit], "total": len(traces)})
 
     async def otel_traces_detail_handler(request: Request) -> JSONResponse:
+        """Serve a single OTel trace by id (``GET /api/traces/{trace_id}``).
+
+        Validates ``trace_id`` as a 32-hex W3C trace id and 400s
+        anything else — this closes the path-smuggling surface that
+        would otherwise let a caller inject path / query / fragment
+        segments into the backend URL templates (#1268). Filters the
+        local in-memory span ring to spans of the requested trace and
+        fans out per-id fetches to every configured backend
+        concurrently (per-id rather than 500-trace list fan-out, #708),
+        then merges the results. Returns 404 with ``{"data": [],
+        "total": 0}`` if no merged trace matches; otherwise returns the
+        merged trace wrapped in ``{"data": [<trace>], "total": 1}``.
+        Same ``CONVERSATIONS_AUTH_TOKEN`` bearer gate as
+        :func:`otel_traces_list_handler` (#1267).
+        """
         # #1267: bearer-gate parity.
         unauthorized = _require_conversations_auth(request)
         if unauthorized is not None:
