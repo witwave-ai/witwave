@@ -459,6 +459,15 @@ MAX_ADHOC_BODY_BYTES = 65_536
 
 
 def load_agent_description() -> str:
+    """Return the agent's free-form description text.
+
+    Reads ``/home/agent/.witwave/agent-card.md`` when present; on any
+    ``OSError`` (file missing, unreadable, etc.) falls back to the
+    ``AGENT_DESCRIPTION`` environment variable, then to a generic
+    ``"A Claude Code agent."`` literal. The returned string becomes the
+    ``description`` field of the A2A ``AgentCard`` served at
+    ``/.well-known/agent.json``.
+    """
     try:
         with open("/home/agent/.witwave/agent-card.md") as f:
             return f.read()
@@ -467,6 +476,15 @@ def load_agent_description() -> str:
 
 
 def build_agent_card() -> AgentCard:
+    """Construct the A2A ``AgentCard`` advertised by this harness.
+
+    Composes the card from module-level globals (``AGENT_NAME``,
+    ``HARNESS_URL``, ``AGENT_VERSION``) and the description loaded via
+    :func:`load_agent_description`. Capabilities advertise streaming;
+    a single ``general`` skill is registered. Callable repeatedly:
+    nothing is cached, so each call re-reads the agent-card markdown
+    file and so reflects in-place edits without a restart.
+    """
     return AgentCard(
         name=AGENT_NAME,
         description=load_agent_description(),
@@ -487,6 +505,15 @@ def build_agent_card() -> AgentCard:
 
 
 async def health_start(request: Request) -> JSONResponse:
+    """Kubernetes startup-probe handler.
+
+    Returns 200 ``{"status": "ok"}`` once the module-level ``_ready``
+    flag has been set (which :func:`_set_ready_when_started` flips
+    after uvicorn reports started); returns 503
+    ``{"status": "starting"}`` otherwise. Increments the
+    ``harness_health_checks_total{probe="start"}`` counter on every
+    call when metrics are enabled.
+    """
     if harness_health_checks_total is not None:
         harness_health_checks_total.labels(probe="start").inc()
     if _ready:
@@ -495,6 +522,16 @@ async def health_start(request: Request) -> JSONResponse:
 
 
 async def health_live(request: Request) -> JSONResponse:
+    """Kubernetes liveness-probe handler.
+
+    Always returns 200 with ``{"status": "ok", "agent": AGENT_NAME,
+    "uptime_seconds": <float>}``. Liveness is deliberately decoupled
+    from backend reachability — a transiently unreachable backend
+    must not cause the kubelet to restart the harness pod (that's
+    what readiness is for). Increments the
+    ``harness_health_checks_total{probe="live"}`` counter when
+    metrics are enabled.
+    """
     if harness_health_checks_total is not None:
         harness_health_checks_total.labels(probe="live").inc()
     elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -502,6 +539,27 @@ async def health_live(request: Request) -> JSONResponse:
 
 
 async def health_ready(request: Request) -> JSONResponse:
+    """Kubernetes readiness-probe handler.
+
+    Composes readiness from three signals:
+
+    1. Module-level ``_ready`` (uvicorn has started) — 503 ``starting``
+       otherwise.
+    2. ``executor.backends_reload_consecutive_failures`` against the
+       ``BACKEND_RELOAD_FAILURE_THRESHOLD`` environment variable (#702)
+       — 503 ``backends-config-stale`` once the threshold is reached.
+    3. The set of configured backend URLs is non-empty — 503
+       ``no-backends-configured`` otherwise (#864).
+    4. Per-backend reachability probed via ``GET /health/ready``
+       (falling back to ``/health`` on 404 so the documented echo-only
+       exception still passes) — 503 ``degraded`` listing the unhealthy
+       backend ids when any probe fails.
+
+    Probe results are cached for ``HEALTH_READY_CACHE_TTL`` seconds and
+    refreshed under ``_health_ready_lock`` so N concurrent probes
+    collapse into one backend fan-out. Stamps
+    ``harness_backend_reachable{backend=<id>}`` once per refresh.
+    """
     global _health_ready_cache, _health_ready_expires
     if harness_health_checks_total is not None:
         harness_health_checks_total.labels(probe="ready").inc()
@@ -715,6 +773,24 @@ async def _event_loop_monitor() -> None:
 
 
 async def bus_worker(bus: MessageBus, executor: AgentExecutor) -> None:
+    """Long-running consumer that drains ``MessageBus`` into the executor.
+
+    Loops forever awaiting :meth:`MessageBus.receive` and dispatches
+    each message through :meth:`AgentExecutor.process_bus`. Records
+    per-kind metrics: ``harness_bus_messages_total``,
+    ``harness_bus_consumer_idle_seconds``, ``harness_bus_wait_seconds``,
+    ``harness_bus_processing_duration_seconds`` (and the
+    ``_error_processing_duration_seconds`` counterpart on the failure
+    path), plus ``harness_bus_errors_total`` and
+    ``harness_bus_last_processed_timestamp_seconds``.
+
+    Exceptions raised by ``process_bus`` are logged and swallowed so a
+    single bad message cannot kill the worker. In the ``finally`` block
+    the function cancels any unresolved ``message.result`` future and
+    releases the bus's dedup slot for ``message.kind`` (#514) — this
+    runs unconditionally so error paths cannot starve subsequent
+    ``try_send`` calls for the same kind.
+    """
     logger.info("Message bus worker started.")
     _idle_start = time.monotonic()
     while True:
@@ -761,6 +837,42 @@ async def _set_ready_when_started(server: uvicorn.Server) -> None:
 
 
 async def main():
+    """Harness async entrypoint — wire and run the witwave agent process.
+
+    Bootstrap sequence:
+
+    1. Stamps ``start_time`` / ``_startup_mono`` so uptime metrics and
+       startup-duration measurements are anchored to the same instant.
+    2. Validates ``MANIFEST_PATH`` (default
+       ``/home/agent/manifest.json``) and warns on malformed entries —
+       does not abort; team features simply remain unavailable.
+    3. Initialises OpenTelemetry via ``tracing.init_otel_if_enabled``
+       before the executor is constructed (#469) so the first emitted
+       span is exported correctly.
+    4. Constructs the singleton ``MessageBus``, ``AgentExecutor``, and
+       a task store (``SqliteTaskStore`` when ``TASK_STORE_PATH`` is
+       set, ``InMemoryTaskStore`` otherwise with a warning about
+       restart-loss).
+    5. Builds the Starlette ASGI app: mounts the A2A application,
+       wires ``/metrics`` (optionally bearer-auth-gated by
+       ``METRICS_AUTH_TOKEN``), and registers the agent/health/
+       conversations/triggers/jobs/tasks/heartbeat/otel/events/hooks
+       route handlers as nested closures over the executor + bus.
+    6. Spawns scheduler tasks (``heartbeat_runner``, ``job_runner``,
+       ``task_runner``, ``trigger_runner``, ``continuation_runner``,
+       ``webhook_runner``, hook-decision dispatcher), the critical
+       ``bus_worker`` task, watcher tasks (event-loop lag monitor,
+       backends watcher, MCP watchers), and helper tasks
+       (``_set_ready_when_started``, ``_wait_for_backends``). All run
+       under :func:`_guarded` so transient failures restart with
+       backoff.
+    7. Runs ``uvicorn.Server.serve()`` in the foreground; on exit
+       performs the phased shutdown documented inline (#780): cancel
+       schedulers → cancel bus worker → ``executor.drain_background``
+       → cancel watchers + helpers → drain webhook deliveries (#923)
+       → drain continuations (#1275) → ``executor.close_backends``
+       (#861).
+    """
     global start_time, _startup_mono
     start_time = datetime.now(timezone.utc)
     _startup_mono = time.monotonic()
