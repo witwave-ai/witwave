@@ -11,13 +11,20 @@ process.env.CODEX_STUB_MODE = "true";
 process.env.CODEX_MEMORY_ROOT = path.join(tmp, "memory");
 process.env.CONVERSATIONS_AUTH_DISABLED = "true";
 process.env.LOG_REDACT = "true";
+process.env.MAX_PROMPT_BYTES = "64";
 process.env.CODEX_CONFIG_TOML = path.join(tmp, "config.toml");
 process.env.CODEX_AGENT_MD = path.join(tmp, "AGENTS.md");
 fs.writeFileSync(process.env.CODEX_AGENT_MD, "# A2A contract test identity\n", "utf8");
 fs.writeFileSync(process.env.CODEX_CONFIG_TOML, 'model = "gpt-5.5"\nreasoning_effort = "xhigh"\n', "utf8");
 
-const { extractRequestMetadata, extractPrompt, handleA2A, maxOutputTokensForRequest, maxTokensForRequest } =
-  await import("./main.js");
+const {
+  extractRequestMetadata,
+  extractPrompt,
+  handleA2A,
+  maxOutputTokensForRequest,
+  maxTokensForRequest,
+  renderMetrics,
+} = await import("./main.js");
 
 test("extractPrompt reads the A2A message/send text parts shape", () => {
   const payload = {
@@ -87,6 +94,24 @@ test("handleA2A rejects unsupported methods as JSON-RPC errors", async () => {
   });
   assert.equal(response.status, 200);
   assert.equal(response.body.error.code, -32601);
+});
+
+test("handleA2A rejects prompts over MAX_PROMPT_BYTES before dispatch", async () => {
+  const response = await handleA2A({
+    jsonrpc: "2.0",
+    id: "too-large",
+    method: "message/send",
+    params: {
+      message: {
+        role: "user",
+        parts: [{ kind: "text", text: "x".repeat(65) }],
+      },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.match(response.body.result.parts[0].text, /exceeds MAX_PROMPT_BYTES=64/);
+  assert.match(renderMetrics(), /backend_prompt_too_large_total\{.*backend="codex".*\} [1-9]/);
 });
 
 test("handleA2A honors LOG_REDACT for conversation logs", async () => {
