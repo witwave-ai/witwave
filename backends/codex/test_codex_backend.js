@@ -41,6 +41,7 @@ const {
   mcpFunctionName,
   mcpServerEntriesFromConfig,
   mcpToolResultText,
+  renderMetrics,
   responseFunctionCalls,
 } = await import("./main.js");
 
@@ -85,6 +86,7 @@ test("mcpServerEntriesFromConfig loads URL-shaped MCP servers with bearer header
       headers: { "X-Witwave": "yes", Authorization: "Bearer tool-token" },
     },
   ]);
+  assert.match(renderMetrics(), /backend_mcp_command_rejected_total\{.*reason="unsupported_stdio".*\} 1/);
 });
 
 test("mcpFunctionName and mcpToolResultText create Responses-safe function outputs", () => {

@@ -27,6 +27,7 @@ The first implementation is contract-first:
 - per-dispatch `max_tokens` budget checks from Responses API usage
 - a minimal `/mcp` surface with the backend-neutral `ask_agent` tool name
 - backend-local MCP client bridging for URL-shaped `.codex/mcp.json` entries
+- rejection metrics for stdio-only MCP entries, which Codex intentionally does not execute
 - streaming-delta Prometheus counters with bounded `model` labels
 - common model request, request-duration, and JSONL log-write metrics for cross-backend dashboards
 - runtime posture metrics for active model, reasoning effort, default token budget, tool-iteration cap, streaming, and

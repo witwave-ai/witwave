@@ -107,7 +107,6 @@ test("renderMetrics exposes the common backend label shape", async () => {
     "backend_stderr_lines_per_task_count",
     "backend_tasks_with_stderr_total",
     "backend_task_retries_total",
-    "backend_mcp_command_rejected_total",
     "backend_watcher_events_total",
     "backend_file_watcher_restarts_total",
     "backend_hooks_shed_total",

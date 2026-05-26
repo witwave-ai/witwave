@@ -270,6 +270,7 @@ const metrics = {
   hookConfigReloadsTotal: 0,
   mcpConfigErrors: new Map(),
   mcpConfigReloadsTotal: 0,
+  mcpCommandRejected: new Map(),
   sdkToolCalls: new Map(),
   sdkToolErrors: new Map(),
   sdkErrors: new Map(),
@@ -1703,6 +1704,9 @@ export function mcpServerEntriesFromConfig(data, authToken = MCP_TOOL_AUTH_TOKEN
     }
     const url = typeof config.url === "string" ? config.url.trim() : "";
     if (!url) {
+      if (typeof config.command === "string" && config.command.trim()) {
+        inc(metrics.mcpCommandRejected, "unsupported_stdio");
+      }
       continue;
     }
     entries.push({
@@ -3485,12 +3489,6 @@ function appendRuntimeSpecificMetricPlaceholders(lines) {
   );
   appendPlaceholderCounter(
     lines,
-    "backend_mcp_command_rejected_total",
-    "Placeholder for stdio MCP command allow-list rejections; Codex accepts URL-shaped MCP entries only.",
-    { reason: "not_applicable" },
-  );
-  appendPlaceholderCounter(
-    lines,
     "backend_watcher_events_total",
     "Placeholder for Python file-watcher events; Codex loads config synchronously on demand.",
     { watcher: "none" },
@@ -3749,6 +3747,17 @@ export function renderMetrics() {
     "# HELP backend_mcp_servers_active Number of currently connected backend-local MCP servers.",
     "# TYPE backend_mcp_servers_active gauge",
     metricLine("backend_mcp_servers_active", mcpToolCache.clients.size, labels()),
+    "# HELP backend_mcp_command_rejected_total MCP config command entries rejected by the Codex backend.",
+    "# TYPE backend_mcp_command_rejected_total counter",
+  );
+  if (metrics.mcpCommandRejected.size === 0) {
+    lines.push(metricLine("backend_mcp_command_rejected_total", 0, labels({ reason: "none" })));
+  } else {
+    for (const [reason, value] of metrics.mcpCommandRejected.entries()) {
+      lines.push(metricLine("backend_mcp_command_rejected_total", value, labels({ reason })));
+    }
+  }
+  lines.push(
     "# HELP backend_mcp_requests_total MCP requests by terminal status.",
     "# TYPE backend_mcp_requests_total counter",
   );
