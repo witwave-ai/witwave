@@ -124,6 +124,7 @@ test("renderMetrics exposes the common backend label shape", async () => {
 
 test("session binding fallback metrics record Node derivation fallback reasons", () => {
   deriveSessionId("", undefined, "");
+  deriveSessionId("legacy-session", "caller-a", "");
   deriveSessionId("shared-session", undefined, "session-secret");
 
   const body = renderMetrics();
