@@ -279,7 +279,7 @@ func (r *WitwavePromptReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			readyCount++
 		}
 	}
-	desiredCount := int32(len(prompt.Spec.AgentRefs))
+	desiredCount := int32(len(prompt.Spec.AgentRefs)) //nolint:gosec // G115: AgentRefs slice length is bounded by K8s API list-size constraints + etcd 1.5MB object-size cap; cannot exceed int32 range. K8s status counters use int32 by wire-type convention.
 
 	// Status().Patch with MergeFrom (#757) so concurrent writers on the
 	// status subresource do not contend over the full object version;
@@ -462,7 +462,7 @@ func (r *WitwavePromptReconciler) patchStatusWithConflictRetry(
 		} else {
 			allBoundRefs = len(bindings)
 		}
-		if !reconcileHadErrors && readyCount == int32(allBoundRefs) && allBoundRefs > 0 {
+		if !reconcileHadErrors && readyCount == int32(allBoundRefs) && allBoundRefs > 0 { //nolint:gosec // G115: allBoundRefs is len(target.Spec.AgentRefs) or len(bindings); bounded by K8s API list-size constraints + etcd 1.5MB object-size cap.
 			cond.Status = metav1.ConditionTrue
 			cond.Reason = "AllBound"
 		} else {
