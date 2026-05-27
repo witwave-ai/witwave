@@ -93,6 +93,14 @@ def _hook_enforcement_mode_for_health() -> str:
 
 
 def load_agent_description() -> str:
+    """Return the agent's description string for the A2A agent card / MCP tool description.
+
+    Tries ``/home/agent/.openai/agent-card.md`` first, falling back to
+    ``/home/agent/.codex/agent-card.md`` (legacy mount path from when this
+    backend was named ``codex``) and then to the ``AGENT_DESCRIPTION`` env
+    var and finally a generic ``"An OpenAI backend agent."`` literal so
+    the card is always populated even when neither mount is present.
+    """
     for path in ("/home/agent/.openai/agent-card.md", "/home/agent/.codex/agent-card.md"):
         try:
             with open(path) as f:
@@ -103,6 +111,17 @@ def load_agent_description() -> str:
 
 
 def build_agent_card() -> AgentCard:
+    """Return the A2A :class:`AgentCard` advertised at ``/.well-known``.
+
+    Uses the module-level ``AGENT_NAME`` / ``AGENT_URL`` / ``AGENT_VERSION``
+    constants (resolved from env at import time) and the description from
+    :func:`load_agent_description`. Declares a single ``general`` skill and
+    sets ``streaming=False``: the per-chunk Message emission path was
+    removed for blocking-call correctness — see the equivalent comment in
+    ``backends/claude/main.py``. If chunk emission via
+    ``TaskStatusUpdateEvent`` is reintroduced, flip this back to True
+    alongside the executor change.
+    """
     return AgentCard(
         name=AGENT_NAME,
         description=load_agent_description(),
@@ -127,6 +146,16 @@ def build_agent_card() -> AgentCard:
 
 
 async def health_start(request: Request) -> JSONResponse:
+    """Kubernetes STARTUP probe handler — serves ``/health/start`` (#1686).
+
+    Returns HTTP 200 once :data:`_ready` has been flipped to True by
+    :func:`_set_ready_when_started` (i.e. uvicorn has bound the listener
+    and initial loads have completed) and HTTP 503 with
+    ``{"status": "starting"}`` before that. Mirrors the harness and the
+    claude/gemini backends' ``health_start`` so the three-probe contract
+    holds uniformly across the platform. Increments
+    ``backend_health_checks_total`` with ``probe="start"``.
+    """
     # #1686: /health/start is the STARTUP probe — 200 once _ready, 503
     # with {"status": "starting"} while warming up. Closes the
     # three-probe parity gap with the harness (docs/product-vision.md:74).
@@ -140,6 +169,20 @@ async def health_start(request: Request) -> JSONResponse:
 
 
 async def health(request: Request) -> JSONResponse:
+    """Kubernetes LIVENESS probe handler — serves ``/health`` (#1672).
+
+    Returns HTTP 200 as soon as the process is up so kubelet does not
+    CrashLoopBackOff a pod that is merely degraded (e.g. an MCP watcher
+    exited normally per #1630). Pre-ready state is surfaced via the
+    body's ``status`` field (``"starting"`` vs ``"ok"``) rather than the
+    HTTP code. For readiness gating point K8s readinessProbe at
+    :func:`health_ready` instead. Also exposes ``hooks_enforcement_mode``
+    (read via :func:`_hook_enforcement_mode_for_health` from the registered
+    executor) and ``agent_owner`` / ``agent_id`` for metric-label join
+    parity (#1341). Mirror of the cycle-1 claude #1608 fix: openai had
+    the readiness-drop branch (#1630) but no route to surface it pre-#1672.
+    Increments ``backend_health_checks_total`` with ``probe="health"``.
+    """
     # #1672: /health is the LIVENESS probe — it returns 200 as soon as the
     # process is up so kubelet does not CrashLoopBackOff a pod that is
     # merely degraded (e.g. an MCP watcher exited normally per #1630). For
@@ -169,6 +212,18 @@ async def health(request: Request) -> JSONResponse:
 
 
 async def health_ready(request: Request) -> JSONResponse:
+    """Kubernetes READINESS probe handler — serves ``/health/ready`` (#1608, #1630, #1672).
+
+    Returns HTTP 503 when :data:`_ready` is False — either the process is
+    still starting OR an MCP watcher exited normally and its done-callback
+    in :func:`main` dropped ``_ready`` per #1630 so the pod is removed
+    from Service endpoints without being restarted. Returns HTTP 200 with
+    ``status="ready"`` once fully ready. Mirror of the cycle-1 claude
+    #1608 fix; openai had the readiness-drop branch (#1630) but no route
+    to surface it pre-#1672, so K8s readinessProbe could never observe
+    the degraded state. Increments ``backend_health_checks_total`` with
+    ``probe="ready"``.
+    """
     # #1608 + #1630 + #1672: /health/ready is the READINESS probe — it
     # returns 503 when ``_ready`` is False (process still starting OR an
     # MCP watcher exited normally per #1630, dropping readiness so the
@@ -336,6 +391,57 @@ async def _set_ready_when_started(server: uvicorn.Server) -> None:
 
 
 async def main():
+    """Process entry point — boot the OpenAI backend's A2A + MCP + metrics surface.
+
+    Bootstraps in a fixed order so each subsystem sees the state it needs:
+
+    1. Initialise ``executor._computer_lock`` and ``executor._sessions_lock``
+       inside the running loop so they bind to the serving loop rather than
+       a module-import loop (#378 / #402 / #725) — eliminates the
+       check-and-assign race in ``_build_tools()`` and the duplicated lazy
+       init across call sites.
+    2. Bind the running asyncio loop for cross-thread event publishers
+       (OTel span processor worker thread; #1144) BEFORE OTel init so the
+       first span's ``on_end`` callback already has a loop reference.
+    3. Initialise OTel if ``OTEL_ENABLED`` is truthy (#469).
+    4. Build the agent card + executor, select :class:`SqliteTaskStore`
+       when ``TASK_STORE_PATH`` is set (else :class:`InMemoryTaskStore`
+       with a WARN about lost in-flight task state on restart), and
+       register the executor with :func:`_set_health_executor` so the
+       liveness handler can read its ``hooks_enforcement_mode``.
+    5. Register Prometheus startup gauges (``backend_up``,
+       ``backend_info``, ``backend_sdk_info`` from
+       ``importlib.metadata.version('openai-agents')`` for #1092 drift
+       detection) and the shared session-binding fallback counter (#1103)
+       when ``metrics_enabled``.
+    6. Wire ``/conversations`` + ``/trace`` + ``/mcp`` + ``/api/traces`` +
+       ``/api/traces/{trace_id}`` + ``/api/sessions/{id}/stream`` routes,
+       then mount the built A2A sub-app at ``/`` wrapped with
+       :class:`TraceparentASGIMiddleware` so inbound traceparents become
+       parents of the A2A SDK's @trace_class spans. The ``/mcp`` handler
+       fail-closes on missing ``CONVERSATIONS_AUTH_TOKEN`` unless
+       ``CONVERSATIONS_AUTH_DISABLED`` (#961) and bounds bodies via
+       :func:`read_capped_body` at 4MiB (#1315 / #1673). Metrics live on
+       a dedicated ``METRICS_PORT`` listener started inside the lifespan
+       hook, not on the main app (#643 / #647).
+    7. The ``lifespan`` context drives the A2A sub-app's lifespan protocol
+       via :func:`_sub_app_lifespan` and calls ``executor.close()`` on
+       shutdown (idempotent per #555).
+    8. Run :meth:`executor.perform_initial_loads` synchronously with an
+       ``INITIAL_LOADS_TIMEOUT_SECONDS`` (default 10s; #1095) bound so a
+       wedged ConfigMap mount can't stall startup — watchers fill in
+       asynchronously on timeout.
+    9. Start each MCP watcher returned by ``executor._mcp_watchers()``
+       (AGENTS.md / mcp.json / config.toml / api_key_file — #1502 fixed
+       the prior "none for openai" claim) as a :func:`_guarded` task with
+       a done-callback that drops ``_ready`` on a normal exit (#1630) so
+       the pod is removed from Service endpoints via ``/health/ready``.
+   10. ``asyncio.gather`` the uvicorn server, the event-loop-lag monitor,
+       the session_stream registry idle sweeper (#1735, prevents multi-
+       day uptime OOM from unbounded ``_registry`` growth), and
+       :func:`_set_ready_when_started` so a failure in any coroutine
+       propagates immediately.
+    """
     global start_time, _startup_mono
     start_time = datetime.now(timezone.utc)
     _startup_mono = time.monotonic()

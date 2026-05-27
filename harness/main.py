@@ -2295,6 +2295,47 @@ async def main():
     EVENT_STREAM_KEEPALIVE_SEC = float(os.environ.get("EVENT_STREAM_KEEPALIVE_SEC", "15"))
 
     async def events_stream_handler(request: Request):
+        """Serve the SSE event stream (``GET /events/stream``, #1110).
+
+        Long-lived ``text/event-stream`` response that fans out the
+        harness's :func:`_get_event_stream` envelopes to a single
+        subscriber. Bearer-gated with ``CONVERSATIONS_AUTH_TOKEN`` and
+        fail-closed (503 ``auth not configured``) unless
+        :func:`auth_disabled_escape_hatch` is opted in — matches the
+        ``/conversations`` and ``/trace`` parity pattern.
+
+        Replay + live splice: ``Last-Event-ID`` header (or
+        ``?last_event_id`` query param) drives :meth:`replay_from`. To
+        prevent loss on the seam (#1229) the handler **subscribes first**,
+        then snapshots ``_next_id`` immediately; replay covers ids
+        ``<=`` the snapshot, the live subscription covers ids ``>`` the
+        snapshot. A ``_delivered_ids`` set tracks the race-window ids
+        so the live loop drops them on the first match (synthetic
+        non-numeric ids like ``"{n}.overrun"`` are passed through
+        as-is, matching the existing replay behaviour).
+
+        Live loop: races the subscriber's ``__anext__`` future against
+        an ``asyncio.sleep(EVENT_STREAM_KEEPALIVE_SEC)`` keepalive (env
+        ``EVENT_STREAM_KEEPALIVE_SEC`` seconds, default 15). Each
+        keepalive tick emits ``: keepalive\\n\\n`` — the leading colon
+        makes it an SSE comment that proxies forward but clients ignore,
+        preventing idle-timeout disconnects. ``StopAsyncIteration``
+        from the subscriber ends the stream (subscriber evicted by the
+        EventStream's overrun handling, or harness shutdown).
+
+        Cleanup contract (#1276): the ``finally`` cancels both pending
+        futures and awaits them under ``return_exceptions=True``, then
+        calls ``sub_iter.aclose()`` synchronously so the subscriber slot
+        in :class:`EventStream` is released before the response object
+        is garbage-collected — without the await an orphan slot could
+        survive long enough to skew the
+        ``harness_event_stream_subscribers`` gauge.
+
+        Response headers disable buffering at both Starlette
+        (``Cache-Control: no-cache, no-transform``) and reverse-proxy
+        (``X-Accel-Buffering: no``) layers so events are flushed
+        promptly to the browser EventSource.
+        """
         from starlette.responses import (
             StreamingResponse,  # local import keeps startup path identical on older Starlette
         )

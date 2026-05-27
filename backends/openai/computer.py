@@ -154,12 +154,28 @@ class PlaywrightComputer(AsyncComputer):
                 raise
 
     async def screenshot(self) -> str:
+        """Return a base64-encoded PNG screenshot of the current page.
+
+        The bytes are base64-ASCII so the result can be passed straight
+        into the Agents SDK's ComputerTool result envelope (string-typed)
+        without an additional encoding step at the call site.
+        """
         async with self._op_lock:
             await self._ensure_page()
             png = await self._page.screenshot(type="png")
             return base64.b64encode(png).decode()
 
     async def click(self, x: int, y: int, button: Button) -> None:
+        """Click at ``(x, y)`` with ``button``.
+
+        Two of the protocol's button names are remapped to navigation
+        rather than literal mouse clicks: ``"back"`` calls
+        ``page.go_back()`` and ``"forward"`` calls ``page.go_forward()``,
+        ignoring the coordinates. All other names go through
+        :data:`_BUTTON_MAP` (``"left"``/``"right"`` pass through,
+        ``"wheel"`` becomes ``"middle"``); anything not in the map falls
+        back to ``"left"`` rather than raising.
+        """
         async with self._op_lock:
             await self._ensure_page()
             if button == "back":
@@ -188,6 +204,12 @@ class PlaywrightComputer(AsyncComputer):
             await self._page.keyboard.type(text)
 
     async def wait(self) -> None:
+        """Sleep one second to satisfy the AsyncComputer ``wait`` protocol slot.
+
+        The duration is fixed at 1.0s — there is no configuration knob.
+        Used by the Agents SDK when the model emits a generic "wait"
+        action between observations.
+        """
         await asyncio.sleep(1.0)
 
     async def move(self, x: int, y: int) -> None:
@@ -213,6 +235,17 @@ class PlaywrightComputer(AsyncComputer):
             await self._page.mouse.up()
 
     async def close(self) -> None:
+        """Tear down the per-instance Playwright resources.
+
+        In both modes the per-session ``BrowserContext`` + ``Page`` are
+        closed and dropped (so the cookies / localStorage / cache for
+        this session are released). In stand-alone mode the
+        ``Browser`` and ``Playwright`` process are also torn down; in
+        pool-scoped mode they're left alone so other sessions sharing
+        the pool can keep using the same Chromium process. Errors at
+        each teardown step are caught and logged at WARNING so a single
+        failure does not block the rest of the teardown.
+        """
         if self._context:
             try:
                 await self._context.close()
