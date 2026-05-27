@@ -393,54 +393,54 @@ async def _set_ready_when_started(server: uvicorn.Server) -> None:
 async def main():
     """Process entry point — boot the OpenAI backend's A2A + MCP + metrics surface.
 
-    Bootstraps in a fixed order so each subsystem sees the state it needs:
+     Bootstraps in a fixed order so each subsystem sees the state it needs:
 
-    1. Initialise ``executor._computer_lock`` and ``executor._sessions_lock``
-       inside the running loop so they bind to the serving loop rather than
-       a module-import loop (#378 / #402 / #725) — eliminates the
-       check-and-assign race in ``_build_tools()`` and the duplicated lazy
-       init across call sites.
-    2. Bind the running asyncio loop for cross-thread event publishers
-       (OTel span processor worker thread; #1144) BEFORE OTel init so the
-       first span's ``on_end`` callback already has a loop reference.
-    3. Initialise OTel if ``OTEL_ENABLED`` is truthy (#469).
-    4. Build the agent card + executor, select :class:`SqliteTaskStore`
-       when ``TASK_STORE_PATH`` is set (else :class:`InMemoryTaskStore`
-       with a WARN about lost in-flight task state on restart), and
-       register the executor with :func:`_set_health_executor` so the
-       liveness handler can read its ``hooks_enforcement_mode``.
-    5. Register Prometheus startup gauges (``backend_up``,
-       ``backend_info``, ``backend_sdk_info`` from
-       ``importlib.metadata.version('openai-agents')`` for #1092 drift
-       detection) and the shared session-binding fallback counter (#1103)
-       when ``metrics_enabled``.
-    6. Wire ``/conversations`` + ``/trace`` + ``/mcp`` + ``/api/traces`` +
-       ``/api/traces/{trace_id}`` + ``/api/sessions/{id}/stream`` routes,
-       then mount the built A2A sub-app at ``/`` wrapped with
-       :class:`TraceparentASGIMiddleware` so inbound traceparents become
-       parents of the A2A SDK's @trace_class spans. The ``/mcp`` handler
-       fail-closes on missing ``CONVERSATIONS_AUTH_TOKEN`` unless
-       ``CONVERSATIONS_AUTH_DISABLED`` (#961) and bounds bodies via
-       :func:`read_capped_body` at 4MiB (#1315 / #1673). Metrics live on
-       a dedicated ``METRICS_PORT`` listener started inside the lifespan
-       hook, not on the main app (#643 / #647).
-    7. The ``lifespan`` context drives the A2A sub-app's lifespan protocol
-       via :func:`_sub_app_lifespan` and calls ``executor.close()`` on
-       shutdown (idempotent per #555).
-    8. Run :meth:`executor.perform_initial_loads` synchronously with an
-       ``INITIAL_LOADS_TIMEOUT_SECONDS`` (default 10s; #1095) bound so a
-       wedged ConfigMap mount can't stall startup — watchers fill in
-       asynchronously on timeout.
-    9. Start each MCP watcher returned by ``executor._mcp_watchers()``
-       (AGENTS.md / mcp.json / config.toml / api_key_file — #1502 fixed
-       the prior "none for openai" claim) as a :func:`_guarded` task with
-       a done-callback that drops ``_ready`` on a normal exit (#1630) so
-       the pod is removed from Service endpoints via ``/health/ready``.
-   10. ``asyncio.gather`` the uvicorn server, the event-loop-lag monitor,
-       the session_stream registry idle sweeper (#1735, prevents multi-
-       day uptime OOM from unbounded ``_registry`` growth), and
-       :func:`_set_ready_when_started` so a failure in any coroutine
-       propagates immediately.
+     1. Initialise ``executor._computer_lock`` and ``executor._sessions_lock``
+        inside the running loop so they bind to the serving loop rather than
+        a module-import loop (#378 / #402 / #725) — eliminates the
+        check-and-assign race in ``_build_tools()`` and the duplicated lazy
+        init across call sites.
+     2. Bind the running asyncio loop for cross-thread event publishers
+        (OTel span processor worker thread; #1144) BEFORE OTel init so the
+        first span's ``on_end`` callback already has a loop reference.
+     3. Initialise OTel if ``OTEL_ENABLED`` is truthy (#469).
+     4. Build the agent card + executor, select :class:`SqliteTaskStore`
+        when ``TASK_STORE_PATH`` is set (else :class:`InMemoryTaskStore`
+        with a WARN about lost in-flight task state on restart), and
+        register the executor with :func:`_set_health_executor` so the
+        liveness handler can read its ``hooks_enforcement_mode``.
+     5. Register Prometheus startup gauges (``backend_up``,
+        ``backend_info``, ``backend_sdk_info`` from
+        ``importlib.metadata.version('openai-agents')`` for #1092 drift
+        detection) and the shared session-binding fallback counter (#1103)
+        when ``metrics_enabled``.
+     6. Wire ``/conversations`` + ``/trace`` + ``/mcp`` + ``/api/traces`` +
+        ``/api/traces/{trace_id}`` + ``/api/sessions/{id}/stream`` routes,
+        then mount the built A2A sub-app at ``/`` wrapped with
+        :class:`TraceparentASGIMiddleware` so inbound traceparents become
+        parents of the A2A SDK's @trace_class spans. The ``/mcp`` handler
+        fail-closes on missing ``CONVERSATIONS_AUTH_TOKEN`` unless
+        ``CONVERSATIONS_AUTH_DISABLED`` (#961) and bounds bodies via
+        :func:`read_capped_body` at 4MiB (#1315 / #1673). Metrics live on
+        a dedicated ``METRICS_PORT`` listener started inside the lifespan
+        hook, not on the main app (#643 / #647).
+     7. The ``lifespan`` context drives the A2A sub-app's lifespan protocol
+        via :func:`_sub_app_lifespan` and calls ``executor.close()`` on
+        shutdown (idempotent per #555).
+     8. Run :meth:`executor.perform_initial_loads` synchronously with an
+        ``INITIAL_LOADS_TIMEOUT_SECONDS`` (default 10s; #1095) bound so a
+        wedged ConfigMap mount can't stall startup — watchers fill in
+        asynchronously on timeout.
+     9. Start each MCP watcher returned by ``executor._mcp_watchers()``
+        (AGENTS.md / mcp.json / config.toml / api_key_file — #1502 fixed
+        the prior "none for openai" claim) as a :func:`_guarded` task with
+        a done-callback that drops ``_ready`` on a normal exit (#1630) so
+        the pod is removed from Service endpoints via ``/health/ready``.
+    10. ``asyncio.gather`` the uvicorn server, the event-loop-lag monitor,
+        the session_stream registry idle sweeper (#1735, prevents multi-
+        day uptime OOM from unbounded ``_registry`` growth), and
+        :func:`_set_ready_when_started` so a failure in any coroutine
+        propagates immediately.
     """
     global start_time, _startup_mono
     start_time = datetime.now(timezone.utc)
