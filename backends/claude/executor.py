@@ -700,6 +700,20 @@ def _current_trace_id_hex() -> str | None:
 
 
 async def log_entry(role: str, text: str, session_id: str, model: str | None = None, tokens: int | None = None) -> None:
+    """Append one conversation row to ``CONVERSATION_LOG`` for this turn.
+
+    Writes a JSONL row carrying ``ts`` / ``agent`` / ``session_id`` / ``role``
+    / ``model`` / ``tokens`` / ``text`` via ``_append_log`` on a thread so the
+    request path is never blocked by disk I/O. ``text`` is run through
+    ``redact_text`` first when ``should_redact()`` returns true (#714, opt-in
+    so existing deployments retain identical output). When OTel is active the
+    row is stamped with the current span's ``trace_id`` so conversation rows
+    can be joined with backend / harness traces (#636). On success bumps
+    ``backend_log_entries_total`` and ``backend_log_bytes_total`` under
+    ``logger="conversation"``. Swallows all exceptions after incrementing
+    ``backend_log_write_errors_total`` and the by-logger counter so a log
+    failure never propagates back into the caller.
+    """
     try:
         # Opt-in redaction pass (#714). Guarded on LOG_REDACT so
         # existing deployments retain identical output without the
@@ -736,6 +750,16 @@ async def log_entry(role: str, text: str, session_id: str, model: str | None = N
 
 
 async def log_trace(text: str) -> None:
+    """Append a raw line to ``TRACE_LOG`` for this turn.
+
+    Thin wrapper around ``_append_log`` (run on a thread) plus metric
+    bookkeeping under ``logger="trace"`` — ``backend_log_entries_total`` and
+    ``backend_log_bytes_total`` on success, ``backend_log_write_errors_total``
+    and the by-logger counter on failure. Like ``log_entry`` it swallows
+    write exceptions so the trace-emitting code paths can call it
+    unconditionally. ``text`` is written verbatim — callers are responsible
+    for whatever JSON encoding / framing the trace consumers expect.
+    """
     try:
         await asyncio.to_thread(_append_log, TRACE_LOG, text)
         if backend_log_entries_total is not None:
@@ -2282,6 +2306,50 @@ async def _run_inner(
 
 
 class AgentExecutor(A2AAgentExecutor):
+    """A2A agent executor backed by the Claude Agent SDK.
+
+    Subclass of ``a2a.server.agent_execution.AgentExecutor`` that implements
+    the A2A ``execute`` / ``cancel`` contract by driving ``ClaudeSDKClient``
+    queries. The instance owns the executor's mutable runtime state:
+
+    - ``_sessions`` — per-session LRU of last-active timestamps used by the
+      SDK glue to decide when to drop a session client.
+    - ``_running_tasks`` — A2A ``task_id`` → ``asyncio.Task`` map populated
+      on entry to ``execute`` and cleared in its ``finally``; ``cancel()``
+      and ``close()`` use it to drain in-flight requests.
+    - ``_mcp_servers`` — currently-live MCP server set, swapped atomically
+      under ``_mcp_reload_lock`` via ``_swap_mcp_servers`` (#1051) so a
+      burst of file events can't interleave reloads. ``_mcp_generation``
+      is bumped on every swap and ``backend_mcp_servers_active`` is
+      restamped.
+    - ``_agent_md_content`` / ``_agent_md_revision`` — cached CLAUDE.md
+      contents and a hash-derived revision label that
+      ``backend_agent_md_revision`` is stamped with so operators can see
+      which revision is live.
+    - ``_hook_state`` — ``HookState`` containing the baseline + extension
+      rule lists for the PreToolUse gate (#467). Mutations are serialised
+      against pre-tool-use readers by the threading lock at
+      ``_hook_state_lock`` (#1488).
+    - ``_mcp_watcher_tasks`` — background watcher tasks (MCP config,
+      CLAUDE.md, hooks.yaml, settings.json) returned by ``_mcp_watchers``.
+
+    Lifecycle:
+
+    1. ``perform_initial_loads`` runs synchronously on the lifespan
+       startup path so the first MCP / CLAUDE.md / hooks.yaml parse is
+       complete before readiness flips (#869).
+    2. The watcher tasks then keep config in sync on disk-change events.
+    3. ``execute`` dispatches one A2A request per call, tracking the task
+       in ``_running_tasks`` so it can be cancelled.
+    4. ``close`` cancels and awaits in-flight ``execute`` tasks first,
+       then the MCP / config watchers (#587), and closes the shared hook
+       httpx client (#661).
+
+    A one-shot probe at ``__init__`` time runs ``_session_path_self_test``
+    to detect Claude Agent SDK on-disk layout drift (#530) — observability
+    only; failures never block startup.
+    """
+
     def __init__(self):
         self._sessions: OrderedDict[str, float] = OrderedDict()
         self._running_tasks: dict[str, asyncio.Task] = {}
@@ -2786,6 +2854,40 @@ class AgentExecutor(A2AAgentExecutor):
             await asyncio.sleep(10)
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Run one A2A request through the Claude SDK and reply on ``event_queue``.
+
+        Validation gates run before any subprocess is spawned or token is
+        burned: empty / whitespace-only prompts are rejected with a
+        ``backend_empty_prompts_total`` bump, an A2A error message, and a
+        ``"system"`` row in the conversation log (#544); prompts larger
+        than ``_MAX_PROMPT_BYTES`` are rejected with
+        ``backend_prompt_too_large_total`` and a ``PromptTooLargeError``
+        (#1620). The session id is derived through ``session_binding``
+        with optional per-caller binding when ``SESSION_ID_SECRET`` is set
+        (#710) and probe-list rotation when ``SESSION_ID_SECRET_PREV`` is
+        also set so an in-progress secret rotation can still resume an
+        existing on-disk session (#1042). When the upstream harness
+        forwards a ``traceparent`` in ``message.metadata`` the OTel server
+        span ``claude.execute`` continues that trace (#469).
+
+        Streaming: each ``TextBlock`` is forwarded to the per-session SSE
+        broadcaster (``session_stream``) via ``_emit_chunk`` so the
+        dashboard's session drill-down sees text as it arrives (#1110
+        phase 4 / #1139 monotonic turn-seq). Per-chunk Message events on
+        the A2A wire are intentionally NOT emitted because the A2A SDK's
+        ``ResultAggregator`` treats every ``Message`` as terminal — only
+        one final aggregated ``new_agent_text_message`` is enqueued at
+        completion. A terminal ``final=True`` session-stream chunk is
+        published on both success and error paths (#1141) so observers
+        see a deterministic turn boundary.
+
+        Per-task bookkeeping: when ``context.task_id`` is set the current
+        asyncio task is registered in ``self._running_tasks`` (and
+        ``backend_running_tasks`` bumped) on entry, then removed in the
+        ``finally`` block alongside the request-duration / last-request
+        timestamp / requests-total metric updates. This lets ``cancel()``
+        and ``close()`` find and drain in-flight requests.
+        """
         _exec_start = time.monotonic()
         prompt = context.get_user_input()
         metadata = context.message.metadata or {}
@@ -3080,6 +3182,20 @@ class AgentExecutor(A2AAgentExecutor):
                     backend_running_tasks.labels(**_LABELS).dec()
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Cancel the in-flight ``execute()`` asyncio task for an A2A ``task_id``.
+
+        Increments ``backend_task_cancellations_total`` unconditionally so
+        cancellation attempts are visible in metrics even when no matching
+        task is tracked. Looks up the task by ``context.task_id`` in
+        ``self._running_tasks`` (the same map populated on
+        ``execute()`` entry); when present, calls ``task.cancel()`` and
+        logs the request. When absent, logs that no running task was
+        found and returns without raising — common when the task already
+        completed or was cancelled by another path (e.g. ``close()``).
+        ``event_queue`` is accepted for the A2A protocol signature but is
+        not used; the running execute()'s own ``finally`` block emits any
+        terminal A2A events as ``CancelledError`` propagates out.
+        """
         if backend_task_cancellations_total is not None:
             backend_task_cancellations_total.labels(**_LABELS).inc()
         task_id = context.task_id
