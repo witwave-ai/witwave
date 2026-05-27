@@ -6,6 +6,42 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.33.3] — 2026-05-27
+
+Risk-work patch closing the standing gosec carries — three commits convert previously-mitigated G115/G404 findings from
+silent gauntlet-drops to in-source `//nolint:gosec` annotations that bake the design rationale next to the code. A ruff
+fix-forward, a docstring backfill on the openai/claude backends, and a competitive-landscape refresh round out the
+release. No runtime behaviour change.
+
+### Fixed
+
+- **clients/ww**: Annotate the two `math/rand.Int63n` retry-jitter sites (`internal/client.(*Client).sleep`,
+  `cmd/tail.nextBackoff`) with `//nolint:gosec` G404 plus the non-crypto-jitter rationale, closing the standing G404
+  carry. Also annotate the 8 `int64`/`int`→`int32` port conversions across
+  `internal/agent/backend_{add,remove,rename}.go` and `defaults.go` with `//nolint:gosec` G115 plus the CRD-schema bound
+  rationale (`spec.backends` capped at 50, `BackendPort` range `[8001, 8050]`), closing the standing G115 carry on the
+  agent surface.
+- **operator**: Annotate the two `int`→`int32` status-counter conversions in `witwaveprompt_controller` (`desiredCount`,
+  `readyCount`) with `//nolint:gosec` G115 plus the K8s API list-size bound rationale, closing the standing G115 carry
+  on the operator.
+- **ci**: Re-apply `ruff format` to `backends/openai/main.py` so the docstring continuation indentation matches the
+  formatter, unblocking `CI — Python Services` and `Publish — Social Website` after the prior dispatch added docstrings
+  without running the formatter.
+
+### Documentation
+
+- **backends/claude**: Ground the claude executor's load-bearing public surface (`log_entry`, `log_trace`,
+  `AgentExecutor`, `AgentExecutor.execute`, `AgentExecutor.cancel`) with module-level docstrings covering the gates,
+  streaming contract, MCP/hook state model, and shutdown ordering.
+- **backends/openai**: Add docstrings to the public surface (`load_agent_description`, `build_agent_card`,
+  `health_start`, `health`, `health_ready`, `main`) plus the non-obvious `PlaywrightComputer` methods (`screenshot`,
+  `click`, `wait`, `close`), completing the three-backend symmetry started on claude/gemini.
+- **harness**: Add a docstring to `main.events_stream_handler`, closing the route-handler-closure batch deferred from
+  the prior docstring dispatch.
+- **research**: Twenty-third-pass refresh of `competitive-landscape.md` against the current upstream state — graduate
+  OpenClaw v2026.5.22→v2026.5.26 GA (retiring the beta head reference), refresh OpenHands stars 72,500+→75,000+ to match
+  live drift.
+
 ## [0.33.2] — 2026-05-27
 
 Security-focused patch closing 9 govulncheck-reachable HIGH CVEs via batched `golang.org/x/{net,crypto}` upgrades across
