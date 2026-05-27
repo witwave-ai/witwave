@@ -352,7 +352,7 @@ func (c *Client) sleep(ctx context.Context, d time.Duration) {
 	half := d / 2
 	var jitter time.Duration
 	if half > 0 {
-		jitter = time.Duration(rand.Int63n(int64(half)))
+		jitter = time.Duration(rand.Int63n(int64(half))) //nolint:gosec // G404: non-cryptographic retry jitter; math/rand is the canonical choice for anti-stampede timing (see comment two lines above).
 	}
 	wait := half + jitter
 	if wait <= 0 {

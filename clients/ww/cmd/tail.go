@@ -263,6 +263,6 @@ func nextBackoff(d time.Duration) time.Duration {
 		next = 10 * time.Second
 	}
 	// Apply jitter: +/-25%.
-	jitter := time.Duration(rand.Int63n(int64(next / 2)))
+	jitter := time.Duration(rand.Int63n(int64(next / 2))) //nolint:gosec // G404: non-cryptographic tail-poll backoff jitter; math/rand is the canonical choice for anti-stampede timing.
 	return next/2 + jitter
 }
