@@ -1,30 +1,50 @@
 # Competitive Landscape
 
-Last updated: 2026-05-27 by kira-agent-witwave (twenty-second pass — light verification-and-refinement pass per zora
-docs-research one-shot dispatch under P2 cadence-floor breach (+3h52m past 3h floor = 1.28× factor on `docs-cleanup`)
-with polish-tier ADVANCE from `docs-cleanup` (zero_streak=1 at last_run_sha=`0e1072e6`, no fresh markdown source since).
-Two upstream movements captured in the ~18-hour window since the twenty-first pass (2026-05-26). **LangGraph** bumped
-from `v1.2.1` to **`v1.2.2`** (2026-05-26 18:07 UTC, ~8h after the twenty-first pass) — single behavioural fix assigning
-stable IDs to `id=None` `BaseMessage` instances before DeltaChannel checkpoint writes (prevents downstream identity
-drift on resumed runs); no breaking changes (source: <https://github.com/langchain-ai/langgraph/releases/tag/1.2.2>,
-accessed 2026-05-27). **OpenClaw** beta head rolled from `v2026.5.25-beta.1` to **`v2026.5.26-beta.1`** (2026-05-26
-21:10 UTC, ~11h after the twenty-first pass) — large beta rollup for the upcoming `2026.5.26` stable, headlining a
-**Transcripts plugin** with source-provider capture and meeting summaries, **named-model login profiles** with
-credential migration for Hermes / OpenCode / Codex auth, **Signal / iMessage / WhatsApp tapback approval reactions**
-unifying mobile approval flows, a **Sharp → Rastermill image-backend swap** (drops the Sharp + WhatsApp Jimp fallback
-dependency from installs), an ephemeral **Activity tab** in the Control UI for sanitized live tool-activity summaries,
-**OpenTelemetry LLM content spans** plus alertable telemetry for blocked tools / failover / stale sessions / liveness /
-oversized payloads / webhook ingress, default `cron.maxConcurrentRuns` raised to 8 for parallel scheduled automations,
-and broad reply/startup performance work caching plugin metadata, model cost indexes, channel resolution, and
-session/auth hot-path facts; stable still `v2026.5.22` (source:
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26-beta.1>, accessed 2026-05-27). Pin refinement:
-**OpenClaw** star count re-pinned to **374,000+ stars / 78,100+ forks** (was 375,000+ / 78,000+; live count 374,927 /
-78,122 falls just under the prior "375,000+" pin, so re-pinning downward preserves the "+" semantics) (source:
-<https://github.com/openclaw/openclaw>, accessed 2026-05-27). All other high-cadence upstream pins verified unchanged
-from yesterday's twenty-first pass: Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still
-`python-1.6.0` (2026-05-22) / `dotnet-1.6.1` (2026-05-14), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still
+Last updated: 2026-05-27 by kira-agent-witwave (twenty-third pass — verification-and-refinement pass per zora
+docs-research one-shot dispatch under polish-tier ADVANCE — `docs-cleanup` zero_streak=2 at last_run_sha=`3206f5b8` with
+no fresh `*.md` commits since (cheap-pass exhausted per zora's 13:00Z tick). One substantive upstream movement captured
+in the ~3h window since the twenty-second pass earlier today: **OpenClaw `v2026.5.26` stable shipped** (2026-05-27 11:27
+UTC) — graduates the `2026.5.26-beta.1` (2026-05-26 21:10 UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta rollup
+to GA; substantive surface is unchanged from the prior beta capture the twenty-second pass documented (Transcripts
+plugin, named-model login profiles, Signal / iMessage / WhatsApp tapback approval reactions, Sharp → Rastermill
+image-backend swap, ephemeral Activity tab in the Control UI, OpenTelemetry LLM content spans, default
+`cron.maxConcurrentRuns` raised to 8, and broad reply/startup performance work). Beta head naturally retires until the
+next train begins (source: <https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>, accessed 2026-05-27). Pin
+refinement: **OpenHands** star count re-pinned to **75,000+ stars / 9,500+ forks** (was 72,500+ stars; live count 75,028
+/ 9,510 — significant drift the prior passes had not refreshed) (source: <https://github.com/OpenHands/OpenHands>,
+accessed 2026-05-27). All other high-cadence upstream pins verified unchanged from the twenty-second pass: Claude Agent
+SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still `python-1.6.0` (2026-05-22) / `dotnet-1.6.1`
+(2026-05-14), LangGraph still `v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still
 `v1.14.5` stable (2026-05-18) / `1.14.6a1` alpha (2026-05-21), A2A still `v1.0.0` (2026-03-12) / 24,000+ stars / 2,400+
-forks (sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+forks; OpenClaw star count re-verified at 374,994 / 78,167 — still inside the existing **374,000+ stars / 78,100+
+forks** pin (sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/crewAIInc/crewAI/releases>,
+<https://github.com/a2aproject/A2A>, <https://github.com/openclaw/openclaw>, all accessed 2026-05-27). Twenty-second
+pass (2026-05-27, earlier today) was a light verification-and-refinement pass per zora docs-research one-shot dispatch
+under P2 cadence-floor breach (+3h52m past 3h floor = 1.28× factor on `docs-cleanup`) with polish-tier ADVANCE from
+`docs-cleanup` (zero_streak=1 at last_run_sha=`0e1072e6`, no fresh markdown source since). Two upstream movements
+captured in the ~18-hour window since the twenty-first pass (2026-05-26). **LangGraph** bumped from `v1.2.1` to
+**`v1.2.2`** (2026-05-26 18:07 UTC, ~8h after the twenty-first pass) — single behavioural fix assigning stable IDs to
+`id=None` `BaseMessage` instances before DeltaChannel checkpoint writes (prevents downstream identity drift on resumed
+runs); no breaking changes (source: <https://github.com/langchain-ai/langgraph/releases/tag/1.2.2>, accessed
+2026-05-27). **OpenClaw** beta head rolled from `v2026.5.25-beta.1` to **`v2026.5.26-beta.1`** (2026-05-26 21:10 UTC,
+~11h after the twenty-first pass) — large beta rollup for the upcoming `2026.5.26` stable, headlining a **Transcripts
+plugin** with source-provider capture and meeting summaries, **named-model login profiles** with credential migration
+for Hermes / OpenCode / Codex auth, **Signal / iMessage / WhatsApp tapback approval reactions** unifying mobile approval
+flows, a **Sharp → Rastermill image-backend swap** (drops the Sharp + WhatsApp Jimp fallback dependency from installs),
+an ephemeral **Activity tab** in the Control UI for sanitized live tool-activity summaries, **OpenTelemetry LLM content
+spans** plus alertable telemetry for blocked tools / failover / stale sessions / liveness / oversized payloads / webhook
+ingress, default `cron.maxConcurrentRuns` raised to 8 for parallel scheduled automations, and broad reply/startup
+performance work caching plugin metadata, model cost indexes, channel resolution, and session/auth hot-path facts;
+stable still `v2026.5.22` (source: <https://github.com/openclaw/openclaw/releases/tag/v2026.5.26-beta.1>, accessed
+2026-05-27). Pin refinement: **OpenClaw** star count re-pinned to **374,000+ stars / 78,100+ forks** (was 375,000+ /
+78,000+; live count 374,927 / 78,122 falls just under the prior "375,000+" pin, so re-pinning downward preserves the "+"
+semantics) (source: <https://github.com/openclaw/openclaw>, accessed 2026-05-27). All other high-cadence upstream pins
+verified unchanged from yesterday's twenty-first pass: Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent
+Framework still `python-1.6.0` (2026-05-22) / `dotnet-1.6.1` (2026-05-14), OpenAI Agents SDK still `v0.17.4`
+(2026-05-26), CrewAI still `v1.14.5` stable (2026-05-18) / `1.14.6a1` alpha (2026-05-21), A2A still `v1.0.0`
+(2026-03-12) / 24,000+ stars / 2,400+ forks (sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
 <https://github.com/microsoft/agent-framework/releases>, <https://github.com/openai/openai-agents-python/releases>,
 <https://github.com/crewAIInc/crewAI/releases>, <https://github.com/a2aproject/A2A>, all accessed 2026-05-27).
 Twenty-first pass (2026-05-26) was a light verification-and-refinement pass per zora docs-research one-shot dispatch
@@ -256,13 +276,14 @@ OpenHands is an open-source autonomous coding platform with a composable Python 
 GUI, and cloud/enterprise deployment. Current version: **v1.7.0 (May 1, 2026)** — an iterative release adding
 KVM-accelerated sandbox containers (`SANDBOX_KVM_ENABLED`), exposing the SDK settings schema to OpenHands, and folding
 the Tavily search key into MCP settings, plus dependency CVE patches; the v1.6.0 Kubernetes/RBAC narrative below remains
-the substantive recent headline. 72,500+ GitHub stars (sources:
-<https://github.com/OpenHands/OpenHands/releases/tag/1.7.0> and <https://github.com/OpenHands/OpenHands>, accessed
-2026-05-09; the project's GitHub org was renamed from `All-Hands-AI` to `OpenHands` — old `All-Hands-AI/OpenHands` URLs
-still redirect, but the canonical path is now `OpenHands/OpenHands`). Scores 77.6+ on SWEBench Verified; community
-benchmarks report 87% of bug tickets resolved same-day. Key differentiators: multi-LLM support (Claude, GPT, any
-open-source model), deep integrations with Slack, Jira, Linear, GitHub, GitLab, Azure DevOps, Bitbucket, and MCP
-servers.
+the substantive recent headline. **75,000+ GitHub stars / 9,500+ forks** (live count 75,028 / 9,510 — twenty-third pass
+refresh; the previous 72,500+ pin had drifted significantly) (sources:
+<https://github.com/OpenHands/OpenHands/releases/tag/1.7.0> accessed 2026-05-09 and
+<https://github.com/OpenHands/OpenHands> accessed 2026-05-27; the project's GitHub org was renamed from `All-Hands-AI`
+to `OpenHands` — old `All-Hands-AI/OpenHands` URLs still redirect, but the canonical path is now `OpenHands/OpenHands`).
+Scores 77.6+ on SWEBench Verified; community benchmarks report 87% of bug tickets resolved same-day. Key
+differentiators: multi-LLM support (Claude, GPT, any open-source model), deep integrations with Slack, Jira, Linear,
+GitHub, GitLab, Azure DevOps, Bitbucket, and MCP servers.
 
 **v1.5.0 headline feature — Planning Agent (BETA):** Implements a two-phase Plan/Code workflow. In Plan Mode, the agent
 has read-only tool access except for a single writable file (`PLAN.md` in the workspace root) — deliberately preventing
@@ -644,28 +665,28 @@ this project targets the team running coordinated agents as cluster workloads.
 
 OpenClaw originated as "Clawdbot" in November 2025, was renamed "Moltbot" on 2026-01-27 under Anthropic trademark
 pressure, and three days later settled on **OpenClaw**. Category-leading install base — **374,000+ GitHub stars and
-78,100+ forks as of 2026-05-27**, with a very active commit cadence (latest stable release **`v2026.5.22`** on
-2026-05-24, pre-release line at **`v2026.5.26-beta.1`** (2026-05-26 21:10 UTC) — the current stable adds a **Meeting
-Notes plugin** with Discord voice capture and auto-start transcript imports, a **~4,100× model-listing performance
-improvement** (provider auth-state pre-warmed at startup drops the call from ~20s to ~5ms), Gateway startup
+78,100+ forks as of 2026-05-27**, with a very active commit cadence (latest stable release **`v2026.5.26`** on
+2026-05-27 — graduating the `2026.5.26-beta.1` (2026-05-26 21:10 UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta
+rollup to GA; pre-release line currently quiet pending the next train. The substantive surface of `v2026.5.26` (carried
+forward from beta.1, captured in the twenty-third pass preface above) headlines a **Transcripts plugin**, **named-model
+login profiles**, **Signal / iMessage / WhatsApp tapback approval reactions**, the **Sharp → Rastermill image-backend
+swap**, an ephemeral **Activity tab** in the Control UI, **OpenTelemetry LLM content spans**, default
+`cron.maxConcurrentRuns=8`, and broad reply/startup performance work. The prior `v2026.5.22` stable (2026-05-24) shipped
+a **Meeting Notes plugin** with Discord voice capture and auto-start transcript imports, a **~4,100× model-listing
+performance improvement** (provider auth-state pre-warmed at startup drops the call from ~20s to ~5ms), Gateway startup
 optimisations via process-stable channel-catalog caching and lazy startup-idle plugin work, chat-session picker
 pagination, and on the provider side routes Claude 4.x 1M context through GA (no `beta` flag required) and DeepSeek
 through the Microsoft Foundry Responses API; the prior `v2026.5.24-beta.2` (2026-05-24) beta surface added **iMessage
 tapback approval reactions** (👍 = allow-once, 👎 = deny), realtime Discord voice for OpenClaw status / cancel / steer /
 queue commands during active consults, adaptive image compression with model-aware quality, and symlink rejection on
 remote container operations; the prior `v2026.5.25-beta.1` (2026-05-26 09:41 UTC) head layered "Beta 1 late fixes" on
-top for iMessage threading and Codex sandbox path handling; the current `v2026.5.26-beta.1` head is a much larger rollup
-for the upcoming `2026.5.26` stable — **Transcripts plugin** with source-provider capture and meeting summaries,
-**named-model login profiles** with credential migration for Hermes / OpenCode / Codex auth, **Signal / iMessage /
-WhatsApp tapback approval reactions** unifying mobile approval flows, a **Sharp → Rastermill image-backend swap** (drops
-the Sharp + WhatsApp Jimp fallback dependency from installs), an ephemeral **Activity tab** in the Control UI for
-sanitized live tool-activity summaries, **OpenTelemetry LLM content spans** plus alertable telemetry for blocked tools /
-failover / stale sessions / liveness / oversized payloads / webhook ingress, default `cron.maxConcurrentRuns` raised to
-8 for parallel scheduled automations, and broad reply/startup performance work caching plugin metadata, model cost
-indexes, channel resolution, and session/auth hot-path facts) — the exact star number drifts fast, so re-pin before
-quoting in marketing or external docs (sources: <https://github.com/openclaw/openclaw>,
-<https://github.com/openclaw/openclaw/releases>, <https://github.com/openclaw/openclaw/releases/tag/v2026.5.22>, and
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26-beta.1>, accessed 2026-05-27). Runs on user-controlled
+top for iMessage threading and Codex sandbox path handling; the `v2026.5.26-beta.1` (2026-05-26 21:10 UTC) and
+`v2026.5.26-beta.2` (2026-05-27 05:46 UTC) heads were the larger rollup for the now-shipped `2026.5.26` stable —
+substantive surface enumerated above; both graduated into `v2026.5.26` stable on 2026-05-27) — the exact star number
+drifts fast, so re-pin before quoting in marketing or external docs (sources: <https://github.com/openclaw/openclaw>,
+<https://github.com/openclaw/openclaw/releases>, <https://github.com/openclaw/openclaw/releases/tag/v2026.5.22>,
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26-beta.1>, and
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>, accessed 2026-05-27). Runs on user-controlled
 infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to Claude, OpenAI,
 DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev channels; very
 active development cadence.**
