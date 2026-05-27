@@ -180,7 +180,7 @@ func BackendRemove(ctx context.Context, cfg *rest.Config, opts BackendRemoveOpti
 		for _, b := range kept {
 			name, _ := b["name"].(string)
 			port, _ := b["port"].(int64)
-			keptSpecs = append(keptSpecs, BackendSpec{Name: name, Port: int32(port)})
+			keptSpecs = append(keptSpecs, BackendSpec{Name: name, Port: int32(port)}) //nolint:gosec // G115: port bounded by CRD schema [DefaultBackendBasePort=8001, DefaultBackendMaxPort=8050]; cannot exceed int32.
 		}
 		if err := removeRepoFolder(ctx, cr, opts, keptSpecs); err != nil {
 			fmt.Fprintf(opts.Out, "WARNING: repo-side folder removal failed: %v\n", err)
@@ -369,7 +369,7 @@ func rewriteInlineBackendYAML(cr *unstructured.Unstructured, idx int, entry map[
 	for _, b := range kept {
 		name, _ := b["name"].(string)
 		port, _ := b["port"].(int64)
-		specs = append(specs, BackendSpec{Name: name, Port: int32(port)})
+		specs = append(specs, BackendSpec{Name: name, Port: int32(port)}) //nolint:gosec // G115: port bounded by CRD schema [DefaultBackendBasePort=8001, DefaultBackendMaxPort=8050]; cannot exceed int32.
 	}
 
 	// Shallow-copy the map so the caller's reference isn't mutated

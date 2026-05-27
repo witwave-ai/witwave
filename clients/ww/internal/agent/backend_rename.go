@@ -211,7 +211,7 @@ func BackendRename(ctx context.Context, cfg *rest.Config, opts BackendRenameOpti
 		for _, b := range updated {
 			name, _ := b["name"].(string)
 			port, _ := b["port"].(int64)
-			specs = append(specs, BackendSpec{Name: name, Port: int32(port)})
+			specs = append(specs, BackendSpec{Name: name, Port: int32(port)}) //nolint:gosec // G115: port bounded by CRD schema [DefaultBackendBasePort=8001, DefaultBackendMaxPort=8050]; cannot exceed int32.
 		}
 		if err := rewriteInlineBackendYAML(cr, inlineIdx, inlineEntry, toMapSlice(specs)); err != nil {
 			return err
@@ -244,7 +244,7 @@ func BackendRename(ctx context.Context, cfg *rest.Config, opts BackendRenameOpti
 	for _, b := range postRename {
 		name, _ := b["name"].(string)
 		port, _ := b["port"].(int64)
-		renamedSpecs = append(renamedSpecs, BackendSpec{Name: name, Port: int32(port)})
+		renamedSpecs = append(renamedSpecs, BackendSpec{Name: name, Port: int32(port)}) //nolint:gosec // G115: port bounded by CRD schema [DefaultBackendBasePort=8001, DefaultBackendMaxPort=8050]; cannot exceed int32.
 	}
 
 	if err := renameRepoFolder(ctx, opts, repoRenameScope, renamedSpecs); err != nil {

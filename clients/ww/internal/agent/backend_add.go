@@ -289,9 +289,9 @@ func nextFreeBackendPort(existing []map[string]interface{}) (int32, error) {
 		// fake-client state.
 		switch p := b["port"].(type) {
 		case int64:
-			used[int32(p)] = true
+			used[int32(p)] = true //nolint:gosec // G115: port values are bounded by [DefaultBackendBasePort=8001, DefaultBackendMaxPort=8050] via the CRD schema + nextFreeBackendPort range below; cannot exceed int32.
 		case float64:
-			used[int32(p)] = true
+			used[int32(p)] = true //nolint:gosec // G115: same CRD-bounded port range as the int64 case above.
 		case int32:
 			used[p] = true
 		}
@@ -319,7 +319,7 @@ func allBackendSpecs(entries []map[string]interface{}) []BackendSpec {
 			typ = name // fall back to name-is-type convention
 		}
 		port, _ := b["port"].(int64)
-		out = append(out, BackendSpec{Name: name, Type: typ, Port: int32(port)})
+		out = append(out, BackendSpec{Name: name, Type: typ, Port: int32(port)}) //nolint:gosec // G115: port bounded by CRD schema [DefaultBackendBasePort=8001, DefaultBackendMaxPort=8050]; cannot exceed int32.
 	}
 	return out
 }

@@ -42,7 +42,7 @@ const (
 // 50-backend cap — because that state is unreachable from a
 // schema-valid CR.
 func BackendPort(index int) int32 {
-	p := DefaultBackendBasePort + int32(index)
+	p := DefaultBackendBasePort + int32(index) //nolint:gosec // G115: index is bounded by CRD's 50-backend cap (maxItems: 50); the panic guard on the next line enforces this defensively for unschematised callers.
 	if p > DefaultBackendMaxPort {
 		panic(fmt.Sprintf(
 			"agent: backend index %d exceeds CRD's 50-backend cap (port %d > max %d)",
