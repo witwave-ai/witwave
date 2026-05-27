@@ -6,6 +6,30 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.33.2] — 2026-05-27
+
+Security-focused patch closing 9 govulncheck-reachable HIGH CVEs via batched `golang.org/x/{net,crypto}` upgrades across
+`clients/ww` and the operator. Routine docstring backfill on the claude/gemini backends and a competitive-landscape
+research refresh round out the release.
+
+### Fixed
+
+- **clients/ww**: Bump `golang.org/x/net` 0.53.0→0.55.0 and `golang.org/x/crypto` 0.50.0→0.52.0 to close 8 reachable
+  HIGH-severity CVEs — GO-2026-5026 (idna.ToASCII Punycode-label rejection, reachable through `internal/client`'s HTTP
+  surface) plus GO-2026-{5013,5015,5017,5018,5019,5020,5021} covering ssh/knownhosts auth-bypass, DoS, panic, and
+  deadlock paths reachable through `internal/agent.pushBranch`. Post-bump govulncheck reports zero reachable CVEs.
+- **operator**: Bump `golang.org/x/net` 0.53.0→0.55.0 to close GO-2026-5026 (idna.ToASCII Punycode-label rejection)
+  reachable via `WitwaveAgentReconciler.Reconcile`. Post-bump govulncheck reports zero reachable CVEs.
+
+### Documentation
+
+- **backends/{claude,gemini}**: Add module-level docstrings to the public surface (`load_agent_description`,
+  `build_agent_card`, `health_start`, `health`, `health_ready`, `main`), mirroring the docstring style already in place
+  on `backends/echo/main.py`.
+- **research**: Refresh `competitive-landscape.md` against current upstream state — LangGraph v1.2.1→v1.2.2, OpenClaw
+  beta head v2026.5.25-beta.1→v2026.5.26-beta.1, with a downward re-pin of the OpenClaw star/fork counts to preserve the
+  `+` semantics.
+
 ## [0.33.1] — 2026-05-26
 
 Quiet security patch — pin `fastapi` to `0.136.1` across the Python surface to substantively mitigate MAL-2026-4750
