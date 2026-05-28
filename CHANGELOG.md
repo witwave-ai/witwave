@@ -6,6 +6,27 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.33.4] — 2026-05-28
+
+Quiet documentation patch — docstring backfill across the three Python backend executors' public surface, a
+competitive-landscape research refresh, and a README install-example version bump. A prettier fix-forward on the
+landscape file rounds out the release. No runtime behaviour change.
+
+### Fixed
+
+- **ci**: Re-apply prettier to `docs/competitive-landscape.md` after the prior research dispatch landed unformatted,
+  unblocking `CI — Docs` on main.
+
+### Documentation
+
+- **backends/{claude,gemini,openai}**: Ground the executor `run_query` entrypoint with docstrings covering the request
+  lifecycle, streaming contract, and shutdown ordering — completing the three-backend symmetry started in v0.33.2 /
+  v0.33.3.
+- **backends/{gemini,openai}**: Add docstrings to the remaining executor public surface (helpers + lifecycle hooks),
+  bringing parity with the claude executor backfilled in v0.33.3.
+- **research**: Twenty-fourth-pass refresh of `competitive-landscape.md` against current upstream state.
+- **readme**: Bump versioned install examples from 0.23.15 → 0.33.3 so quickstart copies pull a current release.
+
 ## [0.33.3] — 2026-05-27
 
 Risk-work patch closing the standing gosec carries — three commits convert previously-mitigated G115/G404 findings from
