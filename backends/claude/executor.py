@@ -2017,6 +2017,39 @@ async def run_query(
     on_chunk: Callable[[str], Awaitable[None]] | None = None,
     hook_state: HookState | None = None,
 ) -> list[str]:
+    """Outer wrapper around ``_run_query_inner`` with session-collision retry (#1048).
+
+    Builds ``ClaudeAgentOptions`` via ``_make_options`` (passing ``ctx.session_id``,
+    ``resume=not is_new``, ``stderr_fn=capture_stderr``, plus ``mcp_servers`` /
+    ``model`` / ``agent_md_content`` / ``hook_state`` from the caller) and
+    delegates to ``_run_query_inner``. ``capture_stderr`` accumulates SDK
+    subprocess stderr into ``stderr_lines``, increments
+    ``backend_sdk_errors_total`` per line, and logs each at ERROR so a noisy SDK
+    is visible both in ``/metrics`` and in the log stream.
+
+    ``BudgetExceededError`` always propagates unmodified. On any other
+    exception, scans ``stderr_lines`` for a "session ... already in use"
+    collision: when ``is_new`` and at least one collision line is present,
+    retries the prompt once with ``resume=True`` and increments
+    ``backend_task_retries_total``. The retry is refused (original exception
+    re-raises, logged at ERROR) when the failed attempt already recorded a
+    ``ToolUseBlock`` — ``_run_query_inner`` sets ``_tool_use_flag[0]=True`` on
+    the first tool use, and replaying the prompt would duplicate cluster
+    mutations or file writes (#1048). The retry path deliberately does NOT
+    re-observe ``backend_sdk_query_error_duration_seconds`` because
+    ``_run_query_inner`` already observed it on the inner error path; a
+    second observe at this outer site would double-count the histogram and
+    risk a label drift from the inner call's pre-computed ``_sdk_labels``
+    (#870). ``_tool_use_flag`` is forwarded into the retry call so a tool_use
+    on the resumed attempt also updates the idempotency marker (#1485).
+
+    The ``finally`` block always observes ``backend_stderr_lines_per_task``
+    (length of ``stderr_lines``, zero for clean runs so the histogram rate
+    stays interpretable) and increments ``backend_tasks_with_stderr_total``
+    when ``stderr_lines`` is non-empty. Returns the list returned by
+    ``_run_query_inner`` — collected text chunks for the turn; ``on_chunk``,
+    ``max_tokens``, and ``hook_state`` are forwarded unchanged.
+    """
     stderr_lines: list[str] = []
     _query_start = time.monotonic()
 

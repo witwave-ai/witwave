@@ -1699,6 +1699,108 @@ async def run_query(
     live_mcp_servers: list | None = None,
     tool_config: dict | None = None,
 ) -> list[str]:
+    """Run one OpenAI Agents SDK ``Runner.run_streamed`` turn over an SQLite session.
+
+    Resolves the model, ensures the ``OPENAI_SESSION_DB`` directory exists,
+    and builds ``instructions`` from ``agent_md_content`` plus
+    ``session_id``. MCP servers are taken verbatim from ``live_mcp_servers``
+    — they are entered once at backend lifespan by
+    ``AgentExecutor._apply_mcp_config`` and reused across requests so
+    stateful servers (kubeconfig / HTTP pool) retain state between calls
+    (#526). ``SQLiteSession`` is opened per-call; init failures log at
+    ERROR, increment ``backend_session_history_save_errors_total``, and
+    fall through with ``session=None`` rather than aborting the request.
+
+    The OpenAI API key is read per-request via
+    ``_current_openai_api_key`` so ``OPENAI_API_KEY_FILE`` rotation takes
+    effect without a pod restart (#728); a missing key logs at ERROR with
+    actionable text (#1501) and falls back to ``run_config=None``, letting
+    the SDK perform its own env/default lookup. When a key is present,
+    ``RunConfig`` is built with ``MultiProvider(openai_api_key=...,
+    openai_use_responses=True)``.
+
+    Opens the ``llm.request`` child span (#630) with ``model`` and
+    ``openai.agent_md_revision`` (SHA-256 prefix of ``agent_md_content``,
+    paired with ``backend_agent_md_revision`` so operators can verify
+    hot-reload propagated to in-flight queries #1097) and iterates
+    ``Runner.run_streamed(...).stream_events()``:
+
+    * ``raw_response_event`` — extracts ``delta.text``, observes
+      ``backend_sdk_time_to_first_message_seconds`` on the first text
+      chunk, appends to ``collected``, and fires ``on_chunk`` wrapped in
+      ``asyncio.wait_for(timeout=STREAM_CHUNK_TIMEOUT_SECONDS)`` so a slow
+      A2A consumer cannot stall the SDK event loop, token-budget
+      enforcement, or tool processing (#539). On timeout the chunk is
+      dropped with a warning, the ``on_chunk.stream_state`` dict's
+      ``dropped`` counter is bumped so the outer executor can emit a
+      final-flush aggregated event (#724), and
+      ``backend_streaming_chunks_dropped_total`` is incremented. Extracts
+      ``usage.total_tokens`` from response events (only total_tokens
+      enforces the budget — ``output_tokens`` alone undercounts and
+      previously caused premature trips) and raises ``BudgetExceededError``
+      when the running total crosses ``max_tokens``. Usage extraction
+      failures log at DEBUG and increment
+      ``backend_sdk_context_fetch_errors_total`` (#803).
+    * ``agent_updated_stream_event`` — increments ``_turn_count``.
+    * ``run_item_stream_event`` ``ToolCallItem`` — synthesizes a UUID
+      ``call_id`` when the SDK provides neither ``call_id`` nor ``id`` so
+      parallel calls don't collapse to a shared empty key with elapsed ≈ 0
+      (#671) and remembers synth ids in ``_pending_synth_call_ids`` FIFO
+      for output-side recovery (#1495); extracts shell
+      ``action.commands`` / ``action.command`` or JSON ``arguments`` from
+      the raw item; opens a ``tool.call`` or ``mcp.call`` span (MCP
+      detected by ``mcp`` substring in raw type or ``mcp__server__tool``
+      name prefix #630); writes the ``tool_use`` trace entry with
+      ``LOG_TRACE_CONTENT_MAX_BYTES`` applied symmetrically to ``input``
+      so a multi-MB tool_input can't blow the rotation budget while the
+      result side is capped (#989).
+    * ``run_item_stream_event`` ``ToolCallOutputItem`` — recovers the
+      synth call_id in FIFO order (#1495), applies
+      ``LOG_TRACE_CONTENT_MAX_BYTES`` to the trace ``content`` but
+      observes metrics on the full byte size so dashboards still see
+      multi-MB outputs (#939), records
+      ``backend_sdk_tool_duration_seconds`` /
+      ``backend_sdk_tool_errors_total`` (on ``is_error``) /
+      ``backend_sdk_tool_result_size_bytes``, emits the ``tool.use`` event
+      (#1110 phase 3), and forwards to the outbound MCP metric family for
+      ``mcp__*`` tools via ``observe_outbound_mcp_call`` (#1104).
+
+    ``BudgetExceededError`` increments ``_stderr_count``, observes
+    ``backend_sdk_session_duration_seconds``, logs the partial response,
+    and mirrors the success-path per-query histogram observations so
+    budget runs do not under-report tokens, tool counts, or context-usage
+    gauges (#669). Other exceptions observe
+    ``backend_sdk_query_error_duration_seconds``, mark the llm.request
+    span errored via ``set_span_error`` even though we re-raise
+    immediately, and classify via ``openai.APIConnectionError`` /
+    ``openai.APIError`` into ``client_errors`` / ``result_errors`` /
+    generic ``backend_sdk_errors_total`` so the error surface matches
+    claude's (#431).
+
+    The outer ``finally`` closes the llm.request span best-effort (the
+    sentinel ``_llm_ctx`` is initialised pre-try so a pre-enter failure
+    still has something to test against #630) and always observes
+    ``backend_stderr_lines_per_task`` plus
+    ``backend_tasks_with_stderr_total`` when ``_stderr_count`` is non-zero
+    — fired even on clean runs (histogram observation of 0) so the rate
+    is interpretable (#802).
+
+    Success path prefers ``result.final_output`` over the streamed deltas
+    as the SDK's authoritative answer; on mismatch the log is DEBUG, the
+    streamed ``collected`` is replaced with ``final_output``, and
+    ``backend_final_output_divergence_total`` is incremented (#381,
+    #1497). Then ``log_entry``s the assistant response with token count,
+    emits the ``conversation.turn`` event (#1110 phase 3 — partial-
+    response sites intentionally do NOT emit so the stream summarises the
+    turn rather than every chunk; model omitted when falsy #1150),
+    observes the per-query histograms (``backend_sdk_query_duration_seconds``,
+    ``messages_per_query``, ``turns_per_query``, ``text_blocks_per_query``,
+    ``tokens_per_query``, ``tool_calls_per_query``) and context-window
+    observations (tokens / tokens_remaining / usage_percent /
+    exhaustion_total at >=100% / warnings_total at
+    >=``CONTEXT_USAGE_WARN_THRESHOLD``%), writes the ``response`` trace
+    row via ``log_trace``, and returns ``collected``.
+    """
     resolved_model = model or OPENAI_MODEL
     log_dir = os.path.dirname(OPENAI_SESSION_DB)
     if log_dir:

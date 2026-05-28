@@ -2127,6 +2127,91 @@ async def run_query(
     live_mcp_servers: list | None = None,
     sessions: OrderedDict[str, float] | None = None,
 ) -> list[str]:
+    """Run one Gemini ``send_message_stream`` turn under a refcounted session lock.
+
+    Resolves the model (caller string preserved verbatim, sanitized only at
+    metric label sites #487), builds ``instructions`` from
+    ``agent_md_content`` plus ``session_id``, and acquires the per-session
+    refcounted lock via ``_acquire_session_lock`` so the dict entry cannot
+    be evicted while we are queued — eviction is gated on refcount == 0
+    (#483).
+
+    History handling: when ``session_id`` is in ``history_save_failed`` the
+    call starts with an empty history, best-effort removes the stale
+    on-disk file, increments ``backend_session_history_reset_total`` and
+    WARNs so operators can distinguish a one-off save hiccup from a
+    session that was silently wiped (#886, #1000). Otherwise loads via
+    ``_load_history`` inside ``asyncio.to_thread``.
+
+    Chat is created via ``client.aio.chats.create`` with the persisted
+    history and a ``GenerateContentConfig`` carrying ``system_instruction``
+    plus ``tools=list(live_mcp_servers)`` when present — google-genai's
+    experimental MCP-as-tool support runs the function-call ping-pong
+    inside Automatic Function Calling (AFC) (#640). For AFC observability,
+    ``len(chat.history)`` is snapshotted before the stream so
+    ``_emit_afc_history`` later walks only the new-slice (#883) and forwards
+    the pre-snapshot prefix for cross-turn ``function_call`` ↔
+    ``function_response`` id pairing (#996). Hook enforcement is skeletal
+    while AFC runs the tool loop — ``self._hook_state`` is kept in sync by
+    ``hooks_config_watcher`` so a future AFC-off path can wire it in
+    without further plumbing (#1863).
+
+    Streams ``chat.send_message_stream(prompt)``: appends ``chunk.text`` to
+    ``collected``, observes ``backend_sdk_time_to_first_message_seconds`` on
+    the first text chunk, fires ``on_chunk`` with errors warned-and-
+    swallowed so SDK iteration is never aborted (#430), updates
+    ``_total_tokens`` from ``usage_metadata.total_token_count``, and
+    budget-checks on every chunk against the running total rather than only
+    on chunks carrying usage (#1503 — otherwise a sequence of no-usage
+    chunks could push past ``max_tokens`` silently). An AFC history soft
+    cap is sampled every 4th chunk using the same ``model_dump`` +
+    ``json.dumps`` byte sizing the save path uses (#1058, #1507) — both
+    budget paths raise ``BudgetExceededError``.
+
+    The ``llm.request`` child span (#630) is opened pre-stream with
+    ``model`` plus ``mcp.sessions.count`` / ``tools.count`` attributes when
+    ``live_mcp_servers`` is non-empty, and closed exactly once in the
+    inner ``finally``.
+
+    Error paths skip persisting ``chat.history`` to avoid leaving the
+    session in a state that violates Gemini's alternating user/model
+    contract or resumes on incomplete content — the session is added to
+    ``history_save_failed`` so the next request restarts fresh (#493 budget
+    path, #499 generic path, #409 / #437 invariant). Non-budget errors also
+    observe ``backend_sdk_query_error_duration_seconds`` and classify via
+    ``google.api_core`` into ``client_errors`` / ``result_errors`` / generic
+    ``backend_sdk_errors_total`` (#445). Both error paths observe
+    ``backend_sdk_session_duration_seconds`` before re-raising.
+
+    Success path joins ``collected`` into ``full_response``, calls
+    ``log_entry`` with the model and token count, emits the
+    ``conversation.turn`` event (#1110 phase 3 — assistant role,
+    ``content_bytes``, model omitted when falsy #1150), runs
+    ``_emit_afc_history`` on the new slice with the pre-snapshot prefix
+    forwarded, and persists via ``_save_history`` on a snapshot copy so the
+    SDK cannot mutate the list mid-iteration (#1511). Permanent save
+    failures log at ERROR, increment
+    ``backend_session_history_save_errors_total``, and add the session to
+    ``history_save_failed`` so the next request starts fresh (#409); the
+    completed response is still returned to the caller.
+
+    After the inner async-with block, observes the per-query histograms
+    (``backend_sdk_query_duration_seconds``, ``messages_per_query``,
+    ``turns_per_query``, ``text_blocks_per_query``, ``tokens_per_query``
+    with parity to claude #813) and context-window observations
+    (``backend_context_tokens``, ``backend_context_tokens_remaining``,
+    ``backend_context_usage_percent`` plus ``backend_context_exhaustion_total``
+    at >=100% or ``backend_context_warnings_total`` at >=80%), writes the
+    ``response`` row via ``log_trace``, and promotes the session in the
+    ``sessions`` LRU while still holding the session lock so a concurrent
+    request cannot trigger ``MAX_SESSIONS`` eviction between save and
+    promotion (#675).
+
+    The outer ``finally`` always decrements the refcount via
+    ``_release_session_lock`` — the lock entry is evicted from
+    ``session_locks`` only when no other task holds or is waiting on it
+    (#483).
+    """
     resolved_model = model or GEMINI_MODEL
     # Note: resolved_model carries the raw caller-supplied string (so we pass
     # it faithfully to the SDK and log it verbatim). Wherever it lands in a
