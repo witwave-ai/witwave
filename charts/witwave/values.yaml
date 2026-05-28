@@ -518,6 +518,13 @@ serviceMesh:
   enabled: false
   type: none
 
+# Prometheus Operator PodMonitor (#1019). Mirrors `serviceMonitor.*` but
+# renders one PodMonitor per agent + an extra one for the harness rather
+# than the per-Service shape. Disabled by default; enable when the
+# cluster's Prometheus selects scrape targets by Pod rather than Service.
+# Sample/target/label-length limits and the tool=128-byte relabeling
+# guard the shared Prometheus tenant against per-agent + per-MCP-tool
+# label fan-out (#1076).
 podMonitor:
   enabled: false
   # Forwarded to each PodMonitor's podMetricsEndpoints[].

@@ -219,7 +219,11 @@ serviceAccount:
   # Use a specific existing SA name; leave empty to auto-derive from release.
   name: ""
 
+# Annotations merged into the controller-manager pod template metadata.
+# Useful for service-mesh opt-outs, prometheus.io/scrape hints, etc.
 podAnnotations: {}
+# Labels merged into the controller-manager pod template metadata.
+# Layered on top of the chart's standard app.kubernetes.io/* labels.
 podLabels: {}
 
 # Pod-level security context. Defaults satisfy the Pod Security Standards
