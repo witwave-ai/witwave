@@ -1,23 +1,42 @@
 # Competitive Landscape
 
-Last updated: 2026-05-27 by kira-agent-witwave (twenty-third pass — verification-and-refinement pass per zora
-docs-research one-shot dispatch under polish-tier ADVANCE — `docs-cleanup` zero_streak=2 at last_run_sha=`3206f5b8` with
-no fresh `*.md` commits since (cheap-pass exhausted per zora's 13:00Z tick). One substantive upstream movement captured
-in the ~3h window since the twenty-second pass earlier today: **OpenClaw `v2026.5.26` stable shipped** (2026-05-27 11:27
-UTC) — graduates the `2026.5.26-beta.1` (2026-05-26 21:10 UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta rollup
-to GA; substantive surface is unchanged from the prior beta capture the twenty-second pass documented (Transcripts
-plugin, named-model login profiles, Signal / iMessage / WhatsApp tapback approval reactions, Sharp → Rastermill
-image-backend swap, ephemeral Activity tab in the Control UI, OpenTelemetry LLM content spans, default
-`cron.maxConcurrentRuns` raised to 8, and broad reply/startup performance work). Beta head naturally retires until the
-next train begins (source: <https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>, accessed 2026-05-27). Pin
-refinement: **OpenHands** star count re-pinned to **75,000+ stars / 9,500+ forks** (was 72,500+ stars; live count 75,028
-/ 9,510 — significant drift the prior passes had not refreshed) (source: <https://github.com/OpenHands/OpenHands>,
-accessed 2026-05-27). All other high-cadence upstream pins verified unchanged from the twenty-second pass: Claude Agent
-SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still `python-1.6.0` (2026-05-22) / `dotnet-1.6.1`
-(2026-05-14), LangGraph still `v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still
-`v1.14.5` stable (2026-05-18) / `1.14.6a1` alpha (2026-05-21), A2A still `v1.0.0` (2026-03-12) / 24,000+ stars / 2,400+
-forks; OpenClaw star count re-verified at 374,994 / 78,167 — still inside the existing **374,000+ stars / 78,100+
-forks** pin (sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+Last updated: 2026-05-28 by kira-agent-witwave (twenty-fourth pass — verification-and-refinement pass per zora
+docs-research one-shot dispatch under P2 cadence-floor breach (1.00× exceeded since 02Z, 3h floor) with polish-skill
+ADVANCE from `docs-cleanup` (zero_streak=1 confirmed at last_run_sha=`f072b8ad`=HEAD, no fresh source). One upstream
+movement captured in the ~16-hour window since the twenty-third pass yesterday: **CrewAI** alpha line rolled from
+`1.14.6a1` to **`1.14.6a2`** (2026-05-27 23:49 UTC) — headline additions are a hardened **`StdioTransport`** preventing
+environment-variable leakage, a fix for **structured-output leaks in tool-calling loops**, an `env_vars` declaration on
+`DatabricksQueryTool`, improved planning configuration and observation handling, and new Agent Control Plane
+documentation; stable still `v1.14.5` (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a2>, accessed
+2026-05-28). Pin refinement: **OpenClaw** star count re-pinned to **375,000+ stars / 78,200+ forks** (was 374,000+ /
+78,100+; live count 375k / 78.2k crosses the prior pin cleanly upward) (source: <https://github.com/openclaw/openclaw>,
+accessed 2026-05-28). All other high-cadence upstream pins verified unchanged from the twenty-third pass yesterday:
+Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still `python-1.6.0` (2026-05-22) /
+`dotnet-1.6.1` (2026-05-14), LangGraph still `v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26),
+OpenClaw stable still `v2026.5.26` (2026-05-27) with no new beta head, A2A still `v1.0.0` (2026-03-12) / 24,000+ stars /
+2,400+ forks, OpenHands still `v1.7.0` (2026-05-01) / 75,000+ stars / 9,500+ forks (sources:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/openclaw/openclaw/releases>,
+<https://github.com/a2aproject/A2A>, <https://github.com/OpenHands/OpenHands>, all accessed 2026-05-28). Twenty-third
+pass (2026-05-27, ~16h ago) was a verification-and-refinement pass per zora docs-research one-shot dispatch under
+polish-tier ADVANCE — `docs-cleanup` zero_streak=2 at last_run_sha=`3206f5b8` with no fresh `*.md` commits since
+(cheap-pass exhausted per zora's 13:00Z tick). One substantive upstream movement captured in the ~3h window since the
+twenty-second pass earlier that day: **OpenClaw `v2026.5.26` stable shipped** (2026-05-27 11:27 UTC) — graduates the
+`2026.5.26-beta.1` (2026-05-26 21:10 UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta rollup to GA; substantive
+surface is unchanged from the prior beta capture the twenty-second pass documented (Transcripts plugin, named-model
+login profiles, Signal / iMessage / WhatsApp tapback approval reactions, Sharp → Rastermill image-backend swap,
+ephemeral Activity tab in the Control UI, OpenTelemetry LLM content spans, default `cron.maxConcurrentRuns` raised to 8,
+and broad reply/startup performance work). Beta head naturally retires until the next train begins (source:
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>, accessed 2026-05-27). Pin refinement: **OpenHands** star
+count re-pinned to **75,000+ stars / 9,500+ forks** (was 72,500+ stars; live count 75,028 / 9,510 — significant drift
+the prior passes had not refreshed) (source: <https://github.com/OpenHands/OpenHands>, accessed 2026-05-27). All other
+high-cadence upstream pins verified unchanged from the twenty-second pass: Claude Agent SDK still `v0.2.87`
+(2026-05-23), Microsoft Agent Framework still `python-1.6.0` (2026-05-22) / `dotnet-1.6.1` (2026-05-14), LangGraph still
+`v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still `v1.14.5` stable (2026-05-18) /
+`1.14.6a1` alpha (2026-05-21), A2A still `v1.0.0` (2026-03-12) / 24,000+ stars / 2,400+ forks; OpenClaw star count
+re-verified at 374,994 / 78,167 — still inside the existing **374,000+ stars / 78,100+ forks** pin (sources:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>,
 <https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
 <https://github.com/openai/openai-agents-python/releases>, <https://github.com/crewAIInc/crewAI/releases>,
 <https://github.com/a2aproject/A2A>, <https://github.com/openclaw/openclaw>, all accessed 2026-05-27). Twenty-second
@@ -551,10 +570,14 @@ stable. Headline change is **deprecating `CrewAgentExecutor` in favour of defaul
 also adds a `restore_from_state_id` kickoff parameter for resuming workflows from a prior state, improved Daytona
 sandbox tools, a memory-leak fix in git operations, status-endpoint routing fix, and **a CLI extracted into a standalone
 `crewai-cli` package** (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.5>, accessed 2026-05-18).
-Alpha-line cadence moved off the 1.14.5 train to **`1.14.6a1`** (2026-05-21) — adds a **Skills Repository system** with
-registry, caching, CLI tools, and SDK integration (the first OSS-side direct entrant on the self-improvement axis), plus
-RuntimeState serialization-robustness improvements and an `idna` 3.15 CVE bump for GHSA-65pc-fj4g-8rjx (source:
-<https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a1>, accessed 2026-05-25). The previous stable line `v1.14.4`
+Alpha-line cadence moved off the 1.14.5 train to **`1.14.6a2`** (2026-05-27, latest), incrementing from `1.14.6a1`
+(2026-05-21) which added a **Skills Repository system** with registry, caching, CLI tools, and SDK integration (the
+first OSS-side direct entrant on the self-improvement axis), plus RuntimeState serialization-robustness improvements and
+an `idna` 3.15 CVE bump for GHSA-65pc-fj4g-8rjx; `1.14.6a2` then hardened **`StdioTransport`** against
+environment-variable leakage, fixed **structured-output leaks in tool-calling loops**, added an `env_vars` declaration
+on `DatabricksQueryTool`, improved planning configuration and observation handling, and introduced Agent Control Plane
+documentation (sources: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a1> accessed 2026-05-25 and
+<https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a2> accessed 2026-05-28). The previous stable line `v1.14.4`
 (2026-04-30) introduced Responses API support for the Azure OpenAI provider, You.com MCP tools (search / research /
 content extraction), Tavily Research integration, custom persistence keys for `@persist`, and a `litellm` bump for an
 SSTI fix (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.4>, accessed 2026-05-06); the v1.14.0 / v1.14.2
@@ -664,8 +687,8 @@ platform rather than a personal local daemon. OpenClaw targets the individual ru
 this project targets the team running coordinated agents as cluster workloads.
 
 OpenClaw originated as "Clawdbot" in November 2025, was renamed "Moltbot" on 2026-01-27 under Anthropic trademark
-pressure, and three days later settled on **OpenClaw**. Category-leading install base — **374,000+ GitHub stars and
-78,100+ forks as of 2026-05-27**, with a very active commit cadence (latest stable release **`v2026.5.26`** on
+pressure, and three days later settled on **OpenClaw**. Category-leading install base — **375,000+ GitHub stars and
+78,200+ forks as of 2026-05-28**, with a very active commit cadence (latest stable release **`v2026.5.26`** on
 2026-05-27 — graduating the `2026.5.26-beta.1` (2026-05-26 21:10 UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta
 rollup to GA; pre-release line currently quiet pending the next train. The substantive surface of `v2026.5.26` (carried
 forward from beta.1, captured in the twenty-third pass preface above) headlines a **Transcripts plugin**, **named-model
