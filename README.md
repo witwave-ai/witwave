@@ -199,7 +199,7 @@ ww update --check      # check only
 ww update --force      # run the upgrade unconditionally
 ```
 
-Pull a specific image version with a semver tag, e.g. `ghcr.io/witwave-ai/images/harness:0.33.3`. The latest released
+Pull a specific image version with a semver tag, e.g. `ghcr.io/witwave-ai/images/harness:0.33.4`. The latest released
 tag is visible on the [GitHub Releases](https://github.com/witwave-ai/witwave/releases) page; substitute it for the
 version below.
 
@@ -222,10 +222,10 @@ CLI-managed):
 
 ```bash
 # Agent chart — deploys Witwave agents directly via templated manifests.
-helm install witwave oci://ghcr.io/witwave-ai/charts/witwave --version 0.33.3 --namespace witwave --create-namespace
+helm install witwave oci://ghcr.io/witwave-ai/charts/witwave --version 0.33.4 --namespace witwave --create-namespace
 
 # Operator chart — installs the witwave-operator controller and the WitwaveAgent CRD.
-helm install witwave-operator oci://ghcr.io/witwave-ai/charts/witwave-operator --version 0.33.3 --namespace witwave-system --create-namespace
+helm install witwave-operator oci://ghcr.io/witwave-ai/charts/witwave-operator --version 0.33.4 --namespace witwave-system --create-namespace
 ```
 
 See [charts/witwave/README.md](charts/witwave/README.md) and
