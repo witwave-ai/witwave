@@ -349,6 +349,12 @@ class EventStream:
         return len(self._ring)
 
     def known_types(self) -> Iterable[str]:
+        """Return the allow-list of envelope ``type`` strings the validator accepts.
+
+        Sourced from ``shared.event_schema.KNOWN_TYPES`` — exposed as a
+        method so callers (UIs, debug endpoints) can render the supported
+        set without importing the schema module directly.
+        """
         return KNOWN_TYPES
 
     # ---------- metric helper ----------

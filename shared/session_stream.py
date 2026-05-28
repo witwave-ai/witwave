@@ -169,6 +169,14 @@ class SessionStream:
     # ---------- subscription ----------
 
     def subscribe(self) -> AsyncIterator[SessionStreamEnvelope]:
+        """Register a new subscriber and return its async envelope iterator.
+
+        Each call yields a fresh subscriber bound to a private
+        bounded queue (``_queue_max``); attaching a subscriber clears
+        the idle clock so the registry sweeper (#1147) won't reap a
+        broadcaster that just acquired a consumer. The returned
+        async-generator removes the subscriber from the set on exit.
+        """
         sub = _Subscriber(asyncio.Queue(maxsize=self._queue_max))
         self._subscribers.add(sub)
         # First subscriber attached — clear the idle clock (#1147).
@@ -236,9 +244,11 @@ class SessionStream:
     # share the same counter.  Scheduled for removal once all backend
     # executors are migrated.
     def next_assistant_seq(self) -> int:
+        """Deprecated alias for :meth:`next_turn_seq` (#1139 backcompat)."""
         return self.next_turn_seq()
 
     def reset_assistant_seq(self) -> None:
+        """Deprecated alias for :meth:`reset_turn_seq` (#1139 backcompat)."""
         self.reset_turn_seq()
 
     def publish(
@@ -326,6 +336,13 @@ class SessionStream:
     # ---------- replay ----------
 
     def replay_from(self, last_id: str | None) -> list[SessionStreamEnvelope]:
+        """Return ring-buffered envelopes with ``id`` strictly greater than ``last_id``.
+
+        When ``last_id`` is falsy or cannot be parsed as an int the full
+        ring is returned (used for first-attach replay). Envelopes whose
+        own ``id`` isn't an int are skipped silently — defensive against
+        any future non-numeric id schemes co-existing in the ring.
+        """
         if not last_id:
             return list(self._ring)
         try:

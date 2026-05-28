@@ -633,6 +633,16 @@ async def _guarded(
 
 
 class AgentExecutor(A2AAgentExecutor):
+    """Harness implementation of the A2A SDK's executor interface.
+
+    Owns the per-process session LRU, the map of running A2A tasks (keyed
+    by ``task_id`` for cancellation lookup), the loaded backend registry,
+    and the optional continuation / webhook / bus runners. Loads
+    ``backend.yaml`` eagerly in ``__init__`` and degrades to empty routing
+    if the file is missing or malformed at startup so the harness can come
+    up; the ``backends_watcher`` task then picks up the next valid config.
+    """
+
     def __init__(self):
         self._sessions: OrderedDict[str, float] = OrderedDict()
         self._running_tasks: dict[str, asyncio.Task] = {}
@@ -672,6 +682,12 @@ class AgentExecutor(A2AAgentExecutor):
 
     @property
     def backends_reload_consecutive_failures(self) -> int:
+        """Number of consecutive failed ``backend.yaml`` hot-reload attempts.
+
+        Read by the readiness probe (#702): once this crosses
+        ``BACKEND_RELOAD_FAILURE_THRESHOLD`` the harness flips to degraded
+        so operators see the issue beyond a log line and a counter.
+        """
         return self._backends_reload_consecutive_failures
 
     # Public read-only accessors for the two most-accessed private attributes
@@ -842,10 +858,22 @@ class AgentExecutor(A2AAgentExecutor):
         return task
 
     def set_continuation_runner(self, runner: "ContinuationRunner", bus: MessageBus) -> None:
+        """Attach the continuation runner and its MessageBus to this executor.
+
+        Called once during harness startup. After this returns
+        ``on_prompt_completed`` forwards completion notifications into the
+        runner so chained prompts can be scheduled onto the bus.
+        """
         self._continuation_runner = runner
         self._bus = bus
 
     def set_webhook_runner(self, runner: "WebhookRunner") -> None:
+        """Attach the webhook runner and seed it with the current backend map.
+
+        The runner is told the live ``backends`` dict and the resolved
+        ``default_backend_id`` so it can dispatch outbound webhook prompts
+        through the same routing surface the A2A path uses.
+        """
         self._webhook_runner = runner
         runner.set_backends(self._backends, self._default_backend_id)
 
@@ -1351,6 +1379,14 @@ class AgentExecutor(A2AAgentExecutor):
         await self.close_backends()
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """A2A SDK cancellation hook — request cancel of the running task, if any.
+
+        Looks up the asyncio task previously registered under
+        ``context.task_id`` in ``_running_tasks`` and calls ``.cancel()``
+        on it; logs at INFO either way. Bumps
+        ``harness_task_cancellations_total`` unconditionally so the metric
+        reflects requests received, not requests that found a live task.
+        """
         if harness_task_cancellations_total is not None:
             harness_task_cancellations_total.inc()
         task_id = context.task_id

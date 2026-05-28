@@ -80,6 +80,15 @@ class ToolAuditMetrics:
 
 @dataclass
 class ToolAuditContext:
+    """Bundle of the per-backend state ``log_tool_audit`` needs.
+
+    ``trace_log_path`` is the JSONL file appended to. ``labels`` is the
+    fixed label set applied to every metric bumped by audit writes (so
+    they share the dimensionality of the rest of the backend's log
+    counters). ``metrics`` is the Prometheus counter set; any individual
+    field may be ``None`` when the backend hasn't wired that metric.
+    """
+
     trace_log_path: str
     labels: Mapping[str, str]
     metrics: ToolAuditMetrics

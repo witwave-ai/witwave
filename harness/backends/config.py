@@ -56,6 +56,15 @@ BACKEND_CONFIG_PATH = os.environ.get("BACKEND_CONFIG_PATH", "/home/agent/.witwav
 
 @dataclass
 class BackendConfig:
+    """One backend entry parsed from ``backend.yaml``.
+
+    ``id`` is the routing key callers reference (per-message ``backend_id``
+    overrides, routing entries, default-backend lookup). ``model`` /
+    ``auth_env`` / ``url`` mirror the same-named YAML keys when set.
+    ``extra`` captures any keys outside the known set so backend-specific
+    config can travel through without schema changes here.
+    """
+
     id: str
     model: str | None = None
     auth_env: str | None = None
