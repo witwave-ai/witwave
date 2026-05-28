@@ -2661,6 +2661,23 @@ async def run(
     on_chunk: Callable[[str], Awaitable[None]] | None = None,
     live_mcp_servers: list | None = None,
 ) -> str:
+    """External entry point — thin gauge-wrapper around ``_run_inner``.
+
+    Increments ``backend_concurrent_queries`` (the in-flight-query gauge,
+    labelled by ``_LABELS``) before delegating to ``_run_inner`` and
+    decrements it unconditionally in the ``finally`` clause so the gauge
+    stays consistent across normal returns, ``BudgetExceededError``,
+    ``asyncio.TimeoutError`` and any other exception raised by the inner
+    coroutine. No parameter transformation — all positional + keyword
+    arguments are forwarded verbatim.
+
+    Callers: ``AgentExecutor.execute`` (line ~4125) for the normal A2A
+    request path, and ``backends/gemini/main.py:818`` for the MCP
+    ``tools/call`` re-entrant path (imported there as ``_run_for_mcp``).
+    Keeping the gauge inc/dec at this outermost layer means both call
+    sites contribute uniformly to the concurrent-queries metric without
+    each having to wrap ``_run_inner`` themselves.
+    """
     if backend_concurrent_queries is not None:
         backend_concurrent_queries.labels(**_LABELS).inc()
     try:
