@@ -536,6 +536,14 @@ class HookState:
     extensions: list[Rule] = field(default_factory=list)
 
     def active_rules(self) -> list[Rule]:
+        """Return the rule list the engine should consider for this evaluation.
+
+        When ``baseline_enabled`` is true the baseline rules are
+        returned first followed by the extensions; when false the
+        baseline is suppressed and only extensions are evaluated. Both
+        lists are shallow-copied so the caller can mutate freely
+        without disturbing the stored state.
+        """
         if self.baseline_enabled:
             return list(self.baseline) + list(self.extensions)
         return list(self.extensions)

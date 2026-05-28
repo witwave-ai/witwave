@@ -77,6 +77,19 @@ class EchoAgentExecutor(A2AAgentExecutor):
         self._labels = labels
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Echo back a canned response and emit the common backend metrics.
+
+        Empty prompts and prompts whose UTF-8 byte length exceeds
+        ``MAX_PROMPT_BYTES`` (#1650, default 1 MiB) are rejected at the
+        door with a canned text reply — the oversize check prevents a
+        pathological caller from OOMing the pod before any LLM-side
+        work. Every successful return enqueues a single agent text
+        message via :func:`new_agent_text_message` so the A2A SDK
+        declares the task complete. The ``backend_a2a_*`` request-
+        surface metrics and the ``backend_{prompt,response}_length_bytes``
+        histograms are bumped in the ``finally`` block so the labels
+        reflect the true outcome (``ok``/``error``) even on exception.
+        """
         start = time.monotonic()
         status = "ok"
         try:
@@ -128,7 +141,12 @@ class EchoAgentExecutor(A2AAgentExecutor):
                 metrics.backend_a2a_last_request_timestamp_seconds.labels(**self._labels).set(time.time())
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        # Echo tasks complete synchronously within execute(); nothing to cancel.
-        # The A2A framework still calls cancel() on explicit client cancellation,
-        # so provide a no-op implementation rather than letting it raise.
+        """No-op cancellation hook required by the A2A framework.
+
+        Echo tasks complete synchronously inside :meth:`execute`, so
+        there is nothing to cancel. The A2A framework still calls
+        ``cancel`` on explicit client cancellation; returning ``None``
+        rather than letting the base class raise keeps that path
+        quiet.
+        """
         return None

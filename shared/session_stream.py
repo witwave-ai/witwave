@@ -569,6 +569,7 @@ def reset_session_streams_for_tests() -> None:
 
 
 def registry_size() -> int:
+    """Return the number of live SessionStream entries in the process-wide registry."""
     return len(_registry)
 
 

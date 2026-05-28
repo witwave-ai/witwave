@@ -121,6 +121,17 @@ async def log_entry(
     backend: str | None = None,
     trace_context: TraceContext | None = None,
 ) -> None:
+    """Append one JSONL entry to the conversation log.
+
+    Builds a record with timestamp, agent, ``session_id``, ``role``,
+    optional ``model`` and ``backend``, and the raw ``text``; when
+    ``trace_context`` is supplied the ``trace_id`` and ``parent_id``
+    are attached for downstream log-correlation (#468). The write is
+    dispatched via ``asyncio.to_thread`` so the event loop stays
+    responsive. Errors are caught and counted in
+    ``harness_log_write_errors_total`` so a transient disk failure
+    cannot take down the calling request path.
+    """
     try:
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -228,6 +239,14 @@ async def run(
     trace_context: TraceContext | None = None,
     caller_id: str | None = None,
 ) -> str:
+    """Dispatch one prompt to the routed backend and return its text response.
+
+    Thin wrapper around :func:`_run_inner` that maintains the
+    ``harness_concurrent_queries`` gauge across the call (incremented
+    on entry, decremented in ``finally`` regardless of outcome). All
+    routing and session-LRU bookkeeping happens inside ``_run_inner``
+    — callers do not need to update ``sessions`` themselves.
+    """
     if harness_concurrent_queries is not None:
         harness_concurrent_queries.inc()
     try:
@@ -945,6 +964,15 @@ class AgentExecutor(A2AAgentExecutor):
         model: str | None = None,
         trace_context: TraceContext | None = None,
     ) -> None:
+        """Fan out a prompt-completion event to continuation and webhook runners.
+
+        Both side effects are gated on the corresponding runner being
+        attached, and both are non-blocking — neither runner blocks the
+        caller. The ``trace_context`` is propagated to the continuation
+        notification so any child prompt joins the originating trace
+        (#784), and to the webhook fire so delivery records carry the
+        same ``trace_id``.
+        """
         if self._continuation_runner is not None:
             # Propagate upstream trace_context so the continuation's prompt
             # joins the originating trace rather than surfacing as a new
@@ -1044,6 +1072,35 @@ class AgentExecutor(A2AAgentExecutor):
             await asyncio.sleep(10)
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """A2A SDK entrypoint — run one inbound prompt and enqueue the reply.
+
+        Enforces an A2A-side UTF-8 byte cap before any work
+        (``A2A_MAX_PROMPT_BYTES``, #783); oversize prompts get an error
+        message back and never reach the backend. Resolves the session
+        id from ``context.context_id`` / metadata, sanitises it (strips
+        control chars, caps at 256 bytes, falls back to a fresh uuid),
+        and resolves ``backend_id`` / ``model`` / ``max_tokens`` from
+        metadata with routing-config fallback. The W3C ``traceparent``
+        and ``caller_id`` in metadata are preserved end-to-end (#468,
+        #1084) so the call joins the originating trace and presents a
+        stable principal to session binding.
+
+        Always enqueues at least one final agent message — even when
+        the backend returned an empty string — because the A2A SDK's
+        DefaultRequestHandler waits for a Message event to declare the
+        task complete (#harness-32603). The outbound message carries
+        ``trace_id`` / ``span_id`` in metadata so callers can correlate
+        the reply (#636). On exception the traceback is logged at the
+        catch site so JSON-RPC -32603 surfaces remain diagnosable.
+
+        The ``finally`` block always emits the prompt-completion
+        fan-out (continuation + webhook), the SSE
+        ``a2a.request.completed`` event, and the request-duration
+        histogram. When :meth:`track_background` sheds the completion
+        coroutine under load (#1181) the continuation and webhook
+        runners are invoked synchronously in-line so completion
+        signals are never lost.
+        """
         _exec_start = time.monotonic()
         prompt = context.get_user_input()
         metadata = context.message.metadata or {}
@@ -1398,6 +1455,25 @@ class AgentExecutor(A2AAgentExecutor):
             logger.info(f"Task {task_id!r} cancellation requested but no running task found.")
 
     async def process_bus(self, message: Message) -> None:
+        """Run one bus-delivered :class:`Message` and complete its Future.
+
+        Used for non-A2A work (heartbeats, jobs, tasks, triggers,
+        continuations). Resolves the backend via per-message override
+        → routing config → default, mints a fresh trace context when
+        the message has none so internally scheduled work still
+        carries a ``trace_id`` (#468), and dispatches to
+        :func:`run_consensus` when ``message.consensus`` is populated
+        or :func:`run` otherwise. The response or exception is set on
+        ``message.result`` (when non-None and not already done) so the
+        producer side can await completion.
+
+        Mirrors :meth:`execute` for completion fan-out: the
+        ``on_prompt_completed`` coroutine is scheduled via
+        :meth:`track_background` with ``source="bus"``; on shed
+        (#1181) the continuation and webhook runners fire
+        synchronously in-line so bus-kind completions never go silently
+        missing.
+        """
         _bus_start = time.monotonic()
         _session_id = message.session_id or str(uuid.uuid4())
         _response = ""

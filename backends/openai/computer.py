@@ -108,10 +108,17 @@ class PlaywrightComputer(AsyncComputer):
 
     @property
     def environment(self):
+        """Static ``"browser"`` for the AsyncComputer protocol slot.
+
+        The OpenAI Agents SDK uses this string to select the correct
+        screenshot + action vocabulary for the model. Hard-coded
+        because this class only drives Playwright/Chromium.
+        """
         return "browser"
 
     @property
     def dimensions(self) -> tuple[int, int]:
+        """Return ``(width, height)`` so the model knows the screenshot canvas size."""
         return (self._width, self._height)
 
     async def _ensure_page(self):
@@ -188,17 +195,25 @@ class PlaywrightComputer(AsyncComputer):
             await self._page.mouse.click(x, y, button=pw_button)
 
     async def double_click(self, x: int, y: int) -> None:
+        """Issue a double-click at ``(x, y)`` on the active page."""
         async with self._op_lock:
             await self._ensure_page()
             await self._page.mouse.dblclick(x, y)
 
     async def scroll(self, x: int, y: int, scroll_x: int, scroll_y: int) -> None:
+        """Scroll the page by ``(scroll_x, scroll_y)`` after parking the cursor at ``(x, y)``.
+
+        Moves the mouse first so scroll-on-hover handlers see the cursor
+        at the requested anchor, then runs ``window.scrollBy`` from
+        page-level JavaScript.
+        """
         async with self._op_lock:
             await self._ensure_page()
             await self._page.mouse.move(x, y)
             await self._page.evaluate(f"window.scrollBy({scroll_x}, {scroll_y})")
 
     async def type(self, text: str) -> None:
+        """Send ``text`` as keystrokes via the page's keyboard interface."""
         async with self._op_lock:
             await self._ensure_page()
             await self._page.keyboard.type(text)
@@ -213,17 +228,27 @@ class PlaywrightComputer(AsyncComputer):
         await asyncio.sleep(1.0)
 
     async def move(self, x: int, y: int) -> None:
+        """Move the cursor to ``(x, y)`` without clicking."""
         async with self._op_lock:
             await self._ensure_page()
             await self._page.mouse.move(x, y)
 
     async def keypress(self, keys: list[str]) -> None:
+        """Press each entry in ``keys`` sequentially via the page's keyboard."""
         async with self._op_lock:
             await self._ensure_page()
             for key in keys:
                 await self._page.keyboard.press(key)
 
     async def drag(self, path: list[tuple[int, int]]) -> None:
+        """Drag the cursor through ``path`` as one continuous press-and-release.
+
+        The first point is the press anchor: the cursor is moved there
+        with the button up, then ``mouse.down()`` is issued, the cursor
+        is dragged through the remaining points in order, and
+        ``mouse.up()`` finishes the gesture. An empty ``path`` is a
+        no-op.
+        """
         async with self._op_lock:
             await self._ensure_page()
             if not path:
