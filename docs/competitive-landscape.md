@@ -1,9 +1,31 @@
 # Competitive Landscape
 
-Last updated: 2026-05-28 by kira-agent-witwave (twenty-fourth pass — verification-and-refinement pass per zora
-docs-research one-shot dispatch under P2 cadence-floor breach (1.00× exceeded since 02Z, 3h floor) with polish-skill
-ADVANCE from `docs-cleanup` (zero_streak=1 confirmed at last_run_sha=`f072b8ad`=HEAD, no fresh source). One upstream
-movement captured in the ~16-hour window since the twenty-third pass yesterday: **CrewAI** alpha line rolled from
+Last updated: 2026-05-28 by kira-agent-witwave (twenty-fifth pass — verification-and-refinement pass per zora
+docs-research one-shot 09:00Z heartbeat dispatch as polish-tier ADVANCE alternation from `docs-cleanup` (zero_streak=1
+at default since 05Z flip-back, no fresh docs commits since `last_run_sha=a972e5b1`). One upstream movement captured in
+the ~4-hour window since the twenty-fourth pass earlier today: **OpenClaw** opened a fresh beta train at
+**`v2026.5.27-beta.1`** (2026-05-28 05:54 UTC) — headline additions are hardened security boundaries (improved content
+boundaries, hostname normalization, command-wrapper blocking, unsafe environment-override rejection), Codex reliability
+work (runtime model resolution, workspace memory routing, app-server client persistence), provider expansion
+(OpenAI-compatible embeddings, Pixverse video generation, DeepInfra catalog improvements), durable channel delivery
+(Telegram durability, iMessage dedup, Slack cleanup handling, Discord artifact filtering), native hook relays surviving
+restarts with fresh fallback rotation, plugin display metadata for cleaner catalog listings, and Gateway/reply
+hot-path performance work; stable still `v2026.5.26` (source:
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.27-beta.1>, accessed 2026-05-28). All other high-cadence
+upstream pins verified unchanged from the twenty-fourth pass earlier today: Claude Agent SDK still `v0.2.87`
+(2026-05-23), Microsoft Agent Framework still `python-1.6.0` (2026-05-22) / `dotnet-1.6.1` (2026-05-14), LangGraph still
+`v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26), OpenClaw stable still `v2026.5.26` (2026-05-27),
+CrewAI still `v1.14.5` stable / `1.14.6a2` alpha (2026-05-27), A2A still `v1.0.0` (2026-03-12) / 24,000+ stars / 2,400+
+forks, OpenHands still `v1.7.0` (2026-05-01) / 75,000+ stars / 9,500+ forks (sources:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/openclaw/openclaw/releases>,
+<https://github.com/crewAIInc/crewAI/releases>, <https://github.com/a2aproject/A2A>,
+<https://github.com/OpenHands/OpenHands>, all accessed 2026-05-28). Twenty-fourth pass (2026-05-28, ~4h ago) was a
+verification-and-refinement pass per zora docs-research one-shot dispatch under P2 cadence-floor breach (1.00× exceeded
+since 02Z, 3h floor) with polish-skill ADVANCE from `docs-cleanup` (zero_streak=1 confirmed at
+last_run_sha=`f072b8ad`=HEAD, no fresh source). One upstream movement captured in the ~16-hour window since the
+twenty-third pass yesterday: **CrewAI** alpha line rolled from
 `1.14.6a1` to **`1.14.6a2`** (2026-05-27 23:49 UTC) — headline additions are a hardened **`StdioTransport`** preventing
 environment-variable leakage, a fix for **structured-output leaks in tool-calling loops**, an `env_vars` declaration on
 `DatabricksQueryTool`, improved planning configuration and observation handling, and new Agent Control Plane
