@@ -1,23 +1,50 @@
 # Competitive Landscape
 
-Last updated: 2026-05-28 by kira-agent-witwave (twenty-fifth pass — verification-and-refinement pass per zora
-docs-research one-shot 09:00Z heartbeat dispatch as polish-tier ADVANCE alternation from `docs-cleanup` (zero_streak=1
-at default since 05Z flip-back, no fresh docs commits since `last_run_sha=a972e5b1`). One upstream movement captured in
-the ~4-hour window since the twenty-fourth pass earlier today: **OpenClaw** opened a fresh beta train at
-**`v2026.5.27-beta.1`** (2026-05-28 05:54 UTC) — headline additions are hardened security boundaries (improved content
-boundaries, hostname normalization, command-wrapper blocking, unsafe environment-override rejection), Codex reliability
-work (runtime model resolution, workspace memory routing, app-server client persistence), provider expansion
-(OpenAI-compatible embeddings, Pixverse video generation, DeepInfra catalog improvements), durable channel delivery
-(Telegram durability, iMessage dedup, Slack cleanup handling, Discord artifact filtering), native hook relays surviving
-restarts with fresh fallback rotation, plugin display metadata for cleaner catalog listings, and Gateway/reply hot-path
-performance work; stable still `v2026.5.26` (source:
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.27-beta.1>, accessed 2026-05-28). All other high-cadence
-upstream pins verified unchanged from the twenty-fourth pass earlier today: Claude Agent SDK still `v0.2.87`
-(2026-05-23), Microsoft Agent Framework still `python-1.6.0` (2026-05-22) / `dotnet-1.6.1` (2026-05-14), LangGraph still
-`v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26), OpenClaw stable still `v2026.5.26` (2026-05-27),
-CrewAI still `v1.14.5` stable / `1.14.6a2` alpha (2026-05-27), A2A still `v1.0.0` (2026-03-12) / 24,000+ stars / 2,400+
-forks, OpenHands still `v1.7.0` (2026-05-01) / 75,000+ stars / 9,500+ forks (sources:
-<https://github.com/anthropics/claude-agent-sdk-python/releases>,
+Last updated: 2026-05-28 by kira-agent-witwave (twenty-sixth pass — verification-and-refinement pass per zora
+docs-research one-shot 22:00Z heartbeat dispatch as polish-tier ADVANCE alternation from `docs-cleanup` (zero_streak=1
+at default, no fresh docs commits since `last_run_sha=a3d22edf`). Three substantive upstream movements captured in the
+~13-hour window since the twenty-fifth pass earlier today: **OpenClaw `v2026.5.27` stable shipped** (2026-05-28 11:41
+UTC) — graduates the morning `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA without new substantive surface; the
+beta's hardened security boundaries (improved content boundaries, hostname normalization, command-wrapper blocking,
+unsafe environment-override rejection), Codex reliability work (runtime model resolution, workspace memory routing,
+app-server client persistence), provider expansion (OpenAI-compatible embeddings, Pixverse video generation, DeepInfra
+catalog improvements), durable channel delivery (Telegram durability, iMessage dedup, Slack cleanup handling, Discord
+artifact filtering), restart-surviving native hook relays with fresh fallback rotation, plugin display metadata, and
+Gateway/reply hot-path performance work all carry forward unchanged (source:
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.27>, accessed 2026-05-28). **CrewAI `1.14.6` stable shipped**
+(2026-05-28 17:04 UTC) — graduates the `1.14.6a2` alpha (2026-05-27 23:49 UTC) to GA; carries forward the hardened
+**`StdioTransport`** preventing environment-variable leakage and the **structured-output leak fix in tool-calling
+loops** from `1.14.6a2`, adds **checkpoint restoration** (AgentExecutor support plus orphan-task handling), and moves
+the **Skills Repository system** (added in `1.14.6a1`) **behind an experimental gate** at GA; previous stable was
+`v1.14.5` (2026-05-18) (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.6>, accessed 2026-05-28).
+**Microsoft Agent Framework `python-1.7.0` shipped** (2026-05-28) — adds **`HarnessAgent`** with background-agents
+harness provider support, **`A2AAgentSession`** with referenced task IDs and input-required capabilities, and
+experimental prompt-agent conversion and deployment APIs in `FoundryChatClient`; headline breaking change is **removal
+of Python-only declarative actions** plus alias-kind renames to align with C# canonical names; `.NET` line unchanged at
+`dotnet-1.6.1` (source: <https://github.com/microsoft/agent-framework/releases/tag/python-1.7.0>, accessed 2026-05-28).
+All other high-cadence upstream pins verified unchanged from the twenty-fifth pass earlier today: Claude Agent SDK still
+`v0.2.87` (2026-05-23), LangGraph still `v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26), A2A still
+`v1.0.0` (2026-03-12) / 24,000+ stars / 2,400+ forks, OpenHands still `v1.7.0` (2026-05-01) / 75,000+ stars / 9,500+
+forks (sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/langchain-ai/langgraph/releases>, <https://github.com/openai/openai-agents-python/releases>,
+<https://github.com/a2aproject/A2A>, <https://github.com/OpenHands/OpenHands>, all accessed 2026-05-28). Twenty-fifth
+pass (2026-05-28, ~13h ago) was a verification-and-refinement pass per zora docs-research one-shot 09:00Z heartbeat
+dispatch as polish-tier ADVANCE alternation from `docs-cleanup` (zero_streak=1 at default since 05Z flip-back, no fresh
+docs commits since `last_run_sha=a972e5b1`). One upstream movement captured in the ~4-hour window since the
+twenty-fourth pass earlier today: **OpenClaw** opened a fresh beta train at **`v2026.5.27-beta.1`** (2026-05-28 05:54
+UTC) — headline additions are hardened security boundaries (improved content boundaries, hostname normalization,
+command-wrapper blocking, unsafe environment-override rejection), Codex reliability work (runtime model resolution,
+workspace memory routing, app-server client persistence), provider expansion (OpenAI-compatible embeddings, Pixverse
+video generation, DeepInfra catalog improvements), durable channel delivery (Telegram durability, iMessage dedup, Slack
+cleanup handling, Discord artifact filtering), native hook relays surviving restarts with fresh fallback rotation,
+plugin display metadata for cleaner catalog listings, and Gateway/reply hot-path performance work; stable still
+`v2026.5.26` (source: <https://github.com/openclaw/openclaw/releases/tag/v2026.5.27-beta.1>, accessed 2026-05-28). All
+other high-cadence upstream pins verified unchanged from the twenty-fourth pass earlier today: Claude Agent SDK still
+`v0.2.87` (2026-05-23), Microsoft Agent Framework still `python-1.6.0` (2026-05-22) / `dotnet-1.6.1` (2026-05-14),
+LangGraph still `v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26), OpenClaw stable still
+`v2026.5.26` (2026-05-27), CrewAI still `v1.14.5` stable / `1.14.6a2` alpha (2026-05-27), A2A still `v1.0.0`
+(2026-03-12) / 24,000+ stars / 2,400+ forks, OpenHands still `v1.7.0` (2026-05-01) / 75,000+ stars / 9,500+ forks
+(sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
 <https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
 <https://github.com/openai/openai-agents-python/releases>, <https://github.com/openclaw/openclaw/releases>,
 <https://github.com/crewAIInc/crewAI/releases>, <https://github.com/a2aproject/A2A>,
@@ -586,26 +613,33 @@ most transferable idea.
 **Autonomy model:** Human-driven (a crew is instantiated and kicked off by Python code a human runs; event-driven Flows
 add reactivity but crews do not self-schedule — they are called)
 
-Multi-agent orchestration framework. **Current stable: v1.14.5 (2026-05-18)** — graduates the May v1.14.5 alpha line to
-stable. Headline change is **deprecating `CrewAgentExecutor` in favour of defaulting Crew agents to `AgentExecutor`**;
-also adds a `restore_from_state_id` kickoff parameter for resuming workflows from a prior state, improved Daytona
-sandbox tools, a memory-leak fix in git operations, status-endpoint routing fix, and **a CLI extracted into a standalone
-`crewai-cli` package** (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.5>, accessed 2026-05-18).
-Alpha-line cadence moved off the 1.14.5 train to **`1.14.6a2`** (2026-05-27, latest), incrementing from `1.14.6a1`
-(2026-05-21) which added a **Skills Repository system** with registry, caching, CLI tools, and SDK integration (the
-first OSS-side direct entrant on the self-improvement axis), plus RuntimeState serialization-robustness improvements and
-an `idna` 3.15 CVE bump for GHSA-65pc-fj4g-8rjx; `1.14.6a2` then hardened **`StdioTransport`** against
-environment-variable leakage, fixed **structured-output leaks in tool-calling loops**, added an `env_vars` declaration
-on `DatabricksQueryTool`, improved planning configuration and observation handling, and introduced Agent Control Plane
-documentation (sources: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a1> accessed 2026-05-25 and
-<https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a2> accessed 2026-05-28). The previous stable line `v1.14.4`
-(2026-04-30) introduced Responses API support for the Azure OpenAI provider, You.com MCP tools (search / research /
-content extraction), Tavily Research integration, custom persistence keys for `@persist`, and a `litellm` bump for an
-SSTI fix (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.4>, accessed 2026-05-06); the v1.14.0 / v1.14.2
-substance detailed below remains intact under v1.14.5. Headline 2025–2026 capabilities: **unified Memory class**
-(LLM-inferred hierarchical scopes, composite recall scoring, non-blocking background saves, `crewai memory` terminal
-browser), **Tool search** (dynamic tool injection — loads only tools relevant to the current task rather than the full
-allow-list), Qdrant Edge for on-device vector storage, Enterprise Control Plane with real-time tracing.
+Multi-agent orchestration framework. **Current stable: v1.14.6 (2026-05-28)** — graduates the 1.14.6 alpha line to
+stable; carries forward the hardened **`StdioTransport`** preventing environment-variable leakage and the
+**structured-output leak fix in tool-calling loops** from `1.14.6a2`, adds **checkpoint restoration** (AgentExecutor
+support plus orphan-task handling), and moves the **Skills Repository system** (added in `1.14.6a1`) **behind an
+experimental gate** at GA; documentation for the **Agent Control Plane** carries forward from the alpha (source:
+<https://github.com/crewAIInc/crewAI/releases/tag/1.14.6>, accessed 2026-05-28). The **previous stable `v1.14.5`**
+(2026-05-18) graduated the May v1.14.5 alpha line — headline change was **deprecating `CrewAgentExecutor` in favour of
+defaulting Crew agents to `AgentExecutor`**; also added a `restore_from_state_id` kickoff parameter for resuming
+workflows from a prior state, improved Daytona sandbox tools, a memory-leak fix in git operations, a status-endpoint
+routing fix, and **a CLI extracted into a standalone `crewai-cli` package** (source:
+<https://github.com/crewAIInc/crewAI/releases/tag/1.14.5>, accessed 2026-05-18). Alpha-line history feeding the 1.14.6
+stable: `1.14.6a1` (2026-05-21) added the **Skills Repository system** with registry, caching, CLI tools, and SDK
+integration (the first OSS-side direct entrant on the self-improvement axis — moved behind an experimental gate at GA),
+plus RuntimeState serialization-robustness improvements and an `idna` 3.15 CVE bump for GHSA-65pc-fj4g-8rjx; `1.14.6a2`
+(2026-05-27 23:49 UTC) then hardened **`StdioTransport`** against environment-variable leakage, fixed
+**structured-output leaks in tool-calling loops**, added an `env_vars` declaration on `DatabricksQueryTool`, improved
+planning configuration and observation handling, and introduced Agent Control Plane documentation; both alpha trains
+graduated into `1.14.6` stable on 2026-05-28 (sources: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a1>
+accessed 2026-05-25 and <https://github.com/crewAIInc/crewAI/releases/tag/1.14.6a2> accessed 2026-05-28). The previous
+stable line `v1.14.4` (2026-04-30) introduced Responses API support for the Azure OpenAI provider, You.com MCP tools
+(search / research / content extraction), Tavily Research integration, custom persistence keys for `@persist`, and a
+`litellm` bump for an SSTI fix (source: <https://github.com/crewAIInc/crewAI/releases/tag/1.14.4>, accessed 2026-05-06);
+the v1.14.0 / v1.14.2 substance detailed below remains intact under v1.14.5. Headline 2025–2026 capabilities: **unified
+Memory class** (LLM-inferred hierarchical scopes, composite recall scoring, non-blocking background saves,
+`crewai memory` terminal browser), **Tool search** (dynamic tool injection — loads only tools relevant to the current
+task rather than the full allow-list), Qdrant Edge for on-device vector storage, Enterprise Control Plane with real-time
+tracing.
 
 **v1.14.0 (2026-04-07) — checkpoint/resume primitives:** First-class `CheckpointConfig` auto-checkpointing,
 `checkpoint list` / `checkpoint info` CLI, `SqliteProvider` checkpoint store, runtime-state checkpointing with
@@ -709,28 +743,32 @@ this project targets the team running coordinated agents as cluster workloads.
 
 OpenClaw originated as "Clawdbot" in November 2025, was renamed "Moltbot" on 2026-01-27 under Anthropic trademark
 pressure, and three days later settled on **OpenClaw**. Category-leading install base — **375,000+ GitHub stars and
-78,200+ forks as of 2026-05-28**, with a very active commit cadence (latest stable release **`v2026.5.26`** on
-2026-05-27 — graduating the `2026.5.26-beta.1` (2026-05-26 21:10 UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta
-rollup to GA; pre-release line currently quiet pending the next train. The substantive surface of `v2026.5.26` (carried
-forward from beta.1, captured in the twenty-third pass preface above) headlines a **Transcripts plugin**, **named-model
-login profiles**, **Signal / iMessage / WhatsApp tapback approval reactions**, the **Sharp → Rastermill image-backend
-swap**, an ephemeral **Activity tab** in the Control UI, **OpenTelemetry LLM content spans**, default
-`cron.maxConcurrentRuns=8`, and broad reply/startup performance work. The prior `v2026.5.22` stable (2026-05-24) shipped
-a **Meeting Notes plugin** with Discord voice capture and auto-start transcript imports, a **~4,100× model-listing
-performance improvement** (provider auth-state pre-warmed at startup drops the call from ~20s to ~5ms), Gateway startup
-optimisations via process-stable channel-catalog caching and lazy startup-idle plugin work, chat-session picker
-pagination, and on the provider side routes Claude 4.x 1M context through GA (no `beta` flag required) and DeepSeek
-through the Microsoft Foundry Responses API; the prior `v2026.5.24-beta.2` (2026-05-24) beta surface added **iMessage
-tapback approval reactions** (👍 = allow-once, 👎 = deny), realtime Discord voice for OpenClaw status / cancel / steer /
-queue commands during active consults, adaptive image compression with model-aware quality, and symlink rejection on
-remote container operations; the prior `v2026.5.25-beta.1` (2026-05-26 09:41 UTC) head layered "Beta 1 late fixes" on
-top for iMessage threading and Codex sandbox path handling; the `v2026.5.26-beta.1` (2026-05-26 21:10 UTC) and
+78,200+ forks as of 2026-05-28**, with a very active commit cadence (latest stable release **`v2026.5.27`** on
+2026-05-28 11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries
+forward unchanged from beta.1** (captured in the twenty-sixth pass preface above): hardened security boundaries, Codex
+reliability work, provider expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements),
+durable channel delivery, restart-surviving native hook relays, plugin display metadata, and Gateway/reply hot-path
+performance. The prior stable **`v2026.5.26`** (2026-05-27 11:27 UTC) graduated the `2026.5.26-beta.1` (2026-05-26 21:10
+UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta rollup to GA; its substantive surface headlines a **Transcripts
+plugin**, **named-model login profiles**, **Signal / iMessage / WhatsApp tapback approval reactions**, the **Sharp →
+Rastermill image-backend swap**, an ephemeral **Activity tab** in the Control UI, **OpenTelemetry LLM content spans**,
+default `cron.maxConcurrentRuns=8`, and broad reply/startup performance work. The prior `v2026.5.22` stable (2026-05-24)
+shipped a **Meeting Notes plugin** with Discord voice capture and auto-start transcript imports, a **~4,100×
+model-listing performance improvement** (provider auth-state pre-warmed at startup drops the call from ~20s to ~5ms),
+Gateway startup optimisations via process-stable channel-catalog caching and lazy startup-idle plugin work, chat-session
+picker pagination, and on the provider side routes Claude 4.x 1M context through GA (no `beta` flag required) and
+DeepSeek through the Microsoft Foundry Responses API; the prior `v2026.5.24-beta.2` (2026-05-24) beta surface added
+**iMessage tapback approval reactions** (👍 = allow-once, 👎 = deny), realtime Discord voice for OpenClaw status /
+cancel / steer / queue commands during active consults, adaptive image compression with model-aware quality, and symlink
+rejection on remote container operations; the prior `v2026.5.25-beta.1` (2026-05-26 09:41 UTC) head layered "Beta 1 late
+fixes" on top for iMessage threading and Codex sandbox path handling; the `v2026.5.26-beta.1` (2026-05-26 21:10 UTC) and
 `v2026.5.26-beta.2` (2026-05-27 05:46 UTC) heads were the larger rollup for the now-shipped `2026.5.26` stable —
 substantive surface enumerated above; both graduated into `v2026.5.26` stable on 2026-05-27) — the exact star number
 drifts fast, so re-pin before quoting in marketing or external docs (sources: <https://github.com/openclaw/openclaw>,
 <https://github.com/openclaw/openclaw/releases>, <https://github.com/openclaw/openclaw/releases/tag/v2026.5.22>,
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26-beta.1>, and
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>, accessed 2026-05-27). Runs on user-controlled
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26-beta.1>,
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>, and
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.27>, all accessed 2026-05-28). Runs on user-controlled
 infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to Claude, OpenAI,
 DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev channels; very
 active development cadence.**
@@ -828,15 +866,19 @@ is hyperscaler-managed-SaaS vs. self-hosted-Kubernetes — classic split.
 
 **Agent Framework:** Open-source framework (Python + .NET) for building and orchestrating multi-agent workflows. **GA
 1.0 shipped 2026-04-02** (Python + .NET both tagged `1.0.0` the same day); on the v1 line the cadence has been brisk —
-**Python `1.6.0` (2026-05-22)** jumped past 1.5.0 and adds a first-class **Shell tool** with local + Docker execution, a
-Monty-backed CodeAct provider (`agent-framework-monty`), experimental hosted tool factories in `FoundryChatClient`, and
-`return_immediately` for non-streaming A2A background ops; headline breaking change is **instrumentation enabled by
-default** in both `agent-framework-core` and `agent-framework-foundry` (projects previously opting in explicitly will
-pick up tracing automatically on upgrade). **.NET `dotnet-1.6.1` (2026-05-14)** unchanged from the nineteenth pass —
-adds hyperlight integration and improves the `FoundryAgent` for hosted agents. Both lines ship minor releases on
-near-weekly cadence — exiting the "public preview" framing the doc previously used (source:
-<https://github.com/microsoft/agent-framework/releases/tag/python-1.6.0>, accessed 2026-05-25). First-class A2A, MCP,
-and OpenTelemetry — exactly the same tripod we ship.
+**Python `1.7.0` (2026-05-28)** adds **`HarnessAgent`** with background-agents harness provider support,
+**`A2AAgentSession`** with referenced task IDs and input-required capabilities, and experimental prompt-agent conversion
+and deployment APIs in `FoundryChatClient`; headline breaking change is **removal of Python-only declarative actions**
+plus alias-kind renames to align with C# canonical names (projects relying on Python-only action types will need to
+migrate on upgrade). The prior **Python `1.6.0` (2026-05-22)** jumped past 1.5.0 and added a first-class **Shell tool**
+with local + Docker execution, a Monty-backed CodeAct provider (`agent-framework-monty`), experimental hosted tool
+factories in `FoundryChatClient`, and `return_immediately` for non-streaming A2A background ops; its headline breaking
+change was **instrumentation enabled by default** in both `agent-framework-core` and `agent-framework-foundry`. **.NET
+`dotnet-1.6.1` (2026-05-14)** unchanged from the nineteenth pass — adds hyperlight integration and improves the
+`FoundryAgent` for hosted agents. Both lines ship minor releases on near-weekly cadence — exiting the "public preview"
+framing the doc previously used (sources: <https://github.com/microsoft/agent-framework/releases/tag/python-1.7.0>
+accessed 2026-05-28 and <https://github.com/microsoft/agent-framework/releases/tag/python-1.6.0> accessed 2026-05-25).
+First-class A2A, MCP, and OpenTelemetry — exactly the same tripod we ship.
 
 **Foundry Agent Service:** GA announced March 2026. OpenAI Responses-compatible API; hosts DeepSeek, xAI, Meta,
 LangChain, LangGraph models (in addition to Azure OpenAI). Directly overlaps this project's cross-backend orchestration.
