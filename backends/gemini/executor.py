@@ -646,6 +646,19 @@ def _current_trace_id_hex() -> str | None:
 
 
 async def log_entry(role: str, text: str, session_id: str, model: str | None = None, tokens: int | None = None) -> None:
+    """Append one conversation row to ``CONVERSATION_LOG`` for this turn.
+
+    Writes a JSONL row carrying ``ts`` / ``agent`` / ``session_id`` / ``role``
+    / ``model`` / ``tokens`` / ``text`` via ``_append_log`` on a thread so the
+    request path is never blocked by disk I/O. ``text`` is run through
+    ``redact_text`` first when ``should_redact()`` returns true (#1193, parity
+    with claude). When OTel is active the row is stamped with the current
+    span's ``trace_id`` so conversation rows can be joined with backend /
+    harness traces (#636). On success bumps ``backend_log_entries_total`` and
+    ``backend_log_bytes_total`` under ``logger="conversation"``. Swallows all
+    exceptions after incrementing ``backend_log_write_errors_total`` so a log
+    failure never propagates back into the caller.
+    """
     try:
         # Opt-in redaction pass (#1193, parity with claude). Guarded on
         # LOG_REDACT so existing deployments retain identical output
@@ -1143,6 +1156,16 @@ async def _append_tool_audit(entry: dict) -> None:
 
 
 async def log_trace(text: str) -> None:
+    """Append a raw line to ``TRACE_LOG`` for this turn.
+
+    Thin wrapper around ``_append_log`` (run on a thread) plus metric
+    bookkeeping under ``logger="trace"`` — ``backend_log_entries_total`` and
+    ``backend_log_bytes_total`` on success, ``backend_log_write_errors_total``
+    on failure. Like ``log_entry`` it swallows write exceptions so the
+    trace-emitting code paths can call it unconditionally. ``text`` is
+    written verbatim — callers are responsible for whatever JSON encoding /
+    framing the trace consumers expect.
+    """
     try:
         await asyncio.to_thread(_append_log, TRACE_LOG, text)
         if backend_log_entries_total is not None:
@@ -2781,6 +2804,59 @@ async def _run_inner(
 
 
 class AgentExecutor(A2AAgentExecutor):
+    """A2A agent executor backed by the google-genai SDK.
+
+    Subclass of ``a2a.server.agent_execution.AgentExecutor`` that implements
+    the A2A ``execute`` / ``cancel`` contract by driving google-genai chat
+    sessions. The constructor validates ``GEMINI_API_KEY`` /
+    ``GOOGLE_API_KEY`` at startup (#417) so missing credentials surface
+    immediately rather than on the first request, and owns the executor's
+    mutable runtime state:
+
+    - ``_sessions`` — per-session LRU of last-active timestamps; pairs with
+      ``_session_locks`` (a dict of ``_RefCountedLock``) so concurrent
+      requests for the same session id serialise without leaking lock
+      objects for inactive sessions.
+    - ``_running_tasks`` — A2A ``task_id`` → ``asyncio.Task`` map populated
+      on entry to ``execute`` and cleared in its ``finally``; ``cancel()``
+      and ``close()`` use it to drain in-flight requests.
+    - ``_agent_md_content`` / ``_agent_md_revision`` — cached GEMINI.md
+      contents and the SHA-256 hex prefix stamped on
+      ``backend_agent_md_revision`` (#1751, mirrors codex #1097); refreshed
+      by ``agent_md_watcher`` on every successful reload.
+    - ``_history_save_failed`` — session ids whose history could not be
+      persisted; on the next request those sessions are treated as new
+      rather than resuming potentially inconsistent state (#409).
+    - ``_hook_state`` — ``HookState`` holding the baseline + extensions rule
+      lists (#631). Gemini's AFC executes tool calls inside
+      ``generate_content`` so PreToolUse hooks never fire — the
+      ``backend_hooks_enforcement_mode`` gauge is stamped to ``0``
+      ("skeleton") until #1863 hand-rolls the tool loop. The
+      ``hook.decision`` side-channel wiring is pre-installed (#963) so the
+      eventual enforcement path can decide-then-post in one call.
+    - ``_mcp_config`` / ``_mcp_stack`` / ``_live_mcp_servers`` — lifespan-
+      scoped MCP session stack (#640, mirrors codex #526). MCP stdio
+      subprocesses are entered once at startup or on hot-reload and reused
+      across requests.
+    - ``_mcp_servers_lock`` — lazy ``asyncio.Lock`` so off-loop construction
+      (unit tests) still works; production callers must invoke
+      ``bind_to_event_loop()`` from ``main()`` on the serving loop to
+      eliminate "Lock bound to different event loop" hazards (#1509).
+    - ``_mcp_known_servers`` — every server name that has had
+      ``backend_mcp_server_up`` set non-zero, so hot-reload / shutdown can
+      zero-out gauges for servers removed from the new config and
+      false-OK alerting cannot hide a renamed/removed server (#884).
+    - ``_mcp_stack_refcount`` + ``_mcp_old_stacks`` — refcount of in-flight
+      requests holding the current stack and a list of parked old stacks
+      with park timestamps. A hot reload swaps in a new stack and parks
+      the old; old stacks are ``aclose()``d when the last holder releases
+      (#673, mirror of codex #667). The watchdog (#735) force-closes
+      stacks lingering past ``_mcp_parked_stack_max_age_s``, and the hard
+      grace factor (#995, env-tunable via ``MCP_PARKED_STACK_HARD_GRACE_FACTOR``)
+      eventually reclaims even refcount>0 entries so a leaked reference
+      cannot retain a stdio subprocess + pipes indefinitely.
+    """
+
     def __init__(self):
         # Validate API key at startup so missing credentials surface immediately
         # rather than on the first request (#417).
@@ -3698,6 +3774,47 @@ class AgentExecutor(A2AAgentExecutor):
             await asyncio.sleep(10)
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Run one A2A request through the google-genai SDK and reply on ``event_queue``.
+
+        Validation gates run before any API call is made or token is burned:
+        empty / whitespace-only prompts are rejected with a
+        ``backend_empty_prompts_total`` bump, an A2A error message, and a
+        ``"system"`` row in the conversation log (#544 / #812); prompts
+        larger than ``_MAX_PROMPT_BYTES`` are rejected with
+        ``backend_prompt_too_large_total`` and a ``PromptTooLargeError``
+        (#1620 / #1730). The session id is derived through
+        ``shared/session_binding.py`` with optional per-caller binding when
+        ``SESSION_ID_SECRET`` is set (#733 / #888) and probe-list rotation
+        when ``SESSION_ID_SECRET_PREV`` is also set so an in-progress secret
+        rotation can still resume an existing on-disk history (#1042);
+        rejection paths route their session id through the same derivation
+        so log / metric rows do not split across raw vs derived ids. When
+        the upstream harness forwards a ``traceparent`` in
+        ``message.metadata`` the OTel server span ``gemini.execute``
+        continues that trace (#469).
+
+        Streaming: each text chunk is forwarded to the per-session SSE
+        broadcaster (``session_stream``) via ``_emit_chunk`` so the
+        dashboard's session drill-down sees text as it arrives (#1110 phase
+        4). Per-chunk Message events on the A2A wire are intentionally NOT
+        emitted because the A2A SDK's ``ResultAggregator`` treats every
+        ``Message`` as terminal — only one final aggregated
+        ``new_agent_text_message`` is enqueued at completion. A terminal
+        ``final=True`` session-stream chunk is published on both success
+        and error paths (#1141) so observers see a deterministic turn
+        boundary.
+
+        Per-task bookkeeping: when ``context.task_id`` is set the current
+        asyncio task is registered in ``self._running_tasks`` (and
+        ``backend_running_tasks`` bumped) on entry, then removed in the
+        ``finally`` block alongside the request-duration / last-request
+        timestamp / requests-total metric updates. This lets ``cancel()``
+        and ``close()`` find and drain in-flight requests. The lifespan-
+        scoped MCP stack refcount is acquired before the ``run`` call and
+        released in a nested ``finally`` so a hot-reload can park the old
+        stack without yanking servers out from under an in-flight request
+        (#673).
+        """
         _exec_start = time.monotonic()
         prompt = context.get_user_input()
         metadata = context.message.metadata or {}
@@ -3990,6 +4107,20 @@ class AgentExecutor(A2AAgentExecutor):
                     backend_running_tasks.labels(**_LABELS).dec()
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Cancel the in-flight ``execute()`` asyncio task for an A2A ``task_id``.
+
+        Increments ``backend_task_cancellations_total`` unconditionally so
+        cancellation attempts are visible in metrics even when no matching
+        task is tracked. Looks up the task by ``context.task_id`` in
+        ``self._running_tasks`` (the same map populated on ``execute()``
+        entry); when present, calls ``task.cancel()`` and logs the request.
+        When absent, logs that no running task was found and returns without
+        raising — common when the task already completed or was cancelled by
+        another path (e.g. ``close()``). ``event_queue`` is accepted for the
+        A2A protocol signature but is not used; the running ``execute()``'s
+        own ``finally`` block emits any terminal A2A events as
+        ``CancelledError`` propagates out.
+        """
         if backend_task_cancellations_total is not None:
             backend_task_cancellations_total.labels(**_LABELS).inc()
         task_id = context.task_id
