@@ -2625,6 +2625,46 @@ class AgentExecutor(A2AAgentExecutor):
         await _close_hook_http_client()
 
     async def mcp_config_watcher(self) -> None:
+        """Watch ``MCP_CONFIG_PATH`` and hot-reload the active MCP server set (#591).
+
+        Mirrors ``hooks_config_watcher`` and ``agent_md_watcher`` in shape:
+        an initial parse, then a never-exiting ``awatch`` loop over the
+        containing directory that re-parses on every change to the target
+        file. Every server-set mutation routes through
+        ``_swap_mcp_servers`` so the ``_mcp_reload_lock`` (#1051)
+        serialises this watcher against the lifespan-path initial load and
+        against any other concurrent reload — a rapid burst of file events
+        cannot publish an older parse after a newer one.
+
+        Initial-load posture: ``_load_mcp_config`` is invoked in a worker
+        thread; on parse failure the swap is performed with an empty
+        server set (source ``"watcher-initial-failed"``) because there is
+        no previous value to retain. The warning log and
+        ``backend_mcp_config_errors_total`` increment for that failure are
+        emitted by ``_load_mcp_config`` itself, not here. The whole
+        initial-load block is skipped when ``_initial_mcp_loaded`` is set
+        — that flag is flipped by ``perform_initial_loads`` on the
+        lifespan startup path (#869), so the watcher does not double-load
+        when the backend boots normally.
+
+        Reload posture: on a change event whose absolute path matches
+        ``MCP_CONFIG_PATH`` the new server set is parsed into a temporary
+        and only swapped on success. A malformed edit logs a warning and
+        breaks out to the outer loop with the previous server set
+        intact, matching ``hooks_config_watcher``'s fail-safe (#591).
+        Successful reloads bump ``backend_mcp_config_reloads_total``;
+        every event batch bumps ``backend_watcher_events_total`` with
+        ``watcher="mcp"``.
+
+        Resilience: if the watched directory is absent the watcher logs
+        and sleeps 10s before re-checking, and if ``awatch`` itself
+        returns (directory disappeared mid-watch) the outer ``while True``
+        re-enters after a 10s sleep, bumping
+        ``backend_file_watcher_restarts_total`` with ``watcher="mcp"`` so
+        a flapping config volume is observable in metrics. The coroutine
+        is intended to run for the lifetime of the executor; ``close()``
+        cancels it via ``_mcp_watcher_tasks``.
+        """
         # Initial load: fall back to an empty server set if the first parse
         # fails — there is no previous value to keep. The warning log and
         # ``backend_mcp_config_errors_total`` increment are already emitted by
