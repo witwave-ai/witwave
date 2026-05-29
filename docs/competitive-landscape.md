@@ -1,16 +1,39 @@
 # Competitive Landscape
 
-Last updated: 2026-05-28 by kira-agent-witwave (twenty-sixth pass — verification-and-refinement pass per zora
-docs-research one-shot 22:00Z heartbeat dispatch as polish-tier ADVANCE alternation from `docs-cleanup` (zero_streak=1
-at default, no fresh docs commits since `last_run_sha=a3d22edf`). Three substantive upstream movements captured in the
-~13-hour window since the twenty-fifth pass earlier today: **OpenClaw `v2026.5.27` stable shipped** (2026-05-28 11:41
-UTC) — graduates the morning `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA without new substantive surface; the
-beta's hardened security boundaries (improved content boundaries, hostname normalization, command-wrapper blocking,
-unsafe environment-override rejection), Codex reliability work (runtime model resolution, workspace memory routing,
-app-server client persistence), provider expansion (OpenAI-compatible embeddings, Pixverse video generation, DeepInfra
-catalog improvements), durable channel delivery (Telegram durability, iMessage dedup, Slack cleanup handling, Discord
-artifact filtering), restart-surviving native hook relays with fresh fallback rotation, plugin display metadata, and
-Gateway/reply hot-path performance work all carry forward unchanged (source:
+Last updated: 2026-05-29 by kira-agent-witwave (twenty-seventh pass — verification-and-refinement pass per zora
+docs-research one-shot 06:00Z dispatch under P2 cadence-floor breach (+3h00m past 3h floor = 1.00× AT-FLOOR) with
+polish-tier ADVANCE alternation from `docs-cleanup` (zero_streak=1 at default since the 03Z dispatch yielded 0 commits;
+no fresh docs commits in scope since `last_run_sha=13ae4811`). One substantive upstream movement captured in the
+~14-hour window since the twenty-sixth pass yesterday: **OpenClaw** opened a fresh beta train at **`v2026.5.28-beta.1`**
+(2026-05-29 04:46 UTC) — runtime stability and recovery work (subagents preserve cwd/workspace separation, hook context
+stays prompt-local, session locks release on timeout abort), hardened channel delivery (outbound plugin hooks, Matrix
+room IDs, iMessage reactions/approvals, Slack final replies, Discord recovered-tool warnings, Microsoft Teams
+service-URL trust checks), an iOS Pro UI refresh covering Gateway chat transport / onboarding / Talk permissions /
+WebChat reconnect delivery / session picker behaviour, CLI hardening (rejection of malformed numeric and version
+options, bounded OAuth requests, legacy auth-profile migration, actionable restart guidance), and broad caching
+improvements across install records, config parsing, tool catalogs, and session stores; stable still `v2026.5.27`
+(source: <https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.1>, accessed 2026-05-29). Pin refinement:
+**OpenClaw** fork count re-pinned to **78,300+ forks** (was 78,200+; live count 78.3k crosses the prior pin cleanly
+upward) (source: <https://github.com/openclaw/openclaw>, accessed 2026-05-29). All other high-cadence upstream pins
+verified unchanged from the twenty-sixth pass yesterday: Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent
+Framework still `python-1.7.0` (2026-05-28) / `dotnet-1.6.1` (2026-05-14), LangGraph still `v1.2.2` (2026-05-26), OpenAI
+Agents SDK still `v0.17.4` (2026-05-26), CrewAI still `v1.14.6` stable (2026-05-28), OpenClaw stable still `v2026.5.27`
+(2026-05-28), A2A still `v1.0.0` (2026-03-12) / 24,000+ stars / 2,400+ forks, OpenHands still `v1.7.0` (2026-05-01) /
+75,000+ stars / 9,500+ forks (sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/crewAIInc/crewAI/releases>,
+<https://github.com/openclaw/openclaw/releases>, <https://github.com/a2aproject/A2A>,
+<https://github.com/OpenHands/OpenHands>, all accessed 2026-05-29). Twenty-sixth pass (2026-05-28, ~14h ago) was a
+verification-and-refinement pass per zora docs-research one-shot 22:00Z heartbeat dispatch as polish-tier ADVANCE
+alternation from `docs-cleanup` (zero_streak=1 at default, no fresh docs commits since `last_run_sha=a3d22edf`). Three
+substantive upstream movements captured in the ~13-hour window since the twenty-fifth pass earlier today: **OpenClaw
+`v2026.5.27` stable shipped** (2026-05-28 11:41 UTC) — graduates the morning `v2026.5.27-beta.1` (2026-05-28 05:54 UTC)
+to GA without new substantive surface; the beta's hardened security boundaries (improved content boundaries, hostname
+normalization, command-wrapper blocking, unsafe environment-override rejection), Codex reliability work (runtime model
+resolution, workspace memory routing, app-server client persistence), provider expansion (OpenAI-compatible embeddings,
+Pixverse video generation, DeepInfra catalog improvements), durable channel delivery (Telegram durability, iMessage
+dedup, Slack cleanup handling, Discord artifact filtering), restart-surviving native hook relays with fresh fallback
+rotation, plugin display metadata, and Gateway/reply hot-path performance work all carry forward unchanged (source:
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.27>, accessed 2026-05-28). **CrewAI `1.14.6` stable shipped**
 (2026-05-28 17:04 UTC) — graduates the `1.14.6a2` alpha (2026-05-27 23:49 UTC) to GA; carries forward the hardened
 **`StdioTransport`** preventing environment-variable leakage and the **structured-output leak fix in tool-calling
@@ -743,7 +766,7 @@ this project targets the team running coordinated agents as cluster workloads.
 
 OpenClaw originated as "Clawdbot" in November 2025, was renamed "Moltbot" on 2026-01-27 under Anthropic trademark
 pressure, and three days later settled on **OpenClaw**. Category-leading install base — **375,000+ GitHub stars and
-78,200+ forks as of 2026-05-28**, with a very active commit cadence (latest stable release **`v2026.5.27`** on
+78,300+ forks as of 2026-05-29**, with a very active commit cadence (latest stable release **`v2026.5.27`** on
 2026-05-28 11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries
 forward unchanged from beta.1** (captured in the twenty-sixth pass preface above): hardened security boundaries, Codex
 reliability work, provider expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements),
@@ -763,12 +786,19 @@ cancel / steer / queue commands during active consults, adaptive image compressi
 rejection on remote container operations; the prior `v2026.5.25-beta.1` (2026-05-26 09:41 UTC) head layered "Beta 1 late
 fixes" on top for iMessage threading and Codex sandbox path handling; the `v2026.5.26-beta.1` (2026-05-26 21:10 UTC) and
 `v2026.5.26-beta.2` (2026-05-27 05:46 UTC) heads were the larger rollup for the now-shipped `2026.5.26` stable —
-substantive surface enumerated above; both graduated into `v2026.5.26` stable on 2026-05-27) — the exact star number
-drifts fast, so re-pin before quoting in marketing or external docs (sources: <https://github.com/openclaw/openclaw>,
-<https://github.com/openclaw/openclaw/releases>, <https://github.com/openclaw/openclaw/releases/tag/v2026.5.22>,
+substantive surface enumerated above; both graduated into `v2026.5.26` stable on 2026-05-27. A fresh beta train then
+opened at `v2026.5.28-beta.1` (2026-05-29 04:46 UTC) layering subagent cwd/workspace separation, prompt-local hook
+context, session-lock release on timeout abort, hardened channel delivery (outbound plugin hooks, Matrix room IDs,
+iMessage reactions/approvals, Slack final replies, Discord recovered-tool warnings, Microsoft Teams service-URL trust
+checks), an iOS Pro UI refresh, CLI hardening (malformed-option rejection, bounded OAuth, legacy auth-profile
+migration), and broad caching wins across install records / config / tool catalogs / session stores on top of the
+`v2026.5.27` stable surface) — the exact star number drifts fast, so re-pin before quoting in marketing or external docs
+(sources: <https://github.com/openclaw/openclaw>, <https://github.com/openclaw/openclaw/releases>,
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.22>,
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.26-beta.1>,
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>, and
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.27>, all accessed 2026-05-28). Runs on user-controlled
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>,
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.27>, and
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.1>, all accessed 2026-05-29). Runs on user-controlled
 infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to Claude, OpenAI,
 DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev channels; very
 active development cadence.**
