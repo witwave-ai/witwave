@@ -1,42 +1,42 @@
 # Competitive Landscape
 
 Last updated: 2026-05-29 by kira-agent-witwave (twenty-ninth pass — verification-and-refinement pass per zora
-docs-research one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach
-(kira_docs_cleanup_hours=4.0 post-20Z relax, last kira fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE
-alternation from `docs-cleanup` (zero_streak_kira=2 from earlier 15Z + 18Z zero-yield runs, then 22:06Z twenty-eighth
-pass refreshed; this twenty-ninth pass dispatched ~5 minutes after that commit landed). One substantive delta surfaced
-that the twenty-eighth pass and the four preceding passes had missed: **`langgraph-sdk==0.4.0`** shipped 2026-05-28
-14:11 UTC — a minor bump from `langgraph-sdk==0.3.15` (2026-05-22) cited inline in the LangGraph reference entry. The
-SDK release adds **v3 streaming primitives with SSE transport**, **websocket stream transports plus stream-selection
-wiring**, hardened streaming reconnects with async reconnect support, async/sync thread stream helpers, scoped subgraph
-handles, messages-and-tool-call projections, and shared stream subscriptions; companion **`langgraph-cli==0.4.27`**
-shipped the same day pinning internal Docker deploy images by digest and bumping the API bound to 0.10.0. The bump
-matters for the project's "real-time observability with a pinned wire contract" positioning axis — LangGraph's SDK now
-also ships SSE + websocket as first-class transports at the SDK layer (sources:
+docs-research one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach (kira_docs_cleanup_hours=4.0 post-20Z
+relax, last kira fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE alternation from `docs-cleanup`
+(zero_streak_kira=2 from earlier 15Z + 18Z zero-yield runs, then 22:06Z twenty-eighth pass refreshed; this twenty-ninth
+pass dispatched ~5 minutes after that commit landed). One substantive delta surfaced that the twenty-eighth pass and the
+four preceding passes had missed: **`langgraph-sdk==0.4.0`** shipped 2026-05-28 14:11 UTC — a minor bump from
+`langgraph-sdk==0.3.15` (2026-05-22) cited inline in the LangGraph reference entry. The SDK release adds **v3 streaming
+primitives with SSE transport**, **websocket stream transports plus stream-selection wiring**, hardened streaming
+reconnects with async reconnect support, async/sync thread stream helpers, scoped subgraph handles,
+messages-and-tool-call projections, and shared stream subscriptions; companion **`langgraph-cli==0.4.27`** shipped the
+same day pinning internal Docker deploy images by digest and bumping the API bound to 0.10.0. The bump matters for the
+project's "real-time observability with a pinned wire contract" positioning axis — LangGraph's SDK now also ships SSE +
+websocket as first-class transports at the SDK layer (sources:
 <https://github.com/langchain-ai/langgraph/releases/tag/sdk%3D%3D0.4.0> and
-<https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). Core
-`langgraph==1.2.2` (2026-05-26) unchanged; all other high-cadence upstream pins re-verified unchanged from the
-twenty-eighth pass earlier this evening: Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still
-`python-1.7.0` (2026-05-28) / `dotnet-1.6.1` (2026-05-14), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still
-`v1.14.6` stable (2026-05-28), OpenClaw stable still `v2026.5.27` (2026-05-28) / beta head still `v2026.5.28-beta.3`
-(2026-05-29), A2A still `v1.0.1` (2026-05-28), OpenHands still `v1.7.0` (2026-05-01) (sources:
+<https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). Core `langgraph==1.2.2`
+(2026-05-26) unchanged; all other high-cadence upstream pins re-verified unchanged from the twenty-eighth pass earlier
+this evening: Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still `python-1.7.0` (2026-05-28)
+/ `dotnet-1.6.1` (2026-05-14), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still `v1.14.6` stable
+(2026-05-28), OpenClaw stable still `v2026.5.27` (2026-05-28) / beta head still `v2026.5.28-beta.3` (2026-05-29), A2A
+still `v1.0.1` (2026-05-28), OpenHands still `v1.7.0` (2026-05-01) (sources:
 <https://github.com/anthropics/claude-agent-sdk-python/releases>,
 <https://github.com/microsoft/agent-framework/releases>, <https://github.com/openai/openai-agents-python/releases>,
 <https://github.com/crewAIInc/crewAI/releases>, <https://github.com/openclaw/openclaw/releases>,
 <https://github.com/a2aproject/A2A/releases>, <https://github.com/OpenHands/OpenHands/releases>, all accessed
 2026-05-29). Twenty-eighth pass (earlier on 2026-05-29, ~5 minutes ago) was a verification-and-refinement pass per zora
-docs-research one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach
-(kira_docs_cleanup_hours=4.0 post-20Z relax, last kira fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE
-alternation from `docs-cleanup` (zero_streak_kira=2 after 15Z docs-cleanup + 18Z docs-research both zero-yield, HEAD
-`0f8009a6` unchanged 16th tick; per polish-skill rule, second consecutive zero-yield at default eligible → flip to
-deeper for this one-shot, then auto-flip back to docs-cleanup default next breach). Three substantive upstream movements
-captured in the ~16-hour window since the twenty-seventh pass earlier today: **OpenClaw** beta head rolled from
-`v2026.5.28-beta.1` to **`v2026.5.28-beta.3`** via `v2026.5.28-beta.2` (2026-05-29 12:19 UTC) and `v2026.5.28-beta.3`
-(2026-05-29 17:19 UTC); both layer **Claude Opus 4.8** provider support, Fal Krea image schemas, NVIDIA featured-model
-catalog entries, MiniMax streaming-music responses, encrypted PDF extraction, and **GitHub Copilot agent runtime
-integration** on top of the `v2026.5.28-beta.1` surface, plus stricter input validation (browser-tool timeouts, Discord
-component IDs, cron retry handling, schema references rejecting malformed values earlier) and additional caching wins
-(native JSON parsing, tool catalog reuse, manifest model row optimization); stable still `v2026.5.27` (sources:
+docs-research one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach (kira_docs_cleanup_hours=4.0 post-20Z
+relax, last kira fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE alternation from `docs-cleanup`
+(zero_streak_kira=2 after 15Z docs-cleanup + 18Z docs-research both zero-yield, HEAD `0f8009a6` unchanged 16th tick; per
+polish-skill rule, second consecutive zero-yield at default eligible → flip to deeper for this one-shot, then auto-flip
+back to docs-cleanup default next breach). Three substantive upstream movements captured in the ~16-hour window since
+the twenty-seventh pass earlier today: **OpenClaw** beta head rolled from `v2026.5.28-beta.1` to **`v2026.5.28-beta.3`**
+via `v2026.5.28-beta.2` (2026-05-29 12:19 UTC) and `v2026.5.28-beta.3` (2026-05-29 17:19 UTC); both layer **Claude Opus
+4.8** provider support, Fal Krea image schemas, NVIDIA featured-model catalog entries, MiniMax streaming-music
+responses, encrypted PDF extraction, and **GitHub Copilot agent runtime integration** on top of the `v2026.5.28-beta.1`
+surface, plus stricter input validation (browser-tool timeouts, Discord component IDs, cron retry handling, schema
+references rejecting malformed values earlier) and additional caching wins (native JSON parsing, tool catalog reuse,
+manifest model row optimization); stable still `v2026.5.27` (sources:
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.2> and
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.3>, accessed 2026-05-29). **A2A bumped from `v1.0.0`
 to `v1.0.1`** (2026-05-28) — bug-fix release covering HTTP binding now preferring `application/a2a+json`, recent
@@ -55,16 +55,16 @@ LangGraph still `v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-0
 Twenty-seventh pass (earlier on 2026-05-29, ~16h ago) was a verification-and-refinement pass per zora docs-research
 one-shot 06:00Z dispatch under P2 cadence-floor breach (+3h00m past 3h floor = 1.00× AT-FLOOR) with polish-tier ADVANCE
 alternation from `docs-cleanup` (zero_streak=1 at default since the 03Z dispatch yielded 0 commits; no fresh docs
-commits in scope since `last_run_sha=13ae4811`). One substantive upstream movement captured in the
-~14-hour window since the twenty-sixth pass yesterday: **OpenClaw** opened a fresh beta train at **`v2026.5.28-beta.1`**
-(2026-05-29 04:46 UTC) — runtime stability and recovery work (subagents preserve cwd/workspace separation, hook context
-stays prompt-local, session locks release on timeout abort), hardened channel delivery (outbound plugin hooks, Matrix
-room IDs, iMessage reactions/approvals, Slack final replies, Discord recovered-tool warnings, Microsoft Teams
-service-URL trust checks), an iOS Pro UI refresh covering Gateway chat transport / onboarding / Talk permissions /
-WebChat reconnect delivery / session picker behaviour, CLI hardening (rejection of malformed numeric and version
-options, bounded OAuth requests, legacy auth-profile migration, actionable restart guidance), and broad caching
-improvements across install records, config parsing, tool catalogs, and session stores; stable still `v2026.5.27`
-(source: <https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.1>, accessed 2026-05-29). Pin refinement:
+commits in scope since `last_run_sha=13ae4811`). One substantive upstream movement captured in the ~14-hour window since
+the twenty-sixth pass yesterday: **OpenClaw** opened a fresh beta train at **`v2026.5.28-beta.1`** (2026-05-29 04:46
+UTC) — runtime stability and recovery work (subagents preserve cwd/workspace separation, hook context stays
+prompt-local, session locks release on timeout abort), hardened channel delivery (outbound plugin hooks, Matrix room
+IDs, iMessage reactions/approvals, Slack final replies, Discord recovered-tool warnings, Microsoft Teams service-URL
+trust checks), an iOS Pro UI refresh covering Gateway chat transport / onboarding / Talk permissions / WebChat reconnect
+delivery / session picker behaviour, CLI hardening (rejection of malformed numeric and version options, bounded OAuth
+requests, legacy auth-profile migration, actionable restart guidance), and broad caching improvements across install
+records, config parsing, tool catalogs, and session stores; stable still `v2026.5.27` (source:
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.1>, accessed 2026-05-29). Pin refinement:
 **OpenClaw** fork count re-pinned to **78,300+ forks** (was 78,200+; live count 78.3k crosses the prior pin cleanly
 upward) (source: <https://github.com/openclaw/openclaw>, accessed 2026-05-29). All other high-cadence upstream pins
 verified unchanged from the twenty-sixth pass yesterday: Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent
@@ -752,8 +752,8 @@ and async-reconnect support, async/sync thread stream helpers and scoped subgrap
 subscriptions plus messages-and-tool-call projections; companion `langgraph-cli==0.4.27` shipped the same day pinning
 internal Docker deploy images by digest and bumping the API bound to 0.10.0 (sources:
 <https://github.com/langchain-ai/langgraph/releases/tag/sdk%3D%3D0.4.0> and
-<https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). v1.1.10 (2026-04-27) — the
-previous stable — was a maintenance release (prebuilt 1.0.12, checkpoint 4.0.3, dep bumps, a reverted
+<https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). v1.1.10 (2026-04-27) —
+the previous stable — was a maintenance release (prebuilt 1.0.12, checkpoint 4.0.3, dep bumps, a reverted
 node-level-timeouts experiment, and a `ToolNode` change to allow tools returning `list[Command | ToolMessage]`) (source:
 <https://github.com/langchain-ai/langgraph/releases>, accessed 2026-05-15). An earlier pass of this doc mislabeled
 deferred nodes and node-level caching as "v2.0" features — they are **v1.x** features shipped during the 2025 LangGraph
@@ -793,12 +793,12 @@ graph-execution model.
 **Autonomy model:** Protocol-level (A2A defines how agents communicate regardless of autonomy model; this project uses
 it as the coordination layer between autonomous agents)
 
-**A2A v1.0.1 is now the stable version (tagged 2026-05-28, succeeding v1.0.0 of 2026-03-12).** v1.0.1 is a small
-bug-fix release: HTTP binding now prefers `application/a2a+json`, recent transcoding-related error changes are
-incorporated, and the TaskStatus values specification has been corrected; no surface breaking changes versus v1.0.0.
-Governance has been donated to the **Linux Foundation** as an official project; one-year anniversary milestone
-(2026-04-09) reports 150+ participating organizations. Star count at the `a2aproject/A2A` repo continues to grow —
-**24,000+ stars / 2,400+ forks as of 2026-05-29** (live count 24.1k / 2.4k still inside the prior pin) (sources:
+**A2A v1.0.1 is now the stable version (tagged 2026-05-28, succeeding v1.0.0 of 2026-03-12).** v1.0.1 is a small bug-fix
+release: HTTP binding now prefers `application/a2a+json`, recent transcoding-related error changes are incorporated, and
+the TaskStatus values specification has been corrected; no surface breaking changes versus v1.0.0. Governance has been
+donated to the **Linux Foundation** as an official project; one-year anniversary milestone (2026-04-09) reports 150+
+participating organizations. Star count at the `a2aproject/A2A` repo continues to grow — **24,000+ stars / 2,400+ forks
+as of 2026-05-29** (live count 24.1k / 2.4k still inside the prior pin) (sources:
 <https://github.com/a2aproject/A2A/releases/tag/v1.0.1> and <https://github.com/a2aproject/A2A>, accessed 2026-05-29).
 Production deployments include Azure AI Foundry and Amazon Bedrock AgentCore (both of which embed A2A as their native
 cross-agent protocol). v1.0 added **Signed Agent Cards** — cryptographic signatures on Agent Cards to prevent forgery
