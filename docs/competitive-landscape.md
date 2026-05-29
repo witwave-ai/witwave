@@ -1,6 +1,30 @@
 # Competitive Landscape
 
-Last updated: 2026-05-29 by kira-agent-witwave (twenty-eighth pass — verification-and-refinement pass per zora
+Last updated: 2026-05-29 by kira-agent-witwave (twenty-ninth pass — verification-and-refinement pass per zora
+docs-research one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach
+(kira_docs_cleanup_hours=4.0 post-20Z relax, last kira fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE
+alternation from `docs-cleanup` (zero_streak_kira=2 from earlier 15Z + 18Z zero-yield runs, then 22:06Z twenty-eighth
+pass refreshed; this twenty-ninth pass dispatched ~5 minutes after that commit landed). One substantive delta surfaced
+that the twenty-eighth pass and the four preceding passes had missed: **`langgraph-sdk==0.4.0`** shipped 2026-05-28
+14:11 UTC — a minor bump from `langgraph-sdk==0.3.15` (2026-05-22) cited inline in the LangGraph reference entry. The
+SDK release adds **v3 streaming primitives with SSE transport**, **websocket stream transports plus stream-selection
+wiring**, hardened streaming reconnects with async reconnect support, async/sync thread stream helpers, scoped subgraph
+handles, messages-and-tool-call projections, and shared stream subscriptions; companion **`langgraph-cli==0.4.27`**
+shipped the same day pinning internal Docker deploy images by digest and bumping the API bound to 0.10.0. The bump
+matters for the project's "real-time observability with a pinned wire contract" positioning axis — LangGraph's SDK now
+also ships SSE + websocket as first-class transports at the SDK layer (sources:
+<https://github.com/langchain-ai/langgraph/releases/tag/sdk%3D%3D0.4.0> and
+<https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). Core
+`langgraph==1.2.2` (2026-05-26) unchanged; all other high-cadence upstream pins re-verified unchanged from the
+twenty-eighth pass earlier this evening: Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still
+`python-1.7.0` (2026-05-28) / `dotnet-1.6.1` (2026-05-14), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still
+`v1.14.6` stable (2026-05-28), OpenClaw stable still `v2026.5.27` (2026-05-28) / beta head still `v2026.5.28-beta.3`
+(2026-05-29), A2A still `v1.0.1` (2026-05-28), OpenHands still `v1.7.0` (2026-05-01) (sources:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/openai/openai-agents-python/releases>,
+<https://github.com/crewAIInc/crewAI/releases>, <https://github.com/openclaw/openclaw/releases>,
+<https://github.com/a2aproject/A2A/releases>, <https://github.com/OpenHands/OpenHands/releases>, all accessed
+2026-05-29). Twenty-eighth pass (earlier on 2026-05-29, ~5 minutes ago) was a verification-and-refinement pass per zora
 docs-research one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach
 (kira_docs_cleanup_hours=4.0 post-20Z relax, last kira fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE
 alternation from `docs-cleanup` (zero_streak_kira=2 after 15Z docs-cleanup + 18Z docs-research both zero-yield, HEAD
@@ -721,7 +745,14 @@ delta-channel snapshot handling (force-snapshot after max supersteps since the l
 from v3 messages; companion `langgraph-sdk==0.3.15` and `langgraph-checkpoint==4.1.1` both shipped 2026-05-22. v1.2.2 is
 a single-fix point release assigning **stable IDs to `id=None` `BaseMessage` instances before DeltaChannel checkpoint
 writes** — prevents downstream identity drift on resumed runs; no breaking changes (source:
-<https://github.com/langchain-ai/langgraph/releases/tag/1.2.2>, accessed 2026-05-27). v1.1.10 (2026-04-27) — the
+<https://github.com/langchain-ai/langgraph/releases/tag/1.2.2>, accessed 2026-05-27). Companion package
+**`langgraph-sdk==0.4.0`** shipped 2026-05-28 — a substantive SDK minor bump (0.3.x → 0.4.0) adding **v3 streaming
+primitives with SSE transport**, **websocket stream transports plus selection wiring**, hardened streaming reconnects
+and async-reconnect support, async/sync thread stream helpers and scoped subgraph handles, and shared stream
+subscriptions plus messages-and-tool-call projections; companion `langgraph-cli==0.4.27` shipped the same day pinning
+internal Docker deploy images by digest and bumping the API bound to 0.10.0 (sources:
+<https://github.com/langchain-ai/langgraph/releases/tag/sdk%3D%3D0.4.0> and
+<https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). v1.1.10 (2026-04-27) — the
 previous stable — was a maintenance release (prebuilt 1.0.12, checkpoint 4.0.3, dep bumps, a reverted
 node-level-timeouts experiment, and a `ToolNode` change to allow tools returning `list[Command | ToolMessage]`) (source:
 <https://github.com/langchain-ai/langgraph/releases>, accessed 2026-05-15). An earlier pass of this doc mislabeled
