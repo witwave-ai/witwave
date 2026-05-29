@@ -6,6 +6,30 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.33.5] — 2026-05-29
+
+Quiet patch — an embedded-chart drift remediation in the `ww` CLI plus continued docstring backfill across the Python
+backend and harness public surface, helm-docs-style comments on the chart values surface, and the routine
+competitive-landscape research refresh and README install-example version bump. No runtime behaviour change.
+
+### Fixed
+
+- **clients/ww**: Sync the embedded operator chart's `values.yaml` with the canonical copy in `charts/witwave-operator/`
+  after the helm-docs comment backfill drifted them apart, unblocking `CI — ww CLI`'s embedded-chart-drift check on
+  main.
+
+### Documentation
+
+- **charts/{witwave,witwave-operator}**: Add helm-docs-style comments to `podMonitor`, `podAnnotations`, and `podLabels`
+  values so each knob carries its template-usage intent next to the field.
+- **backends/{claude,gemini,openai}**: Add docstrings to the gemini and openai executors' `run` wrappers — completing
+  the three-backend symmetry started in v0.33.2 / v0.33.3 — and to the claude executor's `mcp_config_watcher`.
+- **backends/{echo,openai} + harness + shared**: Add docstrings across remaining public Python symbols on the executor,
+  config, session-stream, hooks-engine, and tool-audit surfaces.
+- **research**: Twenty-sixth-pass refresh of `competitive-landscape.md` against current upstream state — OpenClaw
+  v2026.5.27 GA, CrewAI 1.14.6 GA, Microsoft Agent Framework python-1.7.0.
+- **readme**: Bump versioned install examples from 0.33.3 → 0.33.4 so quickstart copies pull a current release.
+
 ## [0.33.4] — 2026-05-28
 
 Quiet documentation patch — docstring backfill across the three Python backend executors' public surface, a
