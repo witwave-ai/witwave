@@ -1,9 +1,37 @@
 # Competitive Landscape
 
-Last updated: 2026-05-29 by kira-agent-witwave (twenty-seventh pass — verification-and-refinement pass per zora
-docs-research one-shot 06:00Z dispatch under P2 cadence-floor breach (+3h00m past 3h floor = 1.00× AT-FLOOR) with
-polish-tier ADVANCE alternation from `docs-cleanup` (zero_streak=1 at default since the 03Z dispatch yielded 0 commits;
-no fresh docs commits in scope since `last_run_sha=13ae4811`). One substantive upstream movement captured in the
+Last updated: 2026-05-29 by kira-agent-witwave (twenty-eighth pass — verification-and-refinement pass per zora
+docs-research one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach
+(kira_docs_cleanup_hours=4.0 post-20Z relax, last kira fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE
+alternation from `docs-cleanup` (zero_streak_kira=2 after 15Z docs-cleanup + 18Z docs-research both zero-yield, HEAD
+`0f8009a6` unchanged 16th tick; per polish-skill rule, second consecutive zero-yield at default eligible → flip to
+deeper for this one-shot, then auto-flip back to docs-cleanup default next breach). Three substantive upstream movements
+captured in the ~16-hour window since the twenty-seventh pass earlier today: **OpenClaw** beta head rolled from
+`v2026.5.28-beta.1` to **`v2026.5.28-beta.3`** via `v2026.5.28-beta.2` (2026-05-29 12:19 UTC) and `v2026.5.28-beta.3`
+(2026-05-29 17:19 UTC); both layer **Claude Opus 4.8** provider support, Fal Krea image schemas, NVIDIA featured-model
+catalog entries, MiniMax streaming-music responses, encrypted PDF extraction, and **GitHub Copilot agent runtime
+integration** on top of the `v2026.5.28-beta.1` surface, plus stricter input validation (browser-tool timeouts, Discord
+component IDs, cron retry handling, schema references rejecting malformed values earlier) and additional caching wins
+(native JSON parsing, tool catalog reuse, manifest model row optimization); stable still `v2026.5.27` (sources:
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.2> and
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.3>, accessed 2026-05-29). **A2A bumped from `v1.0.0`
+to `v1.0.1`** (2026-05-28) — bug-fix release covering HTTP binding now preferring `application/a2a+json`, recent
+transcoding-related error changes, and a TaskStatus values specification correction; no surface breaking changes
+(source: <https://github.com/a2aproject/A2A/releases/tag/v1.0.1>, accessed 2026-05-29). Pin refinement: **OpenClaw**
+star/fork count re-pinned to **376,000+ stars / 78,400+ forks** (was 375,000+ / 78,300+; live count 376k / 78.4k crosses
+the prior pin cleanly upward) (source: <https://github.com/openclaw/openclaw>, accessed 2026-05-29). All other
+high-cadence upstream pins verified unchanged from the twenty-seventh pass earlier today: Claude Agent SDK still
+`v0.2.87` (2026-05-23), Microsoft Agent Framework still `python-1.7.0` (2026-05-28) / `dotnet-1.6.1` (2026-05-14),
+LangGraph still `v1.2.2` (2026-05-26), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still `v1.14.6` stable
+(2026-05-28), OpenClaw stable still `v2026.5.27` (2026-05-28), OpenHands still `v1.7.0` (2026-05-01) / 75,000+ stars /
+9,500+ forks (sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/crewAIInc/crewAI/releases>,
+<https://github.com/openclaw/openclaw/releases>, <https://github.com/OpenHands/OpenHands>, all accessed 2026-05-29).
+Twenty-seventh pass (earlier on 2026-05-29, ~16h ago) was a verification-and-refinement pass per zora docs-research
+one-shot 06:00Z dispatch under P2 cadence-floor breach (+3h00m past 3h floor = 1.00× AT-FLOOR) with polish-tier ADVANCE
+alternation from `docs-cleanup` (zero_streak=1 at default since the 03Z dispatch yielded 0 commits; no fresh docs
+commits in scope since `last_run_sha=13ae4811`). One substantive upstream movement captured in the
 ~14-hour window since the twenty-sixth pass yesterday: **OpenClaw** opened a fresh beta train at **`v2026.5.28-beta.1`**
 (2026-05-29 04:46 UTC) — runtime stability and recovery work (subagents preserve cwd/workspace separation, hook context
 stays prompt-local, session locks release on timeout abort), hardened channel delivery (outbound plugin hooks, Matrix
@@ -734,14 +762,16 @@ graph-execution model.
 **Autonomy model:** Protocol-level (A2A defines how agents communicate regardless of autonomy model; this project uses
 it as the coordination layer between autonomous agents)
 
-**A2A v1.0 is now the stable version (tagged 2026-03-12).** Governance has been donated to the **Linux Foundation** as
-an official project; one-year anniversary milestone (2026-04-09) reports 150+ participating organizations. Star count at
-the `a2aproject/A2A` repo continues to grow — **24,000+ stars / 2,400+ forks as of 2026-05-25**, up from the 23,900+
-figure quoted in the nineteenth pass (sources: <https://github.com/a2aproject/A2A/releases/tag/v1.0.0> and
-<https://github.com/a2aproject/A2A>, accessed 2026-05-25). Production deployments include Azure AI Foundry and Amazon
-Bedrock AgentCore (both of which embed A2A as their native cross-agent protocol). v1.0 adds **Signed Agent Cards** —
-cryptographic signatures on Agent Cards to prevent forgery and card-redirect attacks, closing a real multi-tenant
-security gap.
+**A2A v1.0.1 is now the stable version (tagged 2026-05-28, succeeding v1.0.0 of 2026-03-12).** v1.0.1 is a small
+bug-fix release: HTTP binding now prefers `application/a2a+json`, recent transcoding-related error changes are
+incorporated, and the TaskStatus values specification has been corrected; no surface breaking changes versus v1.0.0.
+Governance has been donated to the **Linux Foundation** as an official project; one-year anniversary milestone
+(2026-04-09) reports 150+ participating organizations. Star count at the `a2aproject/A2A` repo continues to grow —
+**24,000+ stars / 2,400+ forks as of 2026-05-29** (live count 24.1k / 2.4k still inside the prior pin) (sources:
+<https://github.com/a2aproject/A2A/releases/tag/v1.0.1> and <https://github.com/a2aproject/A2A>, accessed 2026-05-29).
+Production deployments include Azure AI Foundry and Amazon Bedrock AgentCore (both of which embed A2A as their native
+cross-agent protocol). v1.0 added **Signed Agent Cards** — cryptographic signatures on Agent Cards to prevent forgery
+and card-redirect attacks, closing a real multi-tenant security gap; v1.0.1 carries this forward unchanged.
 
 The broader protocol ecosystem continues to be four layers: **MCP** (agent-to-tool), **A2A v1.0** (agent-to-agent),
 **ACP** (lightweight async messaging), and **UCP** (agentic commerce — co-developed with Shopify, Visa, Mastercard).
@@ -765,8 +795,8 @@ platform rather than a personal local daemon. OpenClaw targets the individual ru
 this project targets the team running coordinated agents as cluster workloads.
 
 OpenClaw originated as "Clawdbot" in November 2025, was renamed "Moltbot" on 2026-01-27 under Anthropic trademark
-pressure, and three days later settled on **OpenClaw**. Category-leading install base — **375,000+ GitHub stars and
-78,300+ forks as of 2026-05-29**, with a very active commit cadence (latest stable release **`v2026.5.27`** on
+pressure, and three days later settled on **OpenClaw**. Category-leading install base — **376,000+ GitHub stars and
+78,400+ forks as of 2026-05-29**, with a very active commit cadence (latest stable release **`v2026.5.27`** on
 2026-05-28 11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries
 forward unchanged from beta.1** (captured in the twenty-sixth pass preface above): hardened security boundaries, Codex
 reliability work, provider expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements),
@@ -792,13 +822,20 @@ context, session-lock release on timeout abort, hardened channel delivery (outbo
 iMessage reactions/approvals, Slack final replies, Discord recovered-tool warnings, Microsoft Teams service-URL trust
 checks), an iOS Pro UI refresh, CLI hardening (malformed-option rejection, bounded OAuth, legacy auth-profile
 migration), and broad caching wins across install records / config / tool catalogs / session stores on top of the
-`v2026.5.27` stable surface) — the exact star number drifts fast, so re-pin before quoting in marketing or external docs
-(sources: <https://github.com/openclaw/openclaw>, <https://github.com/openclaw/openclaw/releases>,
+`v2026.5.27` stable surface; the same train then advanced to `v2026.5.28-beta.2` (2026-05-29 12:19 UTC) and
+**`v2026.5.28-beta.3`** (2026-05-29 17:19 UTC), which together layer **Claude Opus 4.8** provider support, Fal Krea
+image schemas, NVIDIA featured-model catalog entries, MiniMax streaming-music responses, encrypted PDF extraction, and
+**GitHub Copilot agent runtime integration**, plus stricter input validation (browser-tool timeouts, Discord component
+IDs, cron retry handling, schema-reference rejection) and additional caching wins (native JSON parsing, tool catalog
+reuse, manifest model row optimization)) — the exact star number drifts fast, so re-pin before quoting in marketing or
+external docs (sources: <https://github.com/openclaw/openclaw>, <https://github.com/openclaw/openclaw/releases>,
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.22>,
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.26-beta.1>,
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.26>,
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.27>, and
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.1>, all accessed 2026-05-29). Runs on user-controlled
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.27>,
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.1>,
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.2>, and
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.3>, all accessed 2026-05-29). Runs on user-controlled
 infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to Claude, OpenAI,
 DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev channels; very
 active development cadence.**
