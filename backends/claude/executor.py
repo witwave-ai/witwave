@@ -626,6 +626,32 @@ _SHELL_ENV_DENYLIST: frozenset[str] = frozenset(
 
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL") or None
 
+# Reasoning-effort level forwarded to the Claude Agent SDK (`effort=` → the
+# CLI's `--effort`). When set to one of low/medium/high/max, every request from
+# this backend runs at that effort; unset preserves the SDK default. Wired as a
+# per-backend env so a single agent (e.g. the Agent-Resources canary) can run at
+# `max` without touching the rest of the team. An unrecognized value is ignored
+# with a warning rather than failing every request — the pinned SDK
+# (claude_agent_sdk 0.1.55) only accepts the four levels below.
+_VALID_EFFORT = ("low", "medium", "high", "max")
+
+
+def _resolve_effort(raw: str | None) -> str | None:
+    value = (raw or "").strip().lower()
+    if not value:
+        return None
+    if value not in _VALID_EFFORT:
+        logger.warning(
+            "CLAUDE_EFFORT=%r is not one of %s; ignoring and using the SDK default effort",
+            raw,
+            ", ".join(_VALID_EFFORT),
+        )
+        return None
+    return value
+
+
+CLAUDE_EFFORT = _resolve_effort(os.environ.get("CLAUDE_EFFORT"))
+
 
 def _current_claude_credential() -> tuple[str | None, str | None]:
     """Read credential + env-var-name live each call (#1351).
@@ -1640,6 +1666,7 @@ def _make_options(
         stderr=stderr_fn,
         mcp_servers=mcp_servers,
         model=model or CLAUDE_MODEL,
+        **({"effort": CLAUDE_EFFORT} if CLAUDE_EFFORT else {}),
         **({"hooks": hooks_cfg} if hooks_cfg else {}),
         **({"env": env} if env else {}),
     )
