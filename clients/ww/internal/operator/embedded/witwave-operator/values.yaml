@@ -413,3 +413,21 @@ webhooks:
     issuerRef:
       name: ""
       kind: "" # defaults to "ClusterIssuer" when empty; set to "Issuer" for namespaced issuers
+
+# agentImagePatchPolicy gates a cluster ValidatingAdmissionPolicy that limits
+# what a chosen set of ServiceAccounts may change when they patch a
+# WitwaveAgent. It pairs with the `agentLifecycle` kubernetesApiAccess preset:
+# that preset grants an Agent-Resources agent (e.g. milo) `patch` on
+# witwaveagents so it can run `ww agent upgrade`, and this policy stops that
+# same agent from repointing an image repository or rewiring backends — only
+# image tags/digests (versions) may change, and backends may not be added,
+# removed, or renamed. Disabled by default; enable it and list the agent
+# ServiceAccounts that hold agentLifecycle access. Validate against a live
+# cluster before relying on it — the CEL is enforced by the apiserver, not by
+# `helm template`.
+agentImagePatchPolicy:
+  enabled: false
+  # ServiceAccount usernames the policy constrains. Empty list = the binding
+  # matches nothing (safe no-op even when enabled). Example:
+  #   - system:serviceaccount:witwave-self:milo
+  constrainedServiceAccounts: []

@@ -1,0 +1,58 @@
+{{- if .Values.agentImagePatchPolicy.enabled }}
+---
+# ValidatingAdmissionPolicy: constrain how the listed ServiceAccounts may
+# mutate a WitwaveAgent. Pairs with the `agentLifecycle` kubernetesApiAccess
+# preset — that preset grants an Agent-Resources agent (e.g. milo) `patch` on
+# witwaveagents so it can run `ww agent upgrade`; this policy stops that same
+# agent from repointing an image repository or rewiring backends. Only image
+# tags/digests (versions) may change, and backends may not be added, removed,
+# or renamed. Other writers (the operator, humans, CI) are unaffected — the
+# matchConditions scope enforcement to the named ServiceAccounts only.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ include "witwave-operator.fullname" . }}-agent-image-patch
+  labels:
+    {{- include "witwave-operator.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["witwave.ai"]
+        apiVersions: ["*"]
+        operations: ["UPDATE"]
+        resources: ["witwaveagents"]
+  matchConditions:
+    - name: only-constrained-service-accounts
+      expression: >-
+        request.userInfo.username in [{{ range $i, $sa := .Values.agentImagePatchPolicy.constrainedServiceAccounts }}{{ if $i }}, {{ end }}{{ $sa | quote }}{{ end }}]
+  variables:
+    - name: oldSpec
+      expression: oldObject.spec
+    - name: newSpec
+      expression: object.spec
+  validations:
+    - expression: >-
+        !has(variables.oldSpec.image) ||
+        (has(variables.newSpec.image) && variables.newSpec.image.repository == variables.oldSpec.image.repository)
+      message: "constrained agents may change the harness image tag/digest but not its repository"
+    - expression: >-
+        !has(variables.oldSpec.backends) ||
+        (has(variables.newSpec.backends) && size(variables.newSpec.backends) == size(variables.oldSpec.backends))
+      message: "constrained agents may not add or remove backends"
+    - expression: >-
+        !has(variables.oldSpec.backends) ||
+        variables.newSpec.backends.all(b, variables.oldSpec.backends.exists(o,
+        o.name == b.name && (!has(o.image) || (has(b.image) && o.image.repository == b.image.repository))))
+      message: "constrained agents may change a backend's image tag/digest but not its name or repository"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ include "witwave-operator.fullname" . }}-agent-image-patch
+  labels:
+    {{- include "witwave-operator.labels" . | nindent 4 }}
+spec:
+  policyName: {{ include "witwave-operator.fullname" . }}-agent-image-patch
+  validationActions: ["Deny"]
+{{- end }}
