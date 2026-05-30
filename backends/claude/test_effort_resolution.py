@@ -31,15 +31,10 @@ def _load_resolve_effort():
         n
         for n in tree.body
         if (isinstance(n, ast.FunctionDef) and n.name == "_resolve_effort")
-        or (
-            isinstance(n, ast.Assign)
-            and any(isinstance(t, ast.Name) and t.id == "_VALID_EFFORT" for t in n.targets)
-        )
+        or (isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "_VALID_EFFORT" for t in n.targets))
     ]
     if len(nodes) != 2:
-        raise AssertionError(
-            f"expected _VALID_EFFORT + _resolve_effort in executor.py, found {len(nodes)}"
-        )
+        raise AssertionError(f"expected _VALID_EFFORT + _resolve_effort in executor.py, found {len(nodes)}")
     module = ast.Module(body=nodes, type_ignores=[])
     namespace: dict = {"logger": _StubLogger()}
     exec(compile(module, str(_EXECUTOR_PATH), "exec"), namespace)

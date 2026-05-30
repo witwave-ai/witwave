@@ -141,9 +141,9 @@ def test_missing_directory_logs_at_debug_only():
 
     assert len(records) == 3, f"unexpected records: {[r.getMessage() for r in records]}"
     for rec in records:
-        assert (
-            rec.levelno == logging.DEBUG
-        ), f"missing-directory log at {rec.levelname} (expected DEBUG): {rec.getMessage()!r}"
+        assert rec.levelno == logging.DEBUG, (
+            f"missing-directory log at {rec.levelname} (expected DEBUG): {rec.getMessage()!r}"
+        )
         assert "Jobs directory not found" in rec.getMessage()
 
 
@@ -192,9 +192,9 @@ def test_transition_missing_to_present_logs_info():
     assert len(debug_records) >= 1, records
     assert any("Jobs directory not found" in r.getMessage() for r in debug_records)
     assert len(info_records) >= 1, records
-    assert any(
-        "now present — starting watcher" in r.getMessage() for r in info_records
-    ), f"missing transition-log: {[r.getMessage() for r in info_records]}"
+    assert any("now present — starting watcher" in r.getMessage() for r in info_records), (
+        f"missing transition-log: {[r.getMessage() for r in info_records]}"
+    )
 
 
 def test_present_on_first_iteration_logs_no_transition():
@@ -234,6 +234,6 @@ def test_present_on_first_iteration_logs_no_transition():
     asyncio.run(_run())
 
     transition_logs = [r for r in records if "now present — starting watcher" in r.getMessage()]
-    assert (
-        transition_logs == []
-    ), f"unexpected transition-log on first-iteration present: {[r.getMessage() for r in transition_logs]}"
+    assert transition_logs == [], (
+        f"unexpected transition-log on first-iteration present: {[r.getMessage() for r in transition_logs]}"
+    )
