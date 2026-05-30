@@ -106,6 +106,10 @@ class EventStreamTests(unittest.IsolatedAsyncioTestCase):
         out = stream.replay_from("0")
         self.assertEqual(len(out), 3)
         self.assertEqual([e.payload["name"] for e in out], ["j2", "j3", "j4"])
+        # ring_size introspection mirrors len(self._ring); ring_max=3 with
+        # 5 publishes must clamp at 3 (sibling pattern at
+        # harness/test_session_stream.py:92).
+        self.assertEqual(stream.ring_size, 3)
 
     async def test_last_event_id_resume(self) -> None:
         stream = _fresh_stream(ring_max=10)
@@ -176,6 +180,12 @@ class EventStreamTests(unittest.IsolatedAsyncioTestCase):
             f"expected a stream.overrun envelope, got {[e.type for e in drained]}",
         )
         self.assertGreaterEqual(overrun_counter.value, 1)
+        # subscriber_count reflects eager removal in _evict_slow (events.py
+        # _evict_slow calls _remove_subscriber synchronously, so the gauge
+        # drops the moment eviction fires regardless of whether the evicted
+        # iterator has yet drained). Slow evicted → only fast remains.
+        # Sibling pattern: harness/test_session_stream.py:129.
+        self.assertEqual(stream.subscriber_count, 1)
 
     async def test_schema_validation_drops_malformed(self) -> None:
         stream = _fresh_stream()
