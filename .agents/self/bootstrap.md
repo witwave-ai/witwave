@@ -16,14 +16,13 @@ is running:
   paths.
 - Nine **WitwaveAgent**s (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`) with
   `Spec.WorkspaceRefs` pointing at `witwave-self` so they share the workspace.
-
   - **iris** owns source-tree initialization + release captaincy + git plumbing for the team.
   - **kira** owns documentation hygiene + research.
   - **nova** owns code-internal hygiene (formatting, comment-vs-code verification, comment authoring).
   - **evan** owns code defects — `bug-work` for correctness bugs (logic-defect lens), `risk-work` for security risks
     (CVE / secrets / insecure-pattern lens). The verb "work" is the forward-compatible naming convention for
     product-engineering siblings (future: `gap-work`, `feature-work`).
-  - **zora** is the team's manager — she dispatches the other peers from a continuous 30-min decision loop. She reads
+  - **zora** is the team's manager — she dispatches the other peers from a continuous 60-min decision loop. She reads
     team state (git, peer memories, CI), applies a priority policy (urgency → cadence floor → backlog →
     release-warranted check), and dispatches via `call-peer`. She doesn't write code; she coordinates. The peers stay
     autonomous within their domain.
@@ -340,7 +339,7 @@ mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/zo
   --gitsync-secret-from-env GITSYNC_USERNAME:GITSYNC_PASSWORD
 ```
 
-After zora deploys, her 30-minute heartbeat starts firing the `dispatch-team` decision loop. She'll begin reading peer
+After zora deploys, her 60-minute heartbeat starts firing the `dispatch-team` decision loop. She'll begin reading peer
 state from memory, applying the priority policy in her CLAUDE.md, and dispatching the appropriate peer
 (iris/kira/nova/evan/finn/felix/piper) via A2A. Until then, all peer dispatches are user-initiated.
 
@@ -394,7 +393,7 @@ mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/fe
 
 ## Step 10 — Deploy Piper
 
-Piper is the team's outreach agent — reads team state every 30 minutes and posts substantive events to GitHub
+Piper is the team's outreach agent — reads team state every 60 minutes and posts substantive events to GitHub
 Discussions. She routes Announcements at score ≥9, Progress at 5-8, and stays silent below 5. She is read-only on source
 and only writes to her memory namespace and GitHub Discussions. Same deployment shape as the others — one `claude`
 backend, identity from `.agents/self/piper/`, no commits-then-iris-pushes flow because she has no commits to push.
@@ -486,14 +485,23 @@ GitHub/profile consistency, credential readiness, avatar/roster drift, safe paus
 clarity. Milo is intentionally separate from Mira: Mira watches whether the platform is healthy enough for agents to
 run; Milo watches whether the team membership and lifecycle surfaces are coherent enough for the roster to make sense.
 
-Milo needs bounded Kubernetes write access because lifecycle work sometimes includes pod-level intervention: evicting or
-deleting a stuck agent pod, verifying the replacement comes back healthy, or cleaning up namespace-local lifecycle
-artifacts during an approved pause/decommission flow. Use the operator-managed `namespaceWrite` preset rather than a
-hand-rolled ServiceAccount. It grants namespace-local remediation permissions while still excluding secrets, RBAC
-mutation, raw pod creation, and cluster-scoped resources.
+Milo needs Kubernetes write access for two reasons. First, his `team-upgrade` skill drives `ww agent upgrade` to keep
+the team on the latest release, which patches the `witwaveagents` CR. Second, future lifecycle work includes pod-level
+intervention (evicting a stuck agent pod, cleaning up namespace-local artifacts during an approved pause/decommission).
+Use the operator-managed `agentLifecycle` preset: it is `namespaceWrite` (bounded namespace-local remediation — still no
+secrets / RBAC / raw pod creation / cluster-scoped resources) **plus** `patch` on `witwaveagents`. Pair it with the
+`agentImagePatchPolicy` admission policy (below) so that CR-patch can only change image tags/digests, not repositories
+or backend wiring.
 
-His heartbeat remains disabled until a real lifecycle skill is ready. Deploying him now gives the team a reachable A2A
-identity, mounted config, credentials, workspace access, persistence, and the namespace-write Kubernetes API identity.
+His heartbeat runs `roster-audit` hourly (a read-only roster directory), and a separate `team-upgrade` job advances any
+in-flight upgrade campaign one agent at a time. Deploying him gives the team a reachable A2A identity, mounted config,
+credentials, workspace access, persistence, and the agentLifecycle Kubernetes API identity.
+
+Milo also deploys as the team's **model canary**: his `.witwave/backend.yaml` pins `claude-opus-4-8` and the create
+command sets `CLAUDE_EFFORT=max`, so he runs Opus 4.8 at maximum reasoning effort. This is deliberate — he is the first
+agent on 4.8/Max, so we prove the model + effort level work on him before rolling them to the rest of the team. (Model
+and effort are config, not image tags, so a team-wide rollout is a separate config/git change Milo recommends once he's
+proven — not something his `team-upgrade` image rollout does.)
 
 ```bash
 mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/milo/agent.sops.env -- \
@@ -502,11 +510,12 @@ mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/mi
   --workspace witwave-self \
   --with-persistence \
   --backend claude \
-  --kubernetes-api-access=namespaceWrite \
+  --kubernetes-api-access=agentLifecycle \
   --harness-env TASK_TIMEOUT_SECONDS=7200 \
   --harness-env CONVERSATIONS_AUTH_DISABLED=true \
   --backend-env claude:TASK_TIMEOUT_SECONDS=7200 \
   --backend-env claude:CONVERSATIONS_AUTH_DISABLED=true \
+  --backend-env claude:CLAUDE_EFFORT=max \
   --backend-secret-from-env claude=CLAUDE_CODE_OAUTH_TOKEN \
   --backend-secret-from-env claude=GITHUB_TOKEN \
   --backend-secret-from-env claude=GITHUB_USER \
@@ -514,23 +523,38 @@ mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/mi
   --gitsync-secret-from-env GITSYNC_USERNAME:GITSYNC_PASSWORD
 ```
 
-After Milo is deployed, verify the Kubernetes API identity before giving him any lifecycle work:
+After Milo is deployed, verify the Kubernetes API identity before giving him any upgrade or lifecycle work:
 
 ```bash
+# agentLifecycle adds patch on witwaveagents — this is what `ww agent upgrade` needs →
+kubectl auth can-i patch witwaveagents \
+  --namespace witwave-self \
+  --as system:serviceaccount:witwave-self:milo
+
+# the namespaceWrite half, reserved for future pod-lifecycle work →
 kubectl auth can-i delete pods \
   --namespace witwave-self \
   --as system:serviceaccount:witwave-self:milo
 
-kubectl auth can-i patch deployments \
-  --namespace witwave-self \
-  --as system:serviceaccount:witwave-self:milo
-
+# still withheld →
 kubectl auth can-i get secrets \
   --namespace witwave-self \
   --as system:serviceaccount:witwave-self:milo
 ```
 
 The expected answers are `yes`, `yes`, and `no`.
+
+**Bound the CR-patch to image versions.** `agentLifecycle` grants `patch` on the whole `witwaveagents` resource; the
+`agentImagePatchPolicy` admission policy narrows that to image tags/digests so Milo cannot repoint an image repository
+or rewire backends. Enable it by installing/upgrading the operator with these values
+(`charts/witwave-operator/values.yaml`):
+
+```yaml
+agentImagePatchPolicy:
+  enabled: true
+  constrainedServiceAccounts:
+    - system:serviceaccount:witwave-self:milo
+```
 
 ## Verify the team
 
@@ -543,7 +567,7 @@ ww agent list \
 
 `ww agent list` should now show ten rows (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`,
 `milo`) all in state `Ready`. `ww workspace status witwave-self` should report all ten under the bound-agents section.
-zora's heartbeat fires every 30 minutes; her next tick will discover the team and start dispatching cadence-floor work.
+zora's heartbeat fires every 60 minutes; her next tick will discover the team and start dispatching cadence-floor work.
 
 ## Tear it down
 

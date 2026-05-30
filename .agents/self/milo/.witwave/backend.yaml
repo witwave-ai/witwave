@@ -2,26 +2,26 @@ backend:
   agents:
     - id: claude
       url: http://localhost:8001
-      model: claude-opus-4-7
+      model: claude-opus-4-8
   routing:
     default:
       agent: claude
-      model: claude-opus-4-7
+      model: claude-opus-4-8
     a2a:
       agent: claude
-      model: claude-opus-4-7
+      model: claude-opus-4-8
     heartbeat:
       agent: claude
-      model: claude-opus-4-7
+      model: claude-opus-4-8
     job:
       agent: claude
-      model: claude-opus-4-7
+      model: claude-opus-4-8
     task:
       agent: claude
-      model: claude-opus-4-7
+      model: claude-opus-4-8
     trigger:
       agent: claude
-      model: claude-opus-4-7
+      model: claude-opus-4-8
     continuation:
       agent: claude
-      model: claude-opus-4-7
+      model: claude-opus-4-8

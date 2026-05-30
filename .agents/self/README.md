@@ -1,9 +1,10 @@
 # The Witwave Team
 
-The `witwave-ai/witwave` repo is maintained by a team of nine deployed autonomous agents, plus a draft Agent Resources
-identity (`milo`) that is scaffolded with credentials/avatar but not deployed. The deployed agents commit directly to
-`main` (trunk-based development), coordinate via A2A (agent-to-agent JSON-RPC), and ship continuously — many small
-high-quality releases per day rather than infrequent large ones.
+The `witwave-ai/witwave` repo is maintained by a team of nine deployed autonomous agents, plus an Agent Resources
+identity (`milo`) that is scaffolded with credentials, an avatar, and a working first skill (roster tracking) — but not
+deployed yet. The deployed agents commit directly to `main` (trunk-based development), coordinate via A2A
+(agent-to-agent JSON-RPC), and ship continuously — many small high-quality releases per day rather than infrequent large
+ones.
 
 Each agent owns one substrate. **Zora** decides what work happens when. **Evan** finds and fixes correctness bugs and
 risks (across all five risk categories: security, reliability, performance, observability, and maintainability).
@@ -15,8 +16,11 @@ outward-facing agent — she narrates the team's progress to humans on GitHub Di
 bar so the public surface stays signal-rich) and engages two-way across the Bugs, Questions, and Comments categories,
 routing confirmed bugs back to Zora and recurring misconceptions to Kira's docs queue. **Mira** observes platform
 reliability across the operator, agents, pod restarts, runtime storage, releases, and resource posture. When a signal
-looks problematic, she distills the evidence and sends it to Zora to route the fix. **Milo** is the next draft identity:
-Agent Resources for onboarding, roster consistency, profile drift, credentials readiness, and lifecycle hygiene.
+looks problematic, she distills the evidence and sends it to Zora to route the fix. **Milo** is the team's Agent
+Resources identity — HR for agents. His first skill (built, pending deploy) keeps a live roster directory — who is
+deployed, who is up or down, and what each member does — so the team can ask him "who's available?" and "who can take
+care of this?" Onboarding readiness, profile/roster consistency, credential readiness, and broader lifecycle hygiene are
+future scope.
 
 The mission: **continuously improve and release the Witwave platform — autonomously, around the clock, with quality
 gates that catch problems before they land on `main`.**
@@ -43,7 +47,7 @@ mise exec -- scripts/sops-exec-env.py .agents/self/team.sops.env .agents/self/pi
 
 ### Zora — manager
 
-The team's coordinator. She runs a continuous decision loop driven by a 30-minute heartbeat: reads team state, decides
+The team's coordinator. She runs a continuous decision loop driven by a 60-minute heartbeat: reads team state, decides
 who works on what next via call-peer, and decides when accumulated commits + green CI warrant a release. She doesn't
 write code — she dispatches the right peer at the right time. (`.agents/self/zora/`)
 
@@ -122,7 +126,7 @@ other agent commits locally and delegates the push to iris via `call-peer`. (`.a
 
 ### Piper — outreach
 
-The team's only outward-facing agent. She runs a heartbeat-driven outreach loop (every 30 min), reads team state (git
+The team's only outward-facing agent. She runs a heartbeat-driven outreach loop (every 60 min), reads team state (git
 log, peer memories, Zora's decision_log + escalations.md, recent CI runs, recent releases), scores observed events on a
 0-10 substantive-score model, and routes each tick to one of three outcomes: Announcements (≥9 — releases, critical
 events, user-visible surface changes), Progress (5-8 — substantive dev activity with a 30-min cooldown), or silent (<5 —
@@ -220,24 +224,31 @@ problematic. Zora decides whether the finding becomes work for Iris, Evan, Finn,
 
 ## Proposed future members
 
-The team is designed to grow. Mira is the current platform reliability observer. Milo now revives the earlier
-agent-resources direction as a separate draft identity focused on agent lifecycle hygiene and bounded pod lifecycle
-actions. The remaining roles below are still design-pipeline ideas. Names are tentative and likely to be revisited
-before scaffolding.
+The team is designed to grow. Mira is the current platform reliability observer. Milo revives the earlier
+agent-resources direction as a separate identity — his first skill (`roster-audit`) tracks the live roster, with
+lifecycle hygiene and bounded pod actions as future scope. The remaining roles below are still design-pipeline ideas.
+Names are tentative and likely to be revisited before scaffolding.
 
-### 1. Milo — Agent Resources (draft identity)
+### 1. Milo — Agent Resources (built, pending deploy)
 
-Owns agent lifecycle hygiene: onboarding readiness, GitHub/profile consistency, credential-readiness checks, avatar and
-roster drift, role-boundary clarity, safe pause/decommission paths, and approved pod lifecycle actions when an agent is
-stuck or needs a controlled restart. Distinct from Mira: Mira asks whether the platform is healthy enough for agents to
-run; Milo asks whether the roster, accounts, identities, and lifecycle surfaces are coherent enough for the team to make
-sense. Distinct from the future Process Architect: Process Architect improves how the team works; Milo manages who is on
-the team and whether each member is properly provisioned.
+Owns agent roster + lifecycle hygiene: keeping the team on the latest released version (safe staged upgrades),
+onboarding readiness, GitHub/profile consistency, credential-readiness checks, avatar and roster drift, role-boundary
+clarity, safe pause/decommission paths, and approved pod lifecycle actions when an agent is stuck or needs a controlled
+restart. Distinct from Mira: Mira asks whether the platform is healthy enough for agents to run; Milo asks whether the
+roster, accounts, identities, and lifecycle surfaces are coherent enough for the team to make sense. Distinct from the
+future Process Architect: Process Architect improves how the team works; Milo manages who is on the team and whether
+each member is properly provisioned.
 
-Current state: scaffolded under `.agents/self/milo/` with a draft Claude identity, public card, avatar, and encrypted
-`agent.sops.env`. The bootstrap path grants `namespaceWrite` Kubernetes API access so Milo can evict/delete pods and
-perform bounded namespace-local remediation when an approved lifecycle workflow needs it. His heartbeat remains disabled
-until a real lifecycle skill is ready.
+Current state: built and ready to deploy under `.agents/self/milo/` — Claude identity, public card, avatar, encrypted
+`agent.sops.env`, and two skills: **`roster-audit`** (a read-only roster directory: who is deployed, who is up vs down,
+what each member does, and who he can reach over A2A) and **`team-upgrade`** (keep the team on the latest release,
+safely — Milo is the **canary**: he upgrades himself first, soaks, then cascades a proven version to the peers one at a
+time via `ww agent upgrade`, with verify, rollback, version quarantine, and an operator-leads gate), plus the shared
+`discover-peers` / `call-peer` / `git-identity` / `self-tidy` kit. His heartbeat runs `roster-audit` hourly; a separate
+job drives `team-upgrade`. The bootstrap path grants the `agentLifecycle` Kubernetes API preset (namespaceWrite + patch
+on `witwaveagents`), bounded by the `agentImagePatchPolicy` admission policy so his upgrades can only change image
+versions. He also deploys on **Opus 4.8 at max effort** (`CLAUDE_EFFORT=max`) as the team's model canary. He is **not
+deployed yet** — bootstrap Step 12 stands him up.
 
 ### 2. security — likely **vera** or **maya**
 
@@ -271,13 +282,13 @@ the platform claims and what users want, market/ecosystem shifts (new MCP server
 projects) — and proposes _strategic_ moves: "we should pivot to X," "the next quarter's theme is Y," "this whole
 subsystem deserves a rewrite." Output is high-leverage, low-frequency, mostly human-review: design memos, prioritization
 proposals, deprecation calls, "let's stop investing in Z." Distinct from zora (who decides _which peer dispatches next_
-on the 30-min cadence) and software-architecture (who flags structural decay): CTO sets the _direction_ both of them
+on the 60-min cadence) and software-architecture (who flags structural decay): CTO sets the _direction_ both of them
 then execute against. Direction-setting is highest-leverage but also requires the most accumulated context — better once
 the team has months of state to reason over and the platform has real users with real friction points.
 
 ## How the loop closes
 
-1. **Zora's heartbeat fires** every 30 min → reads team state → applies priority policy.
+1. **Zora's heartbeat fires** every 60 min → reads team state → applies priority policy.
 2. **Zora dispatches a peer** (urgent first, then cadence floor, then team-tidy, then backlog-weighted) via `call-peer`.
 3. **The peer does its domain work** — finds bugs, formats code, refreshes docs, etc. Commits locally with a focused
    message.

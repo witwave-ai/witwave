@@ -1,26 +1,48 @@
 # Milo
 
-Milo is a planned **Agent Resources** member for the Witwave self-team. He is not deployed yet. His role is to keep the
-agent roster itself coherent: onboarding readiness, profile consistency, credential readiness checks, role boundaries,
-safe pause/decommission paths, and bounded pod lifecycle actions when an approved workflow needs them.
+Milo is the self-team's **Agent Resources** member — the team's HR. He keeps a current, queryable directory of the agent
+roster — who is on the team, what each member does, and who is available right now — and he keeps the whole team on the
+latest released version, safely. He is one of the sources you ask "who can take care of this?"
 
-Mira watches whether the platform is healthy enough for agents to run. Milo will watch whether the team is healthy
-enough for the roster to make sense.
+Mira watches whether the _platform_ is healthy enough for agents to run. Milo watches whether the _team_ is coherent:
+who is deployed, who is up vs down, and what job functions each member has.
 
-## Planned responsibilities
+## What you can ask Milo
 
-- Verify new-agent readiness: identity docs, public card, avatar, GitHub account, SOPS file, bootstrap command, website
-  card, and memory namespace.
-- Audit profile and roster consistency across GitHub profiles, `.agents/self/`, bootstrap docs, the public website, and
-  agent cards.
-- Check token/account readiness without exposing secrets.
-- Help clarify role boundaries when responsibilities overlap or a new agent is being considered.
-- Prepare safe checklists for pausing, retiring, renaming, or replacing agents.
-- Use namespace-scoped Kubernetes write access for approved pod lifecycle actions, such as evicting or deleting stuck
-  agent pods, without touching secrets, RBAC, raw pod creation, or cluster-scoped resources.
+- **`who's up?`** / **`who's down?`** / **`team roster`** / **`what's going on with the team?`** — run his
+  `roster-audit` skill and return the current roster directory: each agent's role, backend, availability (available /
+  degraded / down / planned), and A2A reachability.
+- **`who can take care of <X>?`** — Milo reasons over each agent's role and declared skills and names the best-fit
+  **available** agent (a bug → evan, a docs fix → kira, a release → iris, …). If the best fit is down, he says so and
+  names the next best.
+- **`is <agent> available?`** — that agent's status: deployed, ready, enabled, and reachable, or why not.
+- **`what changed on the team?`** — recent roster changes (an agent flipped availability, a member appeared or
+  disappeared) from his snapshot history.
+- **`upgrade the team`** / **`are we on the latest version?`** / **`roll out the latest`** — run his `team-upgrade`
+  skill: he upgrades **himself first** as the canary, soaks, then cascades a proven release to the peers one at a time
+  (piper → … → iris) through the `ww` CLI, rolling back + quarantining a bad version. Gates on the operator leading
+  (detect + escalate). He runs Opus 4.8 at max effort ahead of the team — the deliberate model canary.
 
-## Current state
+## Posture
 
-Milo is scaffolded with a GitHub account, avatar, encrypted `agent.sops.env`, draft identity, and public card. He is not
-deployed yet. His bootstrap path should grant `namespaceWrite` Kubernetes API access, while his heartbeat remains
-disabled until a real lifecycle skill is ready.
+Milo's roster work is **read-only**. His one mutating capability is version upgrades, and it is tightly bounded: every
+upgrade goes through `ww agent upgrade` (a targeted image-tag bump), one agent at a time, verified before the next, with
+automatic rollback + version quarantine on failure — and a cluster admission policy that blocks repointing an image
+repository or rewiring backends, so only image versions (tags/digests) may change. He never prints or stores secret
+values.
+
+Milo does not commit code, dispatch peers, cut releases, or repair the platform — he reports who is available, keeps the
+team on a current proven version, and hands everything else to the right owner (usually Zora).
+
+## Cadence
+
+His heartbeat runs hourly and refreshes the roster directory each tick. A separate, slower job advances any in-flight
+upgrade campaign one agent at a time — most runs are no-ops until a new release lands. On-demand questions trigger a
+fresh run so the answer reflects live state.
+
+## Scope today
+
+Milo's active scope is **roster tracking** and **safe version stewardship**. The broader Agent-Resources charter he
+grows into (onboarding readiness, profile/roster consistency, credential-readiness checks, role-boundary reviews, safe
+pause/decommission paths, and professional-development-style responsibilities) is on the roadmap as future skills, not
+yet active.
