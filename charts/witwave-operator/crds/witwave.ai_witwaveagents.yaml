@@ -2178,9 +2178,13 @@ spec:
                       Mode selects the RBAC preset. Defaults to readOnly. namespaceWrite grants
                       a bounded namespace-local remediation surface while still excluding
                       secrets, RBAC mutation, raw pod creation, and cluster-scoped resources.
+                      agentLifecycle adds patch on witwaveagents on top of namespaceWrite so an
+                      Agent-Resources agent can run `ww agent upgrade` against its peers
+                      (narrow it to image fields with a ValidatingAdmissionPolicy).
                     enum:
                     - readOnly
                     - namespaceWrite
+                    - agentLifecycle
                     type: string
                   name:
                     description: |-

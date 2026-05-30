@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -199,4 +200,43 @@ func policyRulesContainResourceVerb(rules []rbacv1.PolicyRule, resource, verb st
 		}
 	}
 	return false
+}
+
+// TestKubernetesApiAccessAgentLifecycleRules pins the agentLifecycle preset:
+// the namespaceWrite surface PLUS patch on witwaveagents, and nothing more
+// dangerous. This is what lets an Agent-Resources agent (milo) drive
+// `ww agent upgrade` against its peers. Pure unit test — no envtest.
+func TestKubernetesApiAccessAgentLifecycleRules(t *testing.T) {
+	rules, err := kubernetesApiAccessRulesForMode(witwavev1alpha1.KubernetesApiAccessModeAgentLifecycle)
+	if err != nil {
+		t.Fatalf("rules for agentLifecycle: %v", err)
+	}
+
+	// The defining addition: patch on witwaveagents.
+	if !policyRulesContainResourceVerb(rules, "witwaveagents", "patch") {
+		t.Error("agentLifecycle must grant patch on witwaveagents (for ww agent upgrade)")
+	}
+	// Inherits the namespaceWrite remediation surface.
+	if !policyRulesContainResourceVerb(rules, "pods", "delete") {
+		t.Error("agentLifecycle should retain namespaceWrite pods/delete")
+	}
+	if !policyRulesContainResourceVerb(rules, "deployments", "patch") {
+		t.Error("agentLifecycle should retain namespaceWrite deployments/patch")
+	}
+	// Inherits the readOnly read on witwaveagents.
+	if !policyRulesContainResourceVerb(rules, "witwaveagents", "get") {
+		t.Error("agentLifecycle should retain read on witwaveagents")
+	}
+
+	// Withholds everything namespaceWrite withholds, and grants no broader
+	// witwaveagents mutation than patch.
+	if policyRulesContainResource(rules, "secrets") {
+		t.Error("agentLifecycle must NOT grant secrets")
+	}
+	if policyRulesContainResourceVerb(rules, "roles", "patch") {
+		t.Error("agentLifecycle must NOT grant RBAC mutation")
+	}
+	if policyRulesContainResourceVerb(rules, "witwaveagents", "delete") {
+		t.Error("agentLifecycle must grant patch only on witwaveagents, not delete")
+	}
 }

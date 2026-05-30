@@ -598,6 +598,13 @@ const (
 	// workload/config resources and evict/delete pods, but still excludes
 	// secrets, RBAC mutation, raw pod creation, and cluster-scoped resources.
 	KubernetesApiAccessModeNamespaceWrite KubernetesApiAccessMode = "namespaceWrite"
+
+	// KubernetesApiAccessModeAgentLifecycle renders the namespaceWrite
+	// surface PLUS patch on witwaveagents, so an Agent-Resources agent can
+	// drive `ww agent upgrade` (image-tag bumps) against its peers. The
+	// patch verb is resource-scoped; field-level scoping (image tags only)
+	// is enforced separately by a ValidatingAdmissionPolicy, not by RBAC.
+	KubernetesApiAccessModeAgentLifecycle KubernetesApiAccessMode = "agentLifecycle"
 )
 
 // KubernetesApiAccessSpec configures an operator-managed Kubernetes API
@@ -622,7 +629,10 @@ type KubernetesApiAccessSpec struct {
 	// Mode selects the RBAC preset. Defaults to readOnly. namespaceWrite grants
 	// a bounded namespace-local remediation surface while still excluding
 	// secrets, RBAC mutation, raw pod creation, and cluster-scoped resources.
-	// +kubebuilder:validation:Enum=readOnly;namespaceWrite
+	// agentLifecycle adds patch on witwaveagents on top of namespaceWrite so an
+	// Agent-Resources agent can run `ww agent upgrade` against its peers
+	// (narrow it to image fields with a ValidatingAdmissionPolicy).
+	// +kubebuilder:validation:Enum=readOnly;namespaceWrite;agentLifecycle
 	// +kubebuilder:default=readOnly
 	// +optional
 	Mode KubernetesApiAccessMode `json:"mode,omitempty"`

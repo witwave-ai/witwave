@@ -217,12 +217,33 @@ func kubernetesApiAccessNamespaceWriteRules() []rbacv1.PolicyRule {
 	)
 }
 
+// kubernetesApiAccessAgentLifecycleRules renders the namespaceWrite surface
+// plus patch on witwaveagents, so an Agent-Resources agent (e.g. milo) can
+// drive `ww agent upgrade` against its peers. Only the patch verb is added —
+// get/list/watch on witwaveagents already come from the readOnly base. The
+// grant is resource-scoped (any field of any witwaveagent in the namespace);
+// narrow it to image-tag fields with a ValidatingAdmissionPolicy bound to the
+// agent's ServiceAccount.
+func kubernetesApiAccessAgentLifecycleRules() []rbacv1.PolicyRule {
+	return append(kubernetesApiAccessNamespaceWriteRules(),
+		rbacv1.PolicyRule{
+			APIGroups: []string{"witwave.ai"},
+			Resources: []string{
+				"witwaveagents",
+			},
+			Verbs: []string{"patch"},
+		},
+	)
+}
+
 func kubernetesApiAccessRulesForMode(mode witwavev1alpha1.KubernetesApiAccessMode) ([]rbacv1.PolicyRule, error) {
 	switch mode {
 	case witwavev1alpha1.KubernetesApiAccessModeReadOnly:
 		return kubernetesApiAccessReadOnlyRules(), nil
 	case witwavev1alpha1.KubernetesApiAccessModeNamespaceWrite:
 		return kubernetesApiAccessNamespaceWriteRules(), nil
+	case witwavev1alpha1.KubernetesApiAccessModeAgentLifecycle:
+		return kubernetesApiAccessAgentLifecycleRules(), nil
 	default:
 		return nil, fmt.Errorf("unsupported kubernetesApiAccess.mode %q", mode)
 	}

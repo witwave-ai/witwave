@@ -216,6 +216,10 @@ All owned resources carry `ownerReferences` pointing at the `WitwaveAgent`, so d
 - `mode: namespaceWrite` adds bounded namespace-local remediation verbs: manage ConfigMaps, Services, Deployments, Jobs,
   and CronJobs; delete or evict Pods for restart-style remediation. It still does not grant secrets, RBAC mutation, raw
   Pod creation, nodes, namespaces, persistent volumes, or cluster-scoped resources.
+- `mode: agentLifecycle` is `namespaceWrite` plus `patch` on `witwaveagents`, so an Agent-Resources agent can run
+  `ww agent upgrade` against its peers. The patch verb is resource-scoped; pair it with the `agentImagePatchPolicy`
+  ValidatingAdmissionPolicy (gated in `charts/witwave-operator/values.yaml`) to limit those patches to image
+  tags/digests — image repositories and backend wiring stay locked.
 
 When this field is omitted or disabled, the operator renders the namespace `default` ServiceAccount with
 `automountServiceAccountToken: false`, so the pod keeps the no-token posture while still converging cleanly under
