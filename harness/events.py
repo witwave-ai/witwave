@@ -58,6 +58,11 @@ class EventEnvelope:
     payload: dict
 
     def to_dict(self) -> dict:
+        """Return a plain-dict view of the envelope for JSON serialisation.
+
+        ``payload`` is shallow-copied so a downstream consumer can mutate
+        the returned dict without aliasing this envelope's stored payload.
+        """
         return {
             "type": self.type,
             "version": self.version,
@@ -342,10 +347,12 @@ class EventStream:
 
     @property
     def subscriber_count(self) -> int:
+        """Number of currently attached subscribers."""
         return len(self._subscribers)
 
     @property
     def ring_size(self) -> int:
+        """Number of envelopes currently retained in the replay ring."""
         return len(self._ring)
 
     def known_types(self) -> Iterable[str]:

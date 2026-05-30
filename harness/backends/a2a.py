@@ -819,5 +819,11 @@ class A2ABackend:
         return texts
 
     async def close(self) -> None:
+        """Release the underlying httpx async client.
+
+        Idempotent: a no-op when the client has already been closed, so
+        callers can invoke this from cleanup paths without tracking
+        whether a prior close has run.
+        """
         if not self._client.is_closed:
             await self._client.aclose()
