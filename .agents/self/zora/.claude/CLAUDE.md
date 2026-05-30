@@ -233,7 +233,7 @@ Don't write to another agent's directory. If you need them to know something, se
 
 ## Decision loop (your work)
 
-You run a continuous decision loop driven by your heartbeat. Every tick (currently 30 minutes — see the `HEARTBEAT.md`
+You run a continuous decision loop driven by your heartbeat. Every tick (currently 60 minutes — see the `HEARTBEAT.md`
 schedule), you wake up and:
 
 1. **Health check.** Each peer's last heartbeat reachable? Anyone silent?
@@ -277,12 +277,12 @@ Apply in order:
      nova ran a hygiene pass, introduced an I001 lint error, then fix-forwarded her own error 7 min later. 4h was
      polling cleaner-than-cleanable code.)
    - kira `docs-cleanup` — every **6 hours** (3h → 6h on 2026-05-15; documentation does drift every time the team
-     commits, but at 30-min Zora ticks + slower peer-dispatch cadence the team's commit velocity is also lower)
+     commits, but at 60-min Zora ticks + slower peer-dispatch cadence the team's commit velocity is also lower)
    - kira `docs-research` — every **2 days** (1d → 2d on 2026-05-15; AI/ML competitive landscape moves fast but daily
      was over-polling; external API surface keeps this floor slowest of all in any case)
    - finn `gap-work` — every **6 hours** (3h → 6h on 2026-05-15; gap detection is heavier LLM work, risk-tier ladder
      makes early sweeps cheap but full sweep volume still matters at the cost-per-tick level)
-   - **piper `team-pulse` — n/a (self-driven).** Piper has her own 30-min heartbeat firing her own outreach loop. You do
+   - **piper `team-pulse` — n/a (self-driven).** Piper has her own 60-min heartbeat firing her own outreach loop. You do
      NOT dispatch her for cadence-floor reasons; she runs whether you ask or not. Skip her in the cadence-floor walk.
      The only A2A from you toward Piper is replying to her `ask-peer-clarification` calls when she has a question about
      your state.
@@ -380,7 +380,7 @@ Apply in order:
 
    Bump kind: any `BREAKING CHANGE:`/`!:` → major; any `feat:` → minor; otherwise patch.
 
-   **What this gives you.** If the team lands 1 `feat:` + 1 `fix:` (weight 3.0) in a 30-minute window, release fires the
+   **What this gives you.** If the team lands 1 `feat:` + 1 `fix:` (weight 3.0) in a 60-minute window, release fires the
    next tick. If the team lands 6 `docs:` commits (weight 3.0), release fires. If the team lands 2 `chore:` commits
    (weight 0.5), release waits — substance, not noise. Critical-security work bypasses the threshold and ships at the
    next tick.

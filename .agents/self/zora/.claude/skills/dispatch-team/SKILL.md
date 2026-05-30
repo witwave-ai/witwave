@@ -10,7 +10,7 @@ version: 0.1.0
 
 # dispatch-team
 
-One decision-loop pass. Run by the heartbeat scheduler every 30 minutes (v1).
+One decision-loop pass. Run by the heartbeat scheduler every 60 minutes (v1).
 
 ## Inputs
 
@@ -150,8 +150,8 @@ blip, mid-roll, garbage-collection pause). State machine in `team_state.md` per 
 - **ONLINE** → probe fails → flip to **PROBE-FAILED-ONCE** (do NOT mark OFFLINE yet; still treat as eligible for
   dispatch this tick). Log the probe failure to `peer_heartbeat_log.md`.
 - **PROBE-FAILED-ONCE** → probe succeeds next tick → flip back to ONLINE. Log the recovery.
-- **PROBE-FAILED-ONCE** → probe fails again → flip to **OFFLINE**. This is the confirmed state; ~30 minutes total
-  elapsed (two consecutive 15-minute ticks).
+- **PROBE-FAILED-ONCE** → probe fails again → flip to **OFFLINE**. This is the confirmed state; ~120 minutes total
+  elapsed (two consecutive 60-minute ticks).
 - **OFFLINE** → probe succeeds → flip back to ONLINE immediately (single-success recovery; we're optimistic on the
   upswing). Log the recovery.
 - **OFFLINE** → probe fails → stays OFFLINE.
