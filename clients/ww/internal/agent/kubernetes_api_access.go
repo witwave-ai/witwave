@@ -21,6 +21,10 @@ const (
 	// KubernetesApiAccessModeNamespaceWrite matches the CRD's bounded
 	// namespace-local remediation preset.
 	KubernetesApiAccessModeNamespaceWrite = "namespaceWrite"
+	// KubernetesApiAccessModeAgentLifecycle matches the CRD's preset that
+	// adds patch on witwaveagents to namespaceWrite, so an Agent-Resources
+	// agent can run `ww agent upgrade` against its peers.
+	KubernetesApiAccessModeAgentLifecycle = "agentLifecycle"
 )
 
 // KubernetesApiAccessSpec mirrors spec.kubernetesApiAccess on the
@@ -49,12 +53,15 @@ func NormalizeKubernetesApiAccessMode(mode string) (string, error) {
 		return KubernetesApiAccessModeReadOnly, nil
 	case "namespacewrite", "namespace-write", "namespace_write", "write", "rw":
 		return KubernetesApiAccessModeNamespaceWrite, nil
+	case "agentlifecycle", "agent-lifecycle", "agent_lifecycle", "lifecycle":
+		return KubernetesApiAccessModeAgentLifecycle, nil
 	default:
 		return "", fmt.Errorf(
-			"unsupported Kubernetes API access mode %q; valid modes: %s, %s",
+			"unsupported Kubernetes API access mode %q; valid modes: %s, %s, %s",
 			mode,
 			KubernetesApiAccessModeReadOnly,
 			KubernetesApiAccessModeNamespaceWrite,
+			KubernetesApiAccessModeAgentLifecycle,
 		)
 	}
 }
@@ -299,6 +306,8 @@ func kubernetesApiAccessPlanValue(mode string) string {
 	switch mode {
 	case KubernetesApiAccessModeNamespaceWrite:
 		return "namespaceWrite (bounded namespace-local remediation; no secrets/RBAC/cluster resources)"
+	case KubernetesApiAccessModeAgentLifecycle:
+		return "agentLifecycle (namespaceWrite + patch on witwaveagents for ww agent upgrade)"
 	default:
 		return "readOnly (get/list/watch + pod logs; no mutating verbs)"
 	}

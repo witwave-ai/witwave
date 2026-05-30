@@ -19,6 +19,9 @@ func TestNormalizeKubernetesApiAccessMode(t *testing.T) {
 		{"namespaceWrite", KubernetesApiAccessModeNamespaceWrite},
 		{"namespace-write", KubernetesApiAccessModeNamespaceWrite},
 		{"rw", KubernetesApiAccessModeNamespaceWrite},
+		{"agentLifecycle", KubernetesApiAccessModeAgentLifecycle},
+		{"agent-lifecycle", KubernetesApiAccessModeAgentLifecycle},
+		{"lifecycle", KubernetesApiAccessModeAgentLifecycle},
 	}
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
@@ -53,6 +56,9 @@ func TestNewKubernetesApiAccessSpec(t *testing.T) {
 		{"namespaceWrite", KubernetesApiAccessModeNamespaceWrite},
 		{"namespace-write", KubernetesApiAccessModeNamespaceWrite},
 		{"rw", KubernetesApiAccessModeNamespaceWrite},
+		{"agentLifecycle", KubernetesApiAccessModeAgentLifecycle},
+		{"agent-lifecycle", KubernetesApiAccessModeAgentLifecycle},
+		{"lifecycle", KubernetesApiAccessModeAgentLifecycle},
 	}
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {

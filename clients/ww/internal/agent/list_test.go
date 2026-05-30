@@ -10,6 +10,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -108,5 +109,103 @@ func TestListRendererShowsEnabledColumn(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("rendered list missing %q:\n%s", want, got)
 		}
+	}
+}
+
+// TestAgentSummaryParsesImages pins the harness + per-backend image
+// extraction that feeds the VERSION column, --json, and the upgrade
+// path's "what version is this agent on?" read.
+func TestAgentSummaryParsesImages(t *testing.T) {
+	cr := &unstructured.Unstructured{Object: map[string]any{
+		"spec": map[string]any{
+			"image": map[string]any{"repository": "ghcr.io/witwave-ai/images/harness", "tag": "0.33.6"},
+			"backends": []any{
+				map[string]any{"name": "claude", "image": map[string]any{"repository": "ghcr.io/witwave-ai/images/claude", "tag": "0.33.6"}},
+			},
+		},
+		"status": map[string]any{"phase": "Ready", "readyReplicas": int64(1)},
+	}}
+
+	got := agentSummary(cr)
+	if got.Harness.Tag != "0.33.6" || got.Harness.Version() != "0.33.6" {
+		t.Fatalf("harness image = %+v, want tag 0.33.6", got.Harness)
+	}
+	if len(got.Backends) != 1 || got.Backends[0] != "claude" {
+		t.Fatalf("Backends = %v, want [claude]", got.Backends)
+	}
+	if len(got.BackendImages) != 1 || got.BackendImages[0].Name != "claude" || got.BackendImages[0].Image.Tag != "0.33.6" {
+		t.Fatalf("BackendImages = %+v, want one claude@0.33.6", got.BackendImages)
+	}
+}
+
+func TestAgentImageVersionAndRef(t *testing.T) {
+	cases := []struct {
+		name        string
+		img         AgentImage
+		wantVersion string
+		wantRef     string
+	}{
+		{"tag", AgentImage{Repository: "r", Tag: "0.33.6"}, "0.33.6", "r:0.33.6"},
+		{"digest", AgentImage{Repository: "r", Digest: "sha256:abc"}, "sha256:abc", "r@sha256:abc"},
+		{"repo only", AgentImage{Repository: "r"}, "-", "r"},
+		{"empty", AgentImage{}, "-", "-"},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.img.Version(); got != tc.wantVersion {
+				t.Errorf("Version() = %q, want %q", got, tc.wantVersion)
+			}
+			if got := tc.img.Ref(); got != tc.wantRef {
+				t.Errorf("Ref() = %q, want %q", got, tc.wantRef)
+			}
+		})
+	}
+}
+
+func TestListRendererShowsVersionColumn(t *testing.T) {
+	var out strings.Builder
+	summaries := []AgentSummary{
+		{Namespace: "witwave-self", Name: "zora", Phase: "Ready", Ready: 1, Harness: AgentImage{Repository: "h", Tag: "0.33.6"}},
+	}
+	if err := renderList(&out, summaries); err != nil {
+		t.Fatalf("renderList returned error: %v", err)
+	}
+	got := out.String()
+	for _, want := range []string{"VERSION", "0.33.6"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("rendered list missing %q:\n%s", want, got)
+		}
+	}
+}
+
+// TestListJSONIncludesVersions pins the --json contract that roster-audit,
+// platform-health, and the team-upgrade skill parse.
+func TestListJSONIncludesVersions(t *testing.T) {
+	var out strings.Builder
+	summaries := []AgentSummary{{
+		Namespace:     "witwave-self",
+		Name:          "iris",
+		Phase:         "Ready",
+		Ready:         1,
+		Harness:       AgentImage{Repository: "ghcr.io/h", Tag: "0.33.6"},
+		BackendImages: []BackendSummary{{Name: "claude", Image: AgentImage{Repository: "ghcr.io/c", Tag: "0.33.6"}}},
+	}}
+	if err := renderListJSON(&out, summaries); err != nil {
+		t.Fatalf("renderListJSON returned error: %v", err)
+	}
+	var decoded []AgentJSON
+	if err := json.Unmarshal([]byte(out.String()), &decoded); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out.String())
+	}
+	if len(decoded) != 1 {
+		t.Fatalf("want 1 agent, got %d", len(decoded))
+	}
+	a := decoded[0]
+	if a.Name != "iris" || !a.Enabled || a.Harness.Tag != "0.33.6" {
+		t.Fatalf("unexpected agent json: %+v", a)
+	}
+	if len(a.Backends) != 1 || a.Backends[0].Image.Tag != "0.33.6" {
+		t.Fatalf("backends json wrong: %+v", a.Backends)
 	}
 }

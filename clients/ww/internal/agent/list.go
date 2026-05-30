@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -21,10 +22,60 @@ import (
 // Setting Namespace scopes to that namespace; leaving both empty +
 // AllNamespaces=false is a caller bug and produces a namespace-less
 // list call (which the apiserver rejects).
+//
+// JSON switches the renderer from the human table to a machine-readable
+// array (stable field names; includes per-container image versions). The
+// upgrade-orchestration path and observer skills read this instead of
+// shelling out to `kubectl get wwa -o jsonpath`.
 type ListOptions struct {
 	Namespace     string
 	AllNamespaces bool
+	JSON          bool
 	Out           io.Writer
+}
+
+// AgentImage is the repository / tag / digest of one container image
+// (the harness, or a backend). Mirrors the CRD's ImageSpec shape so
+// callers can read the running version without re-parsing the raw CR.
+type AgentImage struct {
+	Repository string `json:"repository,omitempty"`
+	Tag        string `json:"tag,omitempty"`
+	Digest     string `json:"digest,omitempty"`
+}
+
+// Ref renders the image as repository:tag (or repository@digest when
+// pinned by digest, or just repository). Empty repository renders "-".
+func (i AgentImage) Ref() string {
+	switch {
+	case i.Repository == "":
+		return "-"
+	case i.Digest != "":
+		return i.Repository + "@" + i.Digest
+	case i.Tag != "":
+		return i.Repository + ":" + i.Tag
+	default:
+		return i.Repository
+	}
+}
+
+// Version is the human-facing version of an image: its tag, or the
+// digest when pinned by digest, or "-" when neither is set. This is the
+// value the VERSION column shows and the upgrade path compares against.
+func (i AgentImage) Version() string {
+	switch {
+	case i.Tag != "":
+		return i.Tag
+	case i.Digest != "":
+		return i.Digest
+	default:
+		return "-"
+	}
+}
+
+// BackendSummary pairs a backend name with its image.
+type BackendSummary struct {
+	Name  string     `json:"name"`
+	Image AgentImage `json:"image"`
 }
 
 // AgentSummary is a render-ready view of one WitwaveAgent. Flat enough
@@ -47,6 +98,14 @@ type AgentSummary struct {
 	Disabled bool
 	// Backends is the ordered list of spec.backends[*].name.
 	Backends []string
+	// Harness is the harness container image (spec.image). Its tag is the
+	// agent's canonical version shown in the VERSION column.
+	Harness AgentImage
+	// BackendImages pairs each backend name with its image
+	// (spec.backends[*].{name,image}). Parallel to Backends — carried
+	// separately so the text table can stay names-only while --json and
+	// the upgrade path see every container's version.
+	BackendImages []BackendSummary
 	// Created is the CR's creation timestamp, raw. Callers format it.
 	Created time.Time
 	// Raw is the underlying CR so drill-down views can render extra
@@ -87,6 +146,7 @@ func agentSummary(cr *unstructured.Unstructured) AgentSummary {
 		Team:      cr.GetLabels()[TeamLabel],
 		Phase:     readPhase(cr),
 		Created:   cr.GetCreationTimestamp().Time,
+		Harness:   imageFromCR(cr, "spec", "image"),
 		Raw:       cr,
 	}
 	if s.Phase == "" {
@@ -100,24 +160,51 @@ func agentSummary(cr *unstructured.Unstructured) AgentSummary {
 	}
 	if backends, found, err := unstructured.NestedSlice(cr.Object, "spec", "backends"); err == nil && found {
 		for _, b := range backends {
-			m, ok := b.(map[string]interface{})
+			m, ok := b.(map[string]any)
 			if !ok {
 				continue
 			}
-			if n, ok := m["name"].(string); ok {
+			n, _ := m["name"].(string)
+			if n != "" {
 				s.Backends = append(s.Backends, n)
 			}
+			s.BackendImages = append(s.BackendImages, BackendSummary{
+				Name:  n,
+				Image: imageFromMap(m["image"]),
+			})
 		}
 	}
 	return s
 }
 
-// List renders a table of WitwaveAgent CRs to opts.Out. Columns match
-// the CRD's additionalPrinterColumns so operators see the same fields
-// they'd see from `kubectl get wwa`. The NAMESPACE column is always
-// shown — kept uniform regardless of scope so users can grep/sort by
-// namespace without worrying about which mode they ran in. Thin
-// formatter over ListAgents so the TUI shares the same data path.
+// imageFromCR reads an ImageSpec ({repository, tag, digest}) at the given
+// field path in the CR into an AgentImage. Missing path → zero value.
+func imageFromCR(cr *unstructured.Unstructured, fields ...string) AgentImage {
+	m, found, err := unstructured.NestedMap(cr.Object, fields...)
+	if err != nil || !found {
+		return AgentImage{}
+	}
+	return imageFromMap(m)
+}
+
+// imageFromMap reads an ImageSpec from an already-extracted map value
+// (e.g. a backend's "image" subfield). Non-map input → zero value.
+func imageFromMap(v any) AgentImage {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return AgentImage{}
+	}
+	repo, _ := m["repository"].(string)
+	tag, _ := m["tag"].(string)
+	digest, _ := m["digest"].(string)
+	return AgentImage{Repository: repo, Tag: tag, Digest: digest}
+}
+
+// List renders a table of WitwaveAgent CRs to opts.Out, or a JSON array
+// when opts.JSON is set. Columns match the CRD's additionalPrinterColumns
+// plus a VERSION column (harness tag) so operators see at a glance which
+// release each agent is on. Thin formatter over ListAgents so the TUI
+// shares the same data path.
 func List(ctx context.Context, cfg *rest.Config, opts ListOptions) error {
 	if opts.Out == nil {
 		return fmt.Errorf("ListOptions.Out is required")
@@ -125,6 +212,9 @@ func List(ctx context.Context, cfg *rest.Config, opts ListOptions) error {
 	summaries, err := ListAgents(ctx, cfg, opts)
 	if err != nil {
 		return err
+	}
+	if opts.JSON {
+		return renderListJSON(opts.Out, summaries)
 	}
 	if len(summaries) == 0 {
 		if opts.AllNamespaces {
@@ -139,17 +229,61 @@ func List(ctx context.Context, cfg *rest.Config, opts ListOptions) error {
 
 func renderList(out io.Writer, summaries []AgentSummary) error {
 	tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "NAMESPACE\tNAME\tENABLED\tPHASE\tREADY\tBACKENDS\tAGE")
+	fmt.Fprintln(tw, "NAMESPACE\tNAME\tENABLED\tPHASE\tREADY\tVERSION\tBACKENDS\tAGE")
 	for _, s := range summaries {
 		backends := strings.Join(s.Backends, ",")
 		if backends == "" {
 			backends = "-"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
-			s.Namespace, s.Name, enabledDisplay(s), s.Phase, s.Ready, backends, FormatAge(s.Created),
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\n",
+			s.Namespace, s.Name, enabledDisplay(s), s.Phase, s.Ready, s.Harness.Version(), backends, FormatAge(s.Created),
 		)
 	}
 	return tw.Flush()
+}
+
+// AgentJSON is the machine-readable view emitted by `ww agent list
+// --json`. Stable field names — scripts and agent skills depend on
+// them (e.g. `ww agent list -n witwave-self --json | jq -r '.[].name'`,
+// or `.harness.tag` / `.backends[].image.tag` for version reads).
+type AgentJSON struct {
+	Namespace string           `json:"namespace"`
+	Name      string           `json:"name"`
+	Team      string           `json:"team,omitempty"`
+	Enabled   bool             `json:"enabled"`
+	Phase     string           `json:"phase"`
+	Ready     int64            `json:"ready"`
+	Age       string           `json:"age"`
+	Harness   AgentImage       `json:"harness"`
+	Backends  []BackendSummary `json:"backends"`
+}
+
+func (s AgentSummary) toJSON() AgentJSON {
+	backends := s.BackendImages
+	if backends == nil {
+		backends = []BackendSummary{}
+	}
+	return AgentJSON{
+		Namespace: s.Namespace,
+		Name:      s.Name,
+		Team:      s.Team,
+		Enabled:   !s.Disabled,
+		Phase:     s.Phase,
+		Ready:     s.Ready,
+		Age:       FormatAge(s.Created),
+		Harness:   s.Harness,
+		Backends:  backends,
+	}
+}
+
+func renderListJSON(out io.Writer, summaries []AgentSummary) error {
+	items := make([]AgentJSON, 0, len(summaries))
+	for _, s := range summaries {
+		items = append(items, s.toJSON())
+	}
+	enc := json.NewEncoder(out)
+	enc.SetIndent("", "  ")
+	return enc.Encode(items)
 }
 
 func enabledDisplay(s AgentSummary) string {

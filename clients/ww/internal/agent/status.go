@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -15,16 +16,22 @@ import (
 )
 
 // StatusOptions controls the `ww agent status` rendering.
+//
+// JSON switches from the curated text view to a single machine-readable
+// object (harness + per-backend versions, plus generation /
+// observedGeneration so an upgrade can confirm the operator has
+// reconciled the new image before declaring success).
 type StatusOptions struct {
 	Name      string
 	Namespace string
+	JSON      bool
 	Out       io.Writer
 }
 
 // Status fetches the WitwaveAgent CR and prints a compact, curated view
 // of its current state: metadata, backends, last-reconcile history.
 // This is the ww equivalent of `kubectl describe wwa <name>` minus the
-// yaml noise.
+// yaml noise. With opts.JSON it emits one StatusJSON object instead.
 func Status(ctx context.Context, cfg *rest.Config, opts StatusOptions) error {
 	if opts.Out == nil {
 		return fmt.Errorf("StatusOptions.Out is required")
@@ -42,6 +49,9 @@ func Status(ctx context.Context, cfg *rest.Config, opts StatusOptions) error {
 		return fmt.Errorf("get agent: %w", err)
 	}
 
+	if opts.JSON {
+		return renderStatusJSON(opts.Out, cr)
+	}
 	renderStatus(opts.Out, cr)
 	return nil
 }
@@ -62,6 +72,9 @@ func renderStatus(out io.Writer, cr *unstructured.Unstructured) {
 		fmt.Fprintln(out, "Enabled:      true")
 	}
 	fmt.Fprintf(out, "Phase:        %s\n", phase)
+	if harness := imageFromCR(cr, "spec", "image"); harness.Repository != "" {
+		fmt.Fprintf(out, "Image:        %s\n", harness.Ref())
+	}
 	if ts := cr.GetCreationTimestamp(); !ts.IsZero() {
 		fmt.Fprintf(out, "Age:          %s\n", FormatAge(ts.Time))
 	}
@@ -88,7 +101,7 @@ func renderBackends(out io.Writer, cr *unstructured.Unstructured) {
 	tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
 	fmt.Fprintln(tw, "  NAME\tIMAGE\tPORT\tMODEL")
 	for _, b := range backends {
-		m, ok := b.(map[string]interface{})
+		m, ok := b.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -101,29 +114,56 @@ func renderBackends(out io.Writer, cr *unstructured.Unstructured) {
 		if model == "" {
 			model = "-"
 		}
-		image := renderImageField(m)
+		image := imageFromMap(m["image"]).Ref()
 		fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\n", name, image, port, model)
 	}
 	_ = tw.Flush()
 	fmt.Fprintln(out)
 }
 
-// renderImageField assembles a display string for the `image` subfield
-// of a backend or harness spec. CRD shape: `{repository, tag?}`.
-func renderImageField(m map[string]interface{}) string {
-	img, _ := m["image"].(map[string]interface{})
-	if img == nil {
-		return "-"
+// StatusJSON is the machine-readable view emitted by `ww agent status
+// <name> --json`. Adds generation / observedGeneration on top of the
+// list shape so an upgrade can confirm the operator has observed the
+// new spec (observedGeneration >= generation) before checking readiness.
+type StatusJSON struct {
+	Namespace          string           `json:"namespace"`
+	Name               string           `json:"name"`
+	Enabled            bool             `json:"enabled"`
+	Phase              string           `json:"phase"`
+	Ready              int64            `json:"ready"`
+	Age                string           `json:"age"`
+	Message            string           `json:"message,omitempty"`
+	Generation         int64            `json:"generation"`
+	ObservedGeneration int64            `json:"observedGeneration"`
+	Harness            AgentImage       `json:"harness"`
+	Backends           []BackendSummary `json:"backends"`
+}
+
+func renderStatusJSON(out io.Writer, cr *unstructured.Unstructured) error {
+	s := agentSummary(cr)
+	sj := StatusJSON{
+		Namespace:  s.Namespace,
+		Name:       s.Name,
+		Enabled:    !s.Disabled,
+		Phase:      s.Phase,
+		Ready:      s.Ready,
+		Age:        FormatAge(s.Created),
+		Generation: cr.GetGeneration(),
+		Harness:    s.Harness,
+		Backends:   s.BackendImages,
 	}
-	repo, _ := img["repository"].(string)
-	tag, _ := img["tag"].(string)
-	if repo == "" {
-		return "-"
+	if sj.Backends == nil {
+		sj.Backends = []BackendSummary{}
 	}
-	if tag == "" {
-		return repo
+	if msg, found, err := unstructured.NestedString(cr.Object, "status", "message"); err == nil && found {
+		sj.Message = msg
 	}
-	return repo + ":" + tag
+	if og, found, err := unstructured.NestedInt64(cr.Object, "status", "observedGeneration"); err == nil && found {
+		sj.ObservedGeneration = og
+	}
+	enc := json.NewEncoder(out)
+	enc.SetIndent("", "  ")
+	return enc.Encode(sj)
 }
 
 func renderReconcileHistory(out io.Writer, cr *unstructured.Unstructured) {
@@ -135,15 +175,12 @@ func renderReconcileHistory(out io.Writer, cr *unstructured.Unstructured) {
 	// Cap rendering to the last 5 entries to keep `ww agent status` output
 	// scan-able. Full history is always available via `kubectl get wwa -o yaml`.
 	const cap = 5
-	start := len(history) - cap
-	if start < 0 {
-		start = 0
-	}
+	start := max(len(history)-cap, 0)
 	fmt.Fprintf(out, "Reconcile history (last %d of %d):\n", len(history)-start, len(history))
 	tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
 	fmt.Fprintln(tw, "  TIME\tPHASE\tREASON")
 	for _, h := range history[start:] {
-		m, ok := h.(map[string]interface{})
+		m, ok := h.(map[string]any)
 		if !ok {
 			continue
 		}

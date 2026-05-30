@@ -1189,8 +1189,8 @@ func newAgentCreateCmd(f *agentFlags) *cobra.Command {
 			"--persist <name>=<size> takes precedence — --with-persistence only fills in "+
 			"backends that weren't named explicitly.")
 	cmd.Flags().StringVar(&kubernetesAPI, "kubernetes-api-access", "",
-		"Enable operator-managed Kubernetes API access for the agent. Optional value: readOnly or namespaceWrite. "+
-			"Omit the value for readOnly.")
+		"Enable operator-managed Kubernetes API access for the agent. Optional value: readOnly, namespaceWrite, or "+
+			"agentLifecycle. Omit the value for readOnly.")
 	cmd.Flags().Lookup("kubernetes-api-access").NoOptDefVal = agent.KubernetesApiAccessModeReadOnly
 	cmd.Flags().StringArrayVar(&authProfiles, "auth", nil,
 		fmt.Sprintf(
@@ -1313,6 +1313,7 @@ func loadPersistDefaults(_ *agentFlags) (map[string]agent.PersistDefaults, error
 // ---------------------------------------------------------------------------
 
 func newAgentListCmd(f *agentFlags) *cobra.Command {
+	var jsonOut bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List WitwaveAgent CRs across every namespace (narrow with --namespace)",
@@ -1325,16 +1326,18 @@ func newAgentListCmd(f *agentFlags) *cobra.Command {
 			"applies to mutating verbs (create, delete, …), which still honour the\n" +
 			"context-ns-first resolution.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAgentList(cmd.Context(), f)
+			return runAgentList(cmd.Context(), f, jsonOut)
 		},
 	}
 	cmd.Flags().BoolVarP(&f.allNamespaces, "all-namespaces", "A", false,
 		"Explicit all-namespaces mode. Redundant — this is already the default — "+
 			"but accepted for kubectl parity so muscle-memory flags don't error.")
+	cmd.Flags().BoolVar(&jsonOut, "json", false,
+		"Emit a machine-readable JSON array (includes harness + backend image versions) instead of the table.")
 	return cmd
 }
 
-func runAgentList(ctx context.Context, f *agentFlags) error {
+func runAgentList(ctx context.Context, f *agentFlags, jsonOut bool) error {
 	_, resolver, err := f.resolveTarget(ctx)
 	if err != nil {
 		return err
@@ -1355,6 +1358,7 @@ func runAgentList(ctx context.Context, f *agentFlags) error {
 	return agent.List(ctx, cfg, agent.ListOptions{
 		Namespace:     ns,
 		AllNamespaces: allNamespaces,
+		JSON:          jsonOut,
 		Out:           os.Stdout,
 	})
 }
@@ -1364,6 +1368,7 @@ func runAgentList(ctx context.Context, f *agentFlags) error {
 // ---------------------------------------------------------------------------
 
 func newAgentStatusCmd(f *agentFlags) *cobra.Command {
+	var jsonOut bool
 	cmd := &cobra.Command{
 		Use:   "status <name>",
 		Short: "Show phase, backends, and reconcile history for a WitwaveAgent",
@@ -1378,13 +1383,15 @@ func newAgentStatusCmd(f *agentFlags) *cobra.Command {
 			"context > ww default. The resolved namespace is always echoed first.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAgentStatus(cmd.Context(), f, args[0])
+			return runAgentStatus(cmd.Context(), f, args[0], jsonOut)
 		},
 	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false,
+		"Emit a machine-readable JSON object (harness + backend versions, generation/observedGeneration) instead of the text view.")
 	return cmd
 }
 
-func runAgentStatus(ctx context.Context, f *agentFlags, name string) error {
+func runAgentStatus(ctx context.Context, f *agentFlags, name string, jsonOut bool) error {
 	target, resolver, err := f.resolveTarget(ctx)
 	if err != nil {
 		return err
@@ -1393,13 +1400,21 @@ func runAgentStatus(ctx context.Context, f *agentFlags, name string) error {
 	if err != nil {
 		return err
 	}
-	ns := logAndResolveNamespace(f.namespace, target.Namespace)
-	if f.namespace == "" {
-		fmt.Fprintln(os.Stdout)
+	// In --json mode keep stdout pure JSON: resolve the namespace without
+	// the human "Using namespace: …" echo (and no spacer line).
+	var ns string
+	if jsonOut {
+		ns, _ = agent.ResolveNamespaceWithSource(f.namespace, target.Namespace)
+	} else {
+		ns = logAndResolveNamespace(f.namespace, target.Namespace)
+		if f.namespace == "" {
+			fmt.Fprintln(os.Stdout)
+		}
 	}
 	return agent.Status(ctx, cfg, agent.StatusOptions{
 		Name:      name,
 		Namespace: ns,
+		JSON:      jsonOut,
 		Out:       os.Stdout,
 	})
 }
@@ -1625,7 +1640,8 @@ func newAgentKubernetesApiAccessCmd(f *agentFlags) *cobra.Command {
 			"namespace-scoped Role, and RoleBinding, then rolls the pod so\n" +
 			"kubectl and client-go can authenticate from the agent containers.\n" +
 			"The default mode is readOnly; namespaceWrite must be requested\n" +
-			"explicitly for bounded namespace-local remediation.",
+			"explicitly for bounded namespace-local remediation; agentLifecycle\n" +
+			"adds patch on witwaveagents for ww agent upgrade.",
 	}
 	cmd.AddCommand(newAgentKubernetesApiAccessEnableCmd(f))
 	cmd.AddCommand(newAgentKubernetesApiAccessDisableCmd(f))
@@ -1645,7 +1661,8 @@ func newAgentKubernetesApiAccessEnableCmd(f *agentFlags) *cobra.Command {
 			"an existing WitwaveAgent. readOnly grants diagnostics-only access\n" +
 			"(get/list/watch plus pod logs). namespaceWrite adds bounded\n" +
 			"namespace-local remediation while still excluding secrets, RBAC,\n" +
-			"raw pod creation, and cluster-scoped resources.",
+			"raw pod creation, and cluster-scoped resources. agentLifecycle adds\n" +
+			"patch on witwaveagents so the agent can run ww agent upgrade.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAgentKubernetesApiAccessEnable(cmd.Context(), f, args[0], mode, !noWait, timeout)
@@ -1653,7 +1670,7 @@ func newAgentKubernetesApiAccessEnableCmd(f *agentFlags) *cobra.Command {
 	}
 	bindAgentMutatingFlags(cmd, f)
 	cmd.Flags().StringVar(&mode, "mode", agent.KubernetesApiAccessModeReadOnly,
-		"Kubernetes API access preset: readOnly or namespaceWrite")
+		"Kubernetes API access preset: readOnly, namespaceWrite, or agentLifecycle")
 	cmd.Flags().BoolVar(&noWait, "no-wait", false,
 		"Return as soon as the patch lands; skip the rollout-to-Ready wait.")
 	cmd.Flags().DurationVar(&timeout, "timeout", 5*time.Minute,
