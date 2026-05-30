@@ -6,6 +6,31 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.33.6] — 2026-05-30
+
+Quiet documentation patch — three competitive-landscape research refreshes capturing the OpenClaw v2026.5.28 beta train,
+A2A v1.0.1, and langgraph-sdk v0.4.0, a prettier fix-forward to unblock `CI — Docs` on main, and continued docstring
+backfill across the harness and shared event / session-stream public surfaces. No runtime behaviour change.
+
+### Fixed
+
+- **ci**: Re-apply prettier to `docs/competitive-landscape.md` after the prior research dispatch landed unformatted,
+  unblocking `CI — Docs` on main.
+
+### Documentation
+
+- **harness + shared**: Add docstrings to the events, A2A backend, and session-stream public surfaces —
+  `EventEnvelope.to_dict`, `EventStream.subscriber_count` / `ring_size`, `A2ABackend.close`,
+  `SessionStreamEnvelope.to_dict`, and `SessionStreamBroadcaster.subscriber_count` / `ring_size` — each derived from the
+  function body (shallow-payload copy on `to_dict` variants, `len()` target on the introspection properties, `is_closed`
+  idempotency guard on `close`).
+- **research**: Twenty-seventh through twenty-ninth-pass refreshes of `competitive-landscape.md` capturing OpenClaw
+  v2026.5.28-beta.1 / beta.2 / beta.3 (subagent cwd/workspace separation, prompt-local hook context, session-lock
+  release on timeout abort, plus Claude Opus 4.8, Fal Krea, NVIDIA, MiniMax provider entries and GitHub Copilot
+  agent-runtime integration), A2A v1.0.0 → v1.0.1 (HTTP-binding / transcoding / TaskStatus bug-fix release), and
+  langgraph-sdk v0.4.0 with companion langgraph-cli v0.4.27 (SDK-level SSE / websocket stream transports, async
+  reconnect, scoped subgraph handles).
+
 ## [0.33.5] — 2026-05-29
 
 Quiet patch — an embedded-chart drift remediation in the `ww` CLI plus continued docstring backfill across the Python
