@@ -16,6 +16,7 @@ is running:
   paths.
 - Nine **WitwaveAgent**s (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`) with
   `Spec.WorkspaceRefs` pointing at `witwave-self` so they share the workspace.
+
   - **iris** owns source-tree initialization + release captaincy + git plumbing for the team.
   - **kira** owns documentation hygiene + research.
   - **nova** owns code-internal hygiene (formatting, comment-vs-code verification, comment authoring).
