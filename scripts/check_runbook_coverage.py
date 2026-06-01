@@ -102,7 +102,7 @@ def main() -> int:
     missing = sorted({a for a in alerts if a.lower() not in anchors})
     if missing:
         print(
-            "check_runbook_coverage: alerts without a `## <name>` heading " "in docs/runbooks.md:",
+            "check_runbook_coverage: alerts without a `## <name>` heading in docs/runbooks.md:",
             file=sys.stderr,
         )
         for name in missing:
