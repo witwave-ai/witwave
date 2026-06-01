@@ -653,6 +653,45 @@ def _resolve_effort(raw: str | None) -> str | None:
 CLAUDE_EFFORT = _resolve_effort(os.environ.get("CLAUDE_EFFORT"))
 
 
+# Max bytes the Claude Agent SDK buffers for a single JSON message from the
+# bundled CLI (ClaudeAgentOptions.max_buffer_size). The SDK default is 1 MiB; a
+# tool result larger than that (e.g. reading a big memory/log file) raises
+# "JSON message exceeded maximum buffer size" and crashes the whole turn with
+# JSON-RPC -32603 — which intermittently killed dispatch ticks on 2026-06-01
+# once agent memory files grew past 1 MiB. Raise the ceiling (default 16 MiB) so
+# a legitimately-large read succeeds; env-overridable for tuning. Non-int / <= 0
+# falls back to the default with a warning (never crash on a typo). This is the
+# centralized guard for ALL agents; per-agent memory caps (self-tidy rotation)
+# keep growth bounded so this ceiling stays headroom rather than a moving target.
+_DEFAULT_MAX_BUFFER_SIZE = 16 * 1024 * 1024  # 16 MiB
+
+
+def _resolve_max_buffer_size(raw: str | None) -> int:
+    value = (raw or "").strip()
+    if not value:
+        return _DEFAULT_MAX_BUFFER_SIZE
+    try:
+        n = int(value)
+    except ValueError:
+        logger.warning(
+            "CLAUDE_MAX_BUFFER_SIZE=%r is not an int; using default %d bytes",
+            raw,
+            _DEFAULT_MAX_BUFFER_SIZE,
+        )
+        return _DEFAULT_MAX_BUFFER_SIZE
+    if n <= 0:
+        logger.warning(
+            "CLAUDE_MAX_BUFFER_SIZE=%d must be > 0; using default %d bytes",
+            n,
+            _DEFAULT_MAX_BUFFER_SIZE,
+        )
+        return _DEFAULT_MAX_BUFFER_SIZE
+    return n
+
+
+CLAUDE_MAX_BUFFER_SIZE = _resolve_max_buffer_size(os.environ.get("CLAUDE_MAX_BUFFER_SIZE"))
+
+
 def _current_claude_credential() -> tuple[str | None, str | None]:
     """Read credential + env-var-name live each call (#1351).
 
@@ -1666,6 +1705,7 @@ def _make_options(
         stderr=stderr_fn,
         mcp_servers=mcp_servers,
         model=model or CLAUDE_MODEL,
+        max_buffer_size=CLAUDE_MAX_BUFFER_SIZE,
         **({"effort": CLAUDE_EFFORT} if CLAUDE_EFFORT else {}),
         **({"hooks": hooks_cfg} if hooks_cfg else {}),
         **({"env": env} if env else {}),
