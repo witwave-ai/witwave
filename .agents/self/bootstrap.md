@@ -14,7 +14,7 @@ is running:
 - One **WitwaveWorkspace** (`witwave-self`) with one or more shared volumes (`source` for the working repo state,
   `memory` for long-term per-agent memory, more as concerns accrete) that every participating agent mounts at the same
   paths.
-- Nine **WitwaveAgent**s (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`) with
+- Ten **WitwaveAgent**s (`iris`, `kira`, `nova`, `evan`, `zora`, `finn`, `felix`, `piper`, `mira`, `milo`) with
   `Spec.WorkspaceRefs` pointing at `witwave-self` so they share the workspace.
 
   - **iris** owns source-tree initialization + release captaincy + git plumbing for the team.
@@ -32,6 +32,9 @@ is running:
   - **mira** observes platform reliability: operator health, agent readiness, pod restarts, runtime storage, release
     posture, upgrade safety, and resource/anomaly signals. When a signal looks problematic, she distills it and sends it
     to zora to route the fix.
+  - **milo** is the team's Agent Resources peer: he keeps a live roster directory (who is deployed, who is up vs down,
+    what each member does) and stewards safe team-wide version upgrades as the release canary — read-only except for
+    one-at-a-time `ww agent upgrade`. He runs on Opus 4.8 at max effort as the team's model canary.
 
   Agents that author source changes commit work locally and delegate the push to iris via `call-peer`. Iris owns all
   git/GitHub authority for the team; zora owns team-level coordination + release-cadence decisions. Direct user

@@ -1,10 +1,8 @@
 # The Witwave Team
 
-The `witwave-ai/witwave` repo is maintained by a team of nine deployed autonomous agents, plus an Agent Resources
-identity (`milo`) that is scaffolded with credentials, an avatar, and a working first skill (roster tracking) — but not
-deployed yet. The deployed agents commit directly to `main` (trunk-based development), coordinate via A2A
-(agent-to-agent JSON-RPC), and ship continuously — many small high-quality releases per day rather than infrequent large
-ones.
+The `witwave-ai/witwave` repo is maintained by a team of ten deployed autonomous agents. They commit directly to `main`
+(trunk-based development), coordinate via A2A (agent-to-agent JSON-RPC), and ship continuously — many small high-quality
+releases per day rather than infrequent large ones.
 
 Each agent owns one substrate. **Zora** decides what work happens when. **Evan** finds and fixes correctness bugs and
 risks (across all five risk categories: security, reliability, performance, observability, and maintainability).
@@ -17,7 +15,7 @@ bar so the public surface stays signal-rich) and engages two-way across the Bugs
 routing confirmed bugs back to Zora and recurring misconceptions to Kira's docs queue. **Mira** observes platform
 reliability across the operator, agents, pod restarts, runtime storage, releases, and resource posture. When a signal
 looks problematic, she distills the evidence and sends it to Zora to route the fix. **Milo** is the team's Agent
-Resources identity — HR for agents. His first skill (built, pending deploy) keeps a live roster directory — who is
+Resources identity — HR for agents. His `roster-audit` skill runs hourly to keep a live roster directory — who is
 deployed, who is up or down, and what each member does — so the team can ask him "who's available?" and "who can take
 care of this?" Onboarding readiness, profile/roster consistency, credential readiness, and broader lifecycle hygiene are
 future scope.
@@ -173,6 +171,21 @@ detected, `.codex/config.toml` caps Codex function-tool loops at 10, and ad-hoc 
 `default_max_tokens = 30000` backend budget when the caller does not provide one. Raise those guardrails only when the
 requested diagnostic scope explicitly needs deeper investigation.
 
+### Milo — Agent Resources
+
+The team's HR. Milo keeps a live roster directory — who is deployed, who is up vs down, what each member does, and who
+he can reach over A2A — so the team has one place to ask "who's available?" and "who can take care of this?" His
+`roster-audit` skill refreshes that directory on an hourly heartbeat and records a snapshot each tick; the roster work
+is read-only. His one mutating capability is `team-upgrade`: as the team's release **canary**, he upgrades himself
+first, soaks, then cascades a proven version to the peers one at a time via `ww agent upgrade`, with verify, rollback,
+version quarantine, and an operator-leads gate. A cluster admission policy (`agentImagePatchPolicy`) bounds that to
+image tags so an upgrade can only change versions — never repoint a repository or rewire a backend. Milo runs on **Opus
+4.8 at max effort** (`CLAUDE_EFFORT=max`) ahead of the rest of the team, as the deliberate model canary. Distinct from
+Mira: Mira asks whether the _platform_ is healthy enough for agents to run; Milo asks whether the _roster_ is coherent —
+who is on the team, who is available, and whether each member is properly provisioned. Broader lifecycle hygiene
+(onboarding readiness, profile/credential consistency, role-boundary reviews, safe pause/decommission paths) is future
+scope. (`.agents/self/milo/`)
+
 ## Topology
 
 ```text
@@ -222,35 +235,16 @@ Mira also sits outside the work-production loop. She watches the platform substr
 runtime storage, restarts, and resource/anomaly signals — and sends distilled findings to Zora when something looks
 problematic. Zora decides whether the finding becomes work for Iris, Evan, Finn, Felix, Kira, Nova, or a human.
 
+Milo also sits outside the work loop. He keeps the roster directory current and stewards safe team-wide version
+upgrades; like Mira, anything that needs a fix is handed to Zora to route.
+
 ## Proposed future members
 
-The team is designed to grow. Mira is the current platform reliability observer. Milo revives the earlier
-agent-resources direction as a separate identity — his first skill (`roster-audit`) tracks the live roster, with
-lifecycle hygiene and bounded pod actions as future scope. The remaining roles below are still design-pipeline ideas.
-Names are tentative and likely to be revisited before scaffolding.
+The team is designed to grow, and it does: **Milo** (Agent Resources) is the most recent seat to graduate from this list
+to a deployed member — his roster and version-stewardship work is described under **The team** above. The roles below
+remain design-pipeline ideas; names are tentative and likely to be revisited before scaffolding.
 
-### 1. Milo — Agent Resources (built, pending deploy)
-
-Owns agent roster + lifecycle hygiene: keeping the team on the latest released version (safe staged upgrades),
-onboarding readiness, GitHub/profile consistency, credential-readiness checks, avatar and roster drift, role-boundary
-clarity, safe pause/decommission paths, and approved pod lifecycle actions when an agent is stuck or needs a controlled
-restart. Distinct from Mira: Mira asks whether the platform is healthy enough for agents to run; Milo asks whether the
-roster, accounts, identities, and lifecycle surfaces are coherent enough for the team to make sense. Distinct from the
-future Process Architect: Process Architect improves how the team works; Milo manages who is on the team and whether
-each member is properly provisioned.
-
-Current state: built and ready to deploy under `.agents/self/milo/` — Claude identity, public card, avatar, encrypted
-`agent.sops.env`, and two skills: **`roster-audit`** (a read-only roster directory: who is deployed, who is up vs down,
-what each member does, and who he can reach over A2A) and **`team-upgrade`** (keep the team on the latest release,
-safely — Milo is the **canary**: he upgrades himself first, soaks, then cascades a proven version to the peers one at a
-time via `ww agent upgrade`, with verify, rollback, version quarantine, and an operator-leads gate), plus the shared
-`discover-peers` / `call-peer` / `git-identity` / `self-tidy` kit. His heartbeat runs `roster-audit` hourly; a separate
-job drives `team-upgrade`. The bootstrap path grants the `agentLifecycle` Kubernetes API preset (namespaceWrite + patch
-on `witwaveagents`), bounded by the `agentImagePatchPolicy` admission policy so his upgrades can only change image
-versions. He also deploys on **Opus 4.8 at max effort** (`CLAUDE_EFFORT=max`) as the team's model canary. He is **not
-deployed yet** — bootstrap Step 12 stands him up.
-
-### 2. security — likely **vera** or **maya**
+### 1. security — likely **vera** or **maya**
 
 Higher-level security work that goes beyond evan's automated `risk-work` lens. Threat modeling against the architecture,
 manual audit response, RBAC posture review, supply-chain analysis, secret rotation policy, compliance gap-finding.
@@ -258,7 +252,7 @@ Distinct from evan: evan automates CVE/secret/insecure-pattern detection across 
 about the _system's overall threat posture_ — the work that requires architectural understanding rather than scanner
 output. Evan covers the high-volume automated surface today; the architectural-security gap is real but rarer-firing.
 
-### 3. testing — name + scope TBD
+### 2. testing — name + scope TBD
 
 At least one testing-focused agent is on the roadmap, but the scope needs a design discussion before scaffolding —
 possibilities span "writes new tests where evan's fix-bar flagged untested code paths," "runs existing suites and
@@ -266,7 +260,7 @@ surfaces flakiness/regressions," "mutation testing to evaluate test quality," "p
 test maintenance." Each is a different shape of work. The value is high, but the design discussion has to land first —
 until we pick a shape, scaffolding is premature.
 
-### 4. software-architecture — likely **theo** or **lyra**
+### 3. software-architecture — likely **theo** or **lyra**
 
 Watches the _shape_ of the system rather than individual files. Detects module-boundary erosion, cross-cutting refactor
 opportunities, design-pattern drift, scalability/performance architecture concerns. Distinct from nova (line-level
@@ -275,7 +269,7 @@ surfacing changes that no single file or function would reveal. Many of her find
 refactor proposals deserve human review before landing. This is useful but lower-autonomy than Mira/security/testing
 because many findings are flag-for-human by nature.
 
-### 5. CTO — likely **rhea** or **aria**
+### 4. CTO — likely **rhea** or **aria**
 
 Picks big direction changes. Reads the team's accumulated state — open issues, recurring pain points, drift between what
 the platform claims and what users want, market/ecosystem shifts (new MCP servers, new model capabilities, adjacent OSS

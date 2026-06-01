@@ -29,7 +29,7 @@
     {
       "name": "Milo",
       "role": "Agent Resources",
-      "lane": "Keeps the roster coherent as he comes online: onboarding readiness, profile consistency, credential checks, role boundaries, and safe lifecycle paths for agents.",
+      "lane": "Keeps the roster coherent: onboarding readiness, profile consistency, credential checks, role boundaries, and safe lifecycle paths for agents.",
       "avatar": "assets/images/team/milo.png",
       "sourcePath": ".agents/self/milo/.witwave/agent-card.md",
       "github": "https://github.com/milo-agent-witwave"
