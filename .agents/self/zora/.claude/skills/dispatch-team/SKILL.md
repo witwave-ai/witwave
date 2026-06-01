@@ -42,6 +42,18 @@ test -f /workspaces/witwave-self/memory/agents/zora/pause_mode.flag && echo "PAU
 
 Build a current snapshot:
 
+**Memory-read safety (mandatory).** Your working files (`decision_log.md`, `team_state.md`, `peer_heartbeat_log.md`)
+grow over time and can exceed the backend's ~1 MiB JSON message buffer; a whole-file read of an oversized one crashes
+the whole tick with JSON-RPC `-32603` ("JSON message exceeded maximum buffer size") and loses the dispatch (this hit
+ticks on 2026-06-01). NEVER read these whole — read them bounded:
+
+```sh
+# team_state.md: only the most recent snapshot (top block = current state incl. chosen_levers + polish tiers)
+awk '/^## .*snapshot/{n++} n>1{exit} {print}' /workspaces/witwave-self/memory/agents/zora/team_state.md
+# decision_log.md / peer_heartbeat_log.md: recent tail only
+tail -c 200000 /workspaces/witwave-self/memory/agents/zora/decision_log.md
+```
+
 #### 2a. Git state
 
 ```sh
@@ -790,6 +802,18 @@ Append to `peer_heartbeat_log.md` (diagnostic ledger) one line per peer per tick
 transition (e.g., `2026-05-08T22:00Z finn ONLINE → ONLINE (probe-ok in 47ms)` or
 `2026-05-08T22:00Z finn PROBE-FAILED-ONCE → OFFLINE (probe-fail #2 in a row, 5s timeout)`). Trim entries older than 7
 days during this step to keep the file bounded.
+
+**Keep your working files under the read buffer (mandatory cap).** Unbounded append-growth crashed ticks on 2026-06-01
+(`decision_log.md` reached 4.85 MiB, `team_state.md` 1.43 MiB → `-32603` buffer overflow on read, losing the dispatch).
+After writing this tick's updates, cap them:
+
+- `team_state.md` — retain only the **3 most-recent `## … snapshot` blocks**; move older blocks to
+  `team_state.archive-<UTC>.md`.
+- `decision_log.md` — when it exceeds ~300 KB, move the bulk to `decision_log.archive-<UTC>.md` and keep the recent tail
+  (`tail -n 1500`).
+
+Archives preserve the full audit trail; the live files stay small enough that even a whole-file read won't trip the
+buffer. (A one-time cleanup already archived the pre-existing oversized files on 2026-06-01.)
 
 ### 8. Exit cleanly
 
