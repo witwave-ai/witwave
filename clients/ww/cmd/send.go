@@ -165,13 +165,42 @@ func newSendCmd() *cobra.Command {
 				return logicalErr(fmt.Errorf("%s", resp.Error.Message))
 			}
 
+			// Poll-based send (default). Request non-blocking execution so a
+			// slow hop (kubectl port-forward, apiserver proxy) never holds one
+			// long-idle connection for the whole turn — the long-turn
+			// reply-drop fix. The harness returns a task id immediately and we
+			// poll tasks/get with short requests. Backward compatible: an older
+			// harness (or a fast turn / early reject) returns a Message, which
+			// we print directly.
+			if pm, ok := body["params"].(map[string]any); ok {
+				pm["configuration"] = map[string]any{
+					"blocking":            false,
+					"acceptedOutputModes": []string{"text/plain", "application/json"},
+				}
+			}
+			overallBudget := 5 * time.Minute
+			if tf := cc.Root().PersistentFlags().Lookup("timeout"); tf != nil && tf.Changed {
+				if d, perr := time.ParseDuration(tf.Value.String()); perr == nil && d > 0 {
+					overallBudget = d
+				}
+			}
+			pollCtx, cancelPoll := context.WithTimeout(ctx, overallBudget)
+			defer cancelPoll()
+
 			var resp a2aResponse
-			if err := c.DoJSON(ctx, http.MethodPost, targetURL, body, &resp, false); err != nil {
+			if err := c.DoJSON(pollCtx, http.MethodPost, targetURL, body, &resp, false); err != nil {
 				return handleErr(out, err)
 			}
 			if resp.Error != nil {
 				out.Errorf("%s", resp.Error.Message)
 				return logicalErr(fmt.Errorf("%s", resp.Error.Message))
+			}
+			if resp.Result != nil && resp.Result.Kind == "task" && resp.Result.ID != "" {
+				final, perr := pollTaskResult(pollCtx, c, targetURL, resp.Result.ID, 2*time.Second)
+				if perr != nil {
+					return handleErr(out, perr)
+				}
+				resp = final
 			}
 			if out.IsJSON() {
 				return out.EmitJSON(resp)
@@ -297,24 +326,49 @@ type a2aPart struct {
 }
 
 type a2aResponse struct {
-	JSONRPC string    `json:"jsonrpc"`
-	ID      any       `json:"id"`
-	Error   *a2aError `json:"error,omitempty"`
-	Result  *struct {
-		Parts  []a2aPart `json:"parts,omitempty"`
-		Status *struct {
-			Message *struct {
-				Parts []a2aPart `json:"parts,omitempty"`
-			} `json:"message,omitempty"`
-		} `json:"status,omitempty"`
-	} `json:"result,omitempty"`
+	JSONRPC string     `json:"jsonrpc"`
+	ID      any        `json:"id"`
+	Error   *a2aError  `json:"error,omitempty"`
+	Result  *a2aResult `json:"result,omitempty"`
+}
+
+// a2aResult is the `result` payload of an A2A response. kind="task" → a
+// pollable Task (poll-based send + tasks/get responses); kind="message" (or
+// absent) → an immediate Message reply (blocking send, or an older harness
+// that ignores configuration.blocking).
+type a2aResult struct {
+	Kind      string         `json:"kind,omitempty"`
+	ID        string         `json:"id,omitempty"`
+	Parts     []a2aPart      `json:"parts,omitempty"`
+	Status    *a2aTaskStatus `json:"status,omitempty"`
+	Artifacts []a2aArtifact  `json:"artifacts,omitempty"`
+}
+
+type a2aTaskStatus struct {
+	State   string        `json:"state,omitempty"`
+	Message *a2aStatusMsg `json:"message,omitempty"`
+}
+
+type a2aStatusMsg struct {
+	Parts []a2aPart `json:"parts,omitempty"`
+}
+
+type a2aArtifact struct {
+	Parts []a2aPart `json:"parts,omitempty"`
 }
 
 func extractText(r a2aResponse) string {
 	if r.Result == nil {
 		return ""
 	}
+	// Message reply → top-level parts. Completed Task → artifact parts
+	// (primary), falling back to the terminal status message.
 	parts := r.Result.Parts
+	if len(parts) == 0 {
+		for _, a := range r.Result.Artifacts {
+			parts = append(parts, a.Parts...)
+		}
+	}
 	if len(parts) == 0 && r.Result.Status != nil && r.Result.Status.Message != nil {
 		parts = r.Result.Status.Message.Parts
 	}
@@ -325,4 +379,53 @@ func extractText(r a2aResponse) string {
 		}
 	}
 	return b.String()
+}
+
+// a2aDoer is the subset of *client.Client the task poll loop needs, so tests
+// can substitute a fake transport.
+type a2aDoer interface {
+	DoJSON(ctx context.Context, method, path string, body, out any, useRunToken bool) error
+}
+
+// pollTaskResult polls tasks/get for taskID until the task reaches a terminal
+// state or ctx expires. On "completed" it returns the full response (the caller
+// extracts the text); failed/canceled/rejected become an error carrying any
+// terminal status detail. Each poll is a short request, so the connection never
+// idles long — that is what lets a slow hop (port-forward) keep delivering a
+// long-turn reply instead of dropping it.
+func pollTaskResult(ctx context.Context, c a2aDoer, targetURL, taskID string, interval time.Duration) (a2aResponse, error) {
+	getBody := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tasks/get",
+		"params":  map[string]any{"id": taskID},
+	}
+	for {
+		var gr a2aResponse
+		if err := c.DoJSON(ctx, http.MethodPost, targetURL, getBody, &gr, false); err != nil {
+			return a2aResponse{}, fmt.Errorf("polling task %s: %w", taskID, err)
+		}
+		if gr.Error != nil {
+			return a2aResponse{}, fmt.Errorf("tasks/get %s: %s", taskID, gr.Error.Message)
+		}
+		state := ""
+		if gr.Result != nil && gr.Result.Status != nil {
+			state = gr.Result.Status.State
+		}
+		switch state {
+		case "completed":
+			return gr, nil
+		case "failed", "canceled", "rejected":
+			detail := extractText(gr)
+			if detail == "" {
+				detail = "(no detail)"
+			}
+			return a2aResponse{}, fmt.Errorf("task %s ended in state %q: %s", taskID, state, detail)
+		}
+		select {
+		case <-ctx.Done():
+			return a2aResponse{}, fmt.Errorf("timed out waiting for task %s (last state %q): %w", taskID, state, ctx.Err())
+		case <-time.After(interval):
+		}
+	}
 }
