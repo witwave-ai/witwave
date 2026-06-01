@@ -137,7 +137,12 @@ which is a slightly stronger liveness signal than a bare `/health` would have pr
 
 ```sh
 for peer in iris nova kira evan finn piper; do
-  PEER_URL=$(grep -m1 -oE 'http[s]?://[^[:space:]]+' /workspaces/witwave-self/memory/agents/zora/reference_peer_${peer}.md 2>/dev/null)
+  # Match only valid URL characters (NOT [^[:space:]]) so a markdown-backtick-
+  # wrapped URL in the reference_peer file (e.g. `http://iris.witwave-self:8000`)
+  # doesn't capture the trailing backtick into PEER_URL. That bug made the probe
+  # curl a malformed URL and false-report every peer PROBE-FAIL — the root cause
+  # of the 2026-06-01 false stuck-peer auto-pause that idled the team ~43h.
+  PEER_URL=$(grep -m1 -oE 'http[s]?://[A-Za-z0-9._~:/?#@!$&()*+,;=%-]+' /workspaces/witwave-self/memory/agents/zora/reference_peer_${peer}.md 2>/dev/null)
   if [ -z "$PEER_URL" ]; then continue; fi
   curl -fsS --max-time 5 "${PEER_URL%/}/.well-known/agent.json" >/dev/null 2>&1 && echo "${peer}=ONLINE" || echo "${peer}=PROBE-FAIL"
 done
