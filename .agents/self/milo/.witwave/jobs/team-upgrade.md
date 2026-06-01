@@ -1,6 +1,6 @@
 ---
 name: team-upgrade
-description:
+description: >
   Advances Milo's self-first staged upgrade campaign by one step per run. Milo is the canary: he upgrades himself first
   and soaks longest, then cascades a proven version to the peers one at a time, lowest blast radius first. Most runs are
   no-ops (the team is already current). The gap between runs is the soak window, so a rollout spans hours to days. The

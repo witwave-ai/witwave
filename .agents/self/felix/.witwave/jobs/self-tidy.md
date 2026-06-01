@@ -1,6 +1,6 @@
 ---
 name: self-tidy
-description:
+description: >
   Daily per-agent self-maintenance. Runs the byte-identical `self-tidy` skill — grooms own memory
   namespace, refreshes peer-awareness reference memos, checks own agent-card for drift. Staggered
   across the team to avoid simultaneous fires. Felix's slot: 04:30Z — between iris (02:15Z) and
