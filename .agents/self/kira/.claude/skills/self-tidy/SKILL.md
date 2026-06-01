@@ -73,6 +73,12 @@ Additional consolidation:
   update the index entry to reflect closure.
 - **Duplicate memos** — if two memos cover the same topic, merge them into the older one (preserving its filename for
   link stability) and remove the newer one. Update the index.
+- **Oversized append-ledgers** — append-only ledger files (e.g. `*_log.md`, `decision_log.md`, `peer_heartbeat_log.md`,
+  `pulse_log.md`) grow unbounded and can exceed the backend's JSON read buffer, crashing the reading turn with `-32603`
+  ("JSON message exceeded maximum buffer size"). When any such ledger exceeds **~500 KB**, rotate it: copy it to
+  `<name>.archive-<UTC>.md`, then rewrite the live file as its frontmatter (if any) plus the most-recent tail
+  (`tail -n 1500`). Do **NOT** rotate backlog/findings files (`project_*_findings.md`, `drafts/`) — their size is
+  legitimate open work, and the raised `CLAUDE_MAX_BUFFER_SIZE` (backend) accommodates it.
 
 Cap: **edits to memory only**. No source-code mutations. ≤50 lines changed.
 
