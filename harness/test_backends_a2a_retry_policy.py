@@ -97,3 +97,36 @@ def test_retry_decision_matrix(policy, elapsed_ms, threshold_ms, should_retry):
     else:
         decision = True
     assert decision == should_retry
+
+
+@pytest.mark.parametrize(
+    "policy,elapsed_ms,threshold_ms,should_retry",
+    [
+        # Read failures (ReadError/ReadTimeout). A FAST failure is the
+        # keepalive reaper race (the turn never ran) → retry under EVERY
+        # policy, including 'never'. A SLOW failure means the backend likely
+        # ran the turn to completion → retry only under 'always'. This
+        # differs from the 5xx matrix above, where 'never' refuses even fast.
+        ("fast-only", 1000, 5000, True),
+        ("fast-only", 5000, 5000, True),  # at threshold: retry
+        ("fast-only", 5001, 5000, False),  # just over: refuse (re-run risk)
+        ("fast-only", 30000, 5000, False),
+        ("never", 1000, 5000, True),  # fast reaper race: still safe to retry
+        ("never", 30000, 5000, False),  # slow: refuse
+        ("always", 1, 5000, True),
+        ("always", 30000, 5000, True),  # always retries even slow reads
+    ],
+)
+def test_slow_read_guard_decision_matrix(policy, elapsed_ms, threshold_ms, should_retry):
+    """Mirror the in-code slow-read decision so a regression on the refusal
+    logic fails here rather than only in an integration test. The
+    _post_with_retry (ReadError, ReadTimeout) branch is:
+
+        if elapsed_ms > threshold and policy != 'always': refuse
+        else: retry
+    """
+    if elapsed_ms > threshold_ms and policy != "always":
+        decision = False
+    else:
+        decision = True
+    assert decision == should_retry

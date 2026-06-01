@@ -145,6 +145,13 @@ harness_a2a_backend_circuit_transitions_total: prometheus_client.Counter | None 
 # prevented a potential double-bill. Operators can tune
 # A2A_RETRY_FAST_ONLY_MS / A2A_RETRY_POLICY when the rate is high.
 harness_a2a_backend_slow_5xx_no_retry_total: prometheus_client.Counter | None = None
+# Retry attempts refused by the slow-READ guard — a ReadError/ReadTimeout
+# that surfaced after A2A_RETRY_FAST_ONLY_MS, i.e. the backend most likely
+# already ran the (long) turn to completion and only the response transport
+# failed. Retrying would re-run + re-bill it (and duplicate agentic side
+# effects like commits). Sibling to the slow-5xx counter; extends the #1457
+# guard to network-class read failures.
+harness_a2a_backend_slow_read_no_retry_total: prometheus_client.Counter | None = None
 # #1457: counts sessions killed by the outer asyncio.wait_for deadline.
 # Distinct from the generic task-timeout counter because this specific
 # path is the one that risks server-side LLM work continuing without a
@@ -818,6 +825,22 @@ if _enabled:
         "only on the return path; retrying would double-bill. Labels: "
         "backend + the HTTP status code that triggered the refusal.",
         ["backend", "status"],
+    )
+    # Slow-READ retry guard hits — sibling to the slow-5xx guard above, but
+    # for network-class read failures (ReadError/ReadTimeout) that surfaced
+    # after A2A_RETRY_FAST_ONLY_MS. Each increment is a retry the guard
+    # refused because the backend most likely completed the (long) turn and
+    # only the response transport dropped; retrying would re-run + re-bill it
+    # and, for agentic backends, duplicate side effects (commits/pushes).
+    harness_a2a_backend_slow_read_no_retry_total = prometheus_client.Counter(
+        "harness_a2a_backend_slow_read_no_retry_total",
+        "Retry attempts refused by the slow-read guard. A ReadError / "
+        "ReadTimeout that surfaced after A2A_RETRY_FAST_ONLY_MS almost always "
+        "means the backend ran the (long) turn to completion and failed only "
+        "on the response transport; retrying would re-run and re-bill it (and "
+        "duplicate agentic side effects like commits). Labels: backend + the "
+        "httpx exception kind that triggered the refusal.",
+        ["backend", "kind"],
     )
     # #1457: outer task-timeout cancellations. Distinct from the generic
     # task-timeout counter (harness_tasks_total{status=\"timeout\"})

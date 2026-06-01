@@ -28,10 +28,20 @@ Root cause (per evan's risk-work analysis, 2026-05-11):
 Fix (this commit):
 
 1. Add `httpx.ReadError` to the retry-eligible tuple in
-   `_post_with_retry` at the read site. ReadError now joins ReadTimeout
-   et al. as a network-class error that's safely retried regardless of
-   the user's A2A_RETRY_POLICY (the work didn't complete on the
-   server side, OR it did and the retry is idempotent).
+   `_post_with_retry` at the read site. ReadError joins ReadTimeout as a
+   network-class read failure.
+
+   REFINED LATER (slow-read guard): a read failure is only SAFELY retried
+   when it is FAST — the keepalive reaper race, where the turn never ran.
+   A SLOW read failure (elapsed > A2A_RETRY_FAST_ONLY_MS) means the backend
+   most likely completed the (long) turn and only the response transport
+   dropped; retrying would re-run + re-bill it and, for agentic backends,
+   duplicate side effects (commits/pushes). The slow case is now refused by
+   the slow-read guard (`_SlowReadGuardRefusal`, see
+   `test_slow_read_guard_present`), mirroring the #1457 slow-5xx guard;
+   only `A2A_RETRY_POLICY=always` retries it. The original premise here —
+   "retried regardless of policy … OR the retry is idempotent" — was wrong
+   for non-idempotent agentic turns and is superseded.
 2. Set `keepalive_expiry=2.0` on the shared AsyncClient's Limits so
    the client retires keepalive connections faster than uvicorn's
    default 5s reaper. The reaper-race window closes.
@@ -117,4 +127,42 @@ def test_retry_policy_comment_mentions_readerror() -> None:
         "The retry-policy comment header must enumerate ReadError alongside ConnectTimeout/ReadTimeout/"
         "ConnectError as a retried network-class error. Comment + code must stay in sync to prevent "
         "the next contributor from removing the ReadError guard."
+    )
+
+
+def test_slow_read_guard_present() -> None:
+    """A SLOW ReadError/ReadTimeout must be refused, not retried.
+
+    Retrying a read failure that surfaced after A2A_RETRY_FAST_ONLY_MS
+    re-runs a turn the backend most likely already completed — double-
+    billing and, for agentic backends, duplicating side effects
+    (commits/pushes). The guard raises ``_SlowReadGuardRefusal`` from the
+    dedicated ``(ReadError, ReadTimeout)`` branch instead of falling
+    through to the retry/backoff path. Pins the guard so a future edit
+    that drops it (regressing to the old always-retry premise) fails here.
+    """
+    src = A2A_PATH.read_text()
+    assert "class _SlowReadGuardRefusal" in src, "slow-read guard exception class must exist"
+    assert "except (httpx.ReadError, httpx.ReadTimeout)" in src, (
+        "ReadError/ReadTimeout must have a dedicated except branch (separate from the "
+        "always-retry send-side errors) so the slow-read guard can gate them."
+    )
+    assert "raise _SlowReadGuardRefusal" in src, "the slow-read branch must raise the refusal to skip retry"
+    assert "_elapsed_ms > _A2A_RETRY_FAST_ONLY_MS" in src and '_A2A_RETRY_POLICY != "always"' in src, (
+        "the slow-read guard must gate on elapsed > A2A_RETRY_FAST_ONLY_MS AND policy != always, "
+        "mirroring the #1457 slow-5xx guard."
+    )
+
+
+def test_send_side_errors_retry_unconditionally() -> None:
+    """WriteTimeout / PoolTimeout (request not fully sent) always retry.
+
+    A failure before/while sending means the backend did no work, so it is
+    always safe to retry — these must live in their own branch and NOT be
+    gated by the slow-read guard.
+    """
+    src = A2A_PATH.read_text()
+    assert re.search(r"except \(httpx\.WriteTimeout, httpx\.PoolTimeout\)", src), (
+        "WriteTimeout/PoolTimeout must be handled in their own always-retry branch, separate "
+        "from the slow-read-guarded (ReadError, ReadTimeout) branch."
     )

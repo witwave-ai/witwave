@@ -17,6 +17,7 @@ from metrics import (
     harness_a2a_backend_request_duration_seconds,
     harness_a2a_backend_requests_total,
     harness_a2a_backend_slow_5xx_no_retry_total,
+    harness_a2a_backend_slow_read_no_retry_total,
 )
 from tracing import TraceContext, inject_traceparent, set_span_error, start_span
 
@@ -112,11 +113,24 @@ _RETRYABLE_STATUS_CODES: frozenset[int] = frozenset({429, 502, 503, 504})
 #   * never               — never retry 5xx; surface immediately.
 #                           Strictest no-double-bill posture for
 #                           cost-sensitive deployments.
-# Network-level errors (ConnectTimeout, ReadTimeout, ReadError,
-# ConnectError) are retried regardless of policy — they almost never
-# indicate server-side LLM work happened. `ReadError` covers the
-# keepalive-pool reaper race documented in the 2026-05-11 incident
-# where iris's release replies were silently dropped at the A2A layer.
+# Network-level errors split by WHEN they fire, because that is what
+# tells us whether server-side work happened:
+#   * ConnectError / WriteTimeout / PoolTimeout — the request was never
+#     (fully) sent, so the backend did no work; always retried.
+#   * ReadError / ReadTimeout — the request WAS sent and the response
+#     read failed. A FAST failure (elapsed <= A2A_RETRY_FAST_ONLY_MS) is
+#     the keepalive-pool reaper race (a pooled connection the server
+#     already closed is reused before the backend processes anything) —
+#     safe to retry; this is the 2026-05-11 lost-reply fix. A SLOW
+#     failure means the backend most likely ran the (long) turn to
+#     completion and only the return path dropped — retrying re-runs and
+#     re-bills it and, for agentic backends, duplicates side effects
+#     (commits, pushes). So ReadError/ReadTimeout obey the SAME fast-only
+#     guard as 5xx: the slow case is retried only under policy=always.
+#     (ReadTimeout fires only after the HTTP read timeout, which is
+#     always >> the fast threshold, so under the default policy it is
+#     never retried — correct, since a turn that outran the read timeout
+#     is in-flight or already complete server-side.)
 def _resolve_retry_policy() -> str:
     """Read A2A_RETRY_POLICY with validation + clear warning on bad input."""
     _log = logging.getLogger(__name__)
@@ -172,6 +186,21 @@ class _SlowFiveXXPolicyRefusal(ConnectionError):
     want one slow-5xx to stack toward the breaker threshold identically
     to a run of hard connect failures. Callers opt this out of the
     breaker record.
+    """
+
+
+class _SlowReadGuardRefusal(ConnectionError):
+    """Distinct subclass for slow-read retry-policy refusals.
+
+    Sibling to :class:`_SlowFiveXXPolicyRefusal` but for network-class
+    read failures (ReadError / ReadTimeout) that surfaced after
+    A2A_RETRY_FAST_ONLY_MS. The backend most likely ran the (long) turn
+    to completion and only the response transport dropped, so retrying
+    would re-run + re-bill it (and duplicate agentic side effects like
+    commits/pushes). Like the slow-5xx refusal it is a deliberate
+    single-failure surface, so the outer call site opts it out of the
+    circuit-breaker record — the backend completed work; it is not
+    "hard down".
     """
 
 
@@ -493,10 +522,11 @@ class A2ABackend:
                 _is_client_side = any(
                     f"HTTP {code}" in _exc_msg for code in (400, 401, 403, 404, 405, 406, 409, 410, 413, 414, 415, 422)
                 )
-                # #1576: slow-5xx policy refusals are deliberate non-retries,
-                # not evidence of a hard-down backend; don't let them stack
-                # toward the breaker threshold the way connect failures do.
-                _is_policy_refusal = isinstance(_exc, _SlowFiveXXPolicyRefusal)
+                # #1576: slow-5xx (and slow-read) policy refusals are
+                # deliberate non-retries, not evidence of a hard-down backend;
+                # don't let them stack toward the breaker threshold the way
+                # connect failures do.
+                _is_policy_refusal = isinstance(_exc, (_SlowFiveXXPolicyRefusal, _SlowReadGuardRefusal))
                 if not _is_client_side and not _is_policy_refusal:
                     await self._circuit_record(ok=False)
                 set_span_error(_span, _exc)
@@ -688,15 +718,54 @@ class A2ABackend:
                             return b"".join(chunks).decode(resp.encoding or "utf-8", errors="replace")
                         await resp.aread()
                         return resp.text
-            except (httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout, httpx.ReadError) as exc:
+            except (httpx.ReadError, httpx.ReadTimeout) as exc:
+                # Request was fully sent and the RESPONSE READ failed. A fast
+                # failure is the keepalive reaper race (the turn never ran →
+                # retry); a slow failure means the backend most likely ran the
+                # (long) turn to completion and only the return path dropped,
+                # so retrying would re-run + re-bill it and duplicate agentic
+                # side effects (commits/pushes). Gate the slow case by policy
+                # exactly as the 5xx branch does (#1457). Kept as a single
+                # (ReadError, ReadTimeout) tuple so the 2026-05-11 regression
+                # test still sees ReadError in a retry-eligible clause.
+                _elapsed_ms = int((time.monotonic() - _req_start) * 1000)
+                _result_label = "error_timeout"
+                if _elapsed_ms > _A2A_RETRY_FAST_ONLY_MS and _A2A_RETRY_POLICY != "always":
+                    if harness_a2a_backend_slow_read_no_retry_total is not None:
+                        try:
+                            harness_a2a_backend_slow_read_no_retry_total.labels(
+                                backend=self.id, kind=type(exc).__name__
+                            ).inc()
+                        except Exception:
+                            pass
+                    logger.warning(
+                        f"A2A backend '{self.id}' {type(exc).__name__} after {_elapsed_ms}ms on "
+                        f"attempt {attempt + 1}/{_MAX_RETRIES}; refusing to retry "
+                        f"(policy={_A2A_RETRY_POLICY}, threshold={_A2A_RETRY_FAST_ONLY_MS}ms) to "
+                        f"avoid re-running a turn the backend likely already completed "
+                        f"(double-bill + duplicate side effects). Surface as ConnectionError."
+                    )
+                    raise _SlowReadGuardRefusal(
+                        f"A2A backend '{self.id}' {type(exc).__name__} after {_elapsed_ms}ms — "
+                        f"not retried (slow-read guard): the backend likely completed the turn "
+                        f"and only the response transport failed; retrying would re-run it."
+                    ) from exc
+                logger.warning(
+                    f"A2A backend '{self.id}' transient error on attempt {attempt + 1}/{_MAX_RETRIES}: {exc!r}"
+                )
+                last_exc = exc
+                # Do NOT aclose() the shared client here — sibling concurrent
+                # requests reuse this pool and aclose() would cancel them too
+                # (#975). httpx recycles broken connections internally.
+            except (httpx.WriteTimeout, httpx.PoolTimeout) as exc:
+                # Failed before/while SENDING the request (write timeout or
+                # pool-acquisition timeout) → the backend never processed it
+                # → always safe to retry, regardless of elapsed time/policy.
                 logger.warning(
                     f"A2A backend '{self.id}' transient error on attempt {attempt + 1}/{_MAX_RETRIES}: {exc!r}"
                 )
                 last_exc = exc
                 _result_label = "error_timeout"
-                # Do NOT aclose() the shared client here — sibling concurrent
-                # requests reuse this pool and aclose() would cancel them too
-                # (#975). httpx recycles broken connections internally.
             except httpx.ConnectError as exc:
                 logger.warning(
                     f"A2A backend '{self.id}' transient error on attempt {attempt + 1}/{_MAX_RETRIES}: {exc!r}"
