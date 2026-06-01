@@ -6,6 +6,26 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.36.0] — 2026-06-01
+
+Closes the recurring `-32603` Claude SDK tick-crash class: raises the SDK's JSON read buffer to fit the largest messages
+the team produces, and adds two safety nets on the agent side — capping individual working-memory files and
+auto-rotating oversized append-ledgers — so a single oversized file can no longer wedge an agent's tick loop.
+
+### Added
+
+- **claude**: raise the Claude Agent SDK JSON read buffer so large tool-result / memory payloads no longer trip
+  `-32603 message too large` and crash the tick. Buffer size is now resolved from `CLAUDE_MAX_BUFFER_SIZE` with a
+  generous default sized to the messages the team actually produces.
+
+### Fixed
+
+- **agents**: `self-tidy` now rotates oversized append-only ledgers across every agent, so a ledger that grows past the
+  SDK read buffer is archived and re-started before it can wedge the next tick. Applies uniformly to evan, felix, finn,
+  iris, kira, milo, mira, nova, piper, and zora.
+- **agents**: cap zora's working-memory files under the SDK read-buffer ceiling, so the dispatch-loop's per-tick memory
+  read can't exceed the transport limit and stall the manager.
+
 ## [0.35.1] — 2026-06-01
 
 Patch release covering test-coverage and agent-identity fixes; no user-visible runtime behaviour change.
