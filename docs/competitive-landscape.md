@@ -1,19 +1,49 @@
 # Competitive Landscape
 
-Last updated: 2026-05-29 by kira-agent-witwave (twenty-ninth pass — verification-and-refinement pass per zora
-docs-research one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach (kira_docs_cleanup_hours=4.0 post-20Z
-relax, last kira fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE alternation from `docs-cleanup`
-(zero_streak_kira=2 from earlier 15Z + 18Z zero-yield runs, then 22:06Z twenty-eighth pass refreshed; this twenty-ninth
-pass dispatched ~5 minutes after that commit landed). One substantive delta surfaced that the twenty-eighth pass and the
-four preceding passes had missed: **`langgraph-sdk==0.4.0`** shipped 2026-05-28 14:11 UTC — a minor bump from
-`langgraph-sdk==0.3.15` (2026-05-22) cited inline in the LangGraph reference entry. The SDK release adds **v3 streaming
-primitives with SSE transport**, **websocket stream transports plus stream-selection wiring**, hardened streaming
-reconnects with async reconnect support, async/sync thread stream helpers, scoped subgraph handles,
-messages-and-tool-call projections, and shared stream subscriptions; companion **`langgraph-cli==0.4.27`** shipped the
-same day pinning internal Docker deploy images by digest and bumping the API bound to 0.10.0. The bump matters for the
-project's "real-time observability with a pinned wire contract" positioning axis — LangGraph's SDK now also ships SSE +
-websocket as first-class transports at the SDK layer (sources:
-<https://github.com/langchain-ai/langgraph/releases/tag/sdk%3D%3D0.4.0> and
+Last updated: 2026-06-01 by kira-agent-witwave (thirtieth pass — verification-and-refinement pass per zora docs-research
+one-shot 09Z dispatch under P2 cadence-floor breach (>61h since last docs-research fire; 2d floor crossed during the
+long pause window) with concurrency=2 pairing with evan risk-work, scope-distinct (docs/research/\* vs source). CI green
+on HEAD `96de6b01`; no critical findings open. One substantive surface delta surfaced in the ~61-hour window since the
+twenty-ninth pass: **OpenClaw beta train rolled forward from `v2026.5.28-beta.3` to `v2026.6.1-beta.1`** through six
+intermediate beta releases — `v2026.5.30-beta.1` (2026-05-31 02:39 UTC), `v2026.5.31-beta.1` / `.beta.2` / `.beta.3`
+(2026-05-31 17:44 / 18:17 / 19:19 UTC), `v2026.5.31-beta.4` (2026-06-01 02:04 UTC), and **`v2026.6.1-beta.1`**
+(2026-06-01 09:45 UTC). The chain layers a **Skill Workshop** system (governed skill creation with reviewable proposals,
+versioning, rollback metadata, CLI + Gateway review actions, and a new `skill_workshop` agent tool), **plugin
+externalization** publishing the GitHub Copilot agent runtime and Tokenjuice as standalone npm packages
+(`@openclaw/copilot`, `@openclaw/tokenjuice`) distributed via ClawHub, **Workboard** multi-agent orchestration
+primitives for coordinated planning and run tracking, **Code mode MCP API files plus scoped agent/global session
+namespaces** (added in `v2026.6.1-beta.1`), iOS hosted-push-relay defaults / realtime Talk playback / native iPad
+layouts / guarded WebSocket ping paths, broader channel-stability work across Telegram / WhatsApp / iMessage / Slack /
+Discord / Teams / Google Chat, bounded timers on provider requests / OAuth lifetimes / media operations, SQLite-backed
+storage for plugin indexes / inbound queues / iMessage monitoring, and stricter parsing rejecting unsafe OAuth/token
+lifetimes; stable still `v2026.5.27` (no new stable release in the window) (sources:
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.30-beta.1>,
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.31-beta.4>, and
+<https://github.com/openclaw/openclaw/releases/tag/v2026.6.1-beta.1>, all accessed 2026-06-01). Pin refinement:
+**OpenClaw** fork count re-pinned to **78,500+ forks** (was 78,400+; live count 78.5k crosses the prior pin cleanly
+upward); star count still at 376,000+ (live still 376k, unchanged) (source: <https://github.com/openclaw/openclaw>,
+accessed 2026-06-01). All other high-cadence upstream pins re-verified unchanged from the twenty-ninth pass: Claude
+Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still `python-1.7.0` (2026-05-28) / `dotnet-1.6.1`
+(2026-05-14), LangGraph still `v1.2.2` (2026-05-26) with `langgraph-sdk==0.4.0` and `langgraph-cli==0.4.27` still the
+latest companion bumps (2026-05-28), OpenAI Agents SDK still `v0.17.4` (2026-05-26), CrewAI still `v1.14.6` stable
+(2026-05-28), A2A still `v1.0.1` (2026-05-28), OpenHands still `v1.7.0` (2026-05-01) (sources:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/crewAIInc/crewAI/releases>,
+<https://github.com/a2aproject/A2A/releases>, <https://github.com/OpenHands/OpenHands/releases>, all accessed
+2026-06-01). Twenty-ninth pass (2026-05-29, ~61h ago) was a verification-and-refinement pass per zora docs-research
+one-shot 22:00Z heartbeat dispatch under P2 cadence-floor breach (kira_docs_cleanup_hours=4.0 post-20Z relax, last kira
+fire 18Z = 1.00× AT-FLOOR exactly) with polish-tier ADVANCE alternation from `docs-cleanup` (zero_streak_kira=2 from
+earlier 15Z + 18Z zero-yield runs, then 22:06Z twenty-eighth pass refreshed; this twenty-ninth pass dispatched ~5
+minutes after that commit landed). One substantive delta surfaced that the twenty-eighth pass and the four preceding
+passes had missed: **`langgraph-sdk==0.4.0`** shipped 2026-05-28 14:11 UTC — a minor bump from `langgraph-sdk==0.3.15`
+(2026-05-22) cited inline in the LangGraph reference entry. The SDK release adds **v3 streaming primitives with SSE
+transport**, **websocket stream transports plus stream-selection wiring**, hardened streaming reconnects with async
+reconnect support, async/sync thread stream helpers, scoped subgraph handles, messages-and-tool-call projections, and
+shared stream subscriptions; companion **`langgraph-cli==0.4.27`** shipped the same day pinning internal Docker deploy
+images by digest and bumping the API bound to 0.10.0. The bump matters for the project's "real-time observability with a
+pinned wire contract" positioning axis — LangGraph's SDK now also ships SSE + websocket as first-class transports at the
+SDK layer (sources: <https://github.com/langchain-ai/langgraph/releases/tag/sdk%3D%3D0.4.0> and
 <https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). Core `langgraph==1.2.2`
 (2026-05-26) unchanged; all other high-cadence upstream pins re-verified unchanged from the twenty-eighth pass earlier
 this evening: Claude Agent SDK still `v0.2.87` (2026-05-23), Microsoft Agent Framework still `python-1.7.0` (2026-05-28)
@@ -827,25 +857,26 @@ this project targets the team running coordinated agents as cluster workloads.
 
 OpenClaw originated as "Clawdbot" in November 2025, was renamed "Moltbot" on 2026-01-27 under Anthropic trademark
 pressure, and three days later settled on **OpenClaw**. Category-leading install base — **376,000+ GitHub stars and
-78,400+ forks as of 2026-05-29**, with a very active commit cadence (latest stable release **`v2026.5.27`** on
-2026-05-28 11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries
-forward unchanged from beta.1** (captured in the twenty-sixth pass preface above): hardened security boundaries, Codex
-reliability work, provider expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements),
-durable channel delivery, restart-surviving native hook relays, plugin display metadata, and Gateway/reply hot-path
-performance. The prior stable **`v2026.5.26`** (2026-05-27 11:27 UTC) graduated the `2026.5.26-beta.1` (2026-05-26 21:10
-UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta rollup to GA; its substantive surface headlines a **Transcripts
-plugin**, **named-model login profiles**, **Signal / iMessage / WhatsApp tapback approval reactions**, the **Sharp →
-Rastermill image-backend swap**, an ephemeral **Activity tab** in the Control UI, **OpenTelemetry LLM content spans**,
-default `cron.maxConcurrentRuns=8`, and broad reply/startup performance work. The prior `v2026.5.22` stable (2026-05-24)
-shipped a **Meeting Notes plugin** with Discord voice capture and auto-start transcript imports, a **~4,100×
-model-listing performance improvement** (provider auth-state pre-warmed at startup drops the call from ~20s to ~5ms),
-Gateway startup optimisations via process-stable channel-catalog caching and lazy startup-idle plugin work, chat-session
-picker pagination, and on the provider side routes Claude 4.x 1M context through GA (no `beta` flag required) and
-DeepSeek through the Microsoft Foundry Responses API; the prior `v2026.5.24-beta.2` (2026-05-24) beta surface added
-**iMessage tapback approval reactions** (👍 = allow-once, 👎 = deny), realtime Discord voice for OpenClaw status /
-cancel / steer / queue commands during active consults, adaptive image compression with model-aware quality, and symlink
-rejection on remote container operations; the prior `v2026.5.25-beta.1` (2026-05-26 09:41 UTC) head layered "Beta 1 late
-fixes" on top for iMessage threading and Codex sandbox path handling; the `v2026.5.26-beta.1` (2026-05-26 21:10 UTC) and
+78,500+ forks as of 2026-06-01** (source: <https://github.com/openclaw/openclaw>, accessed 2026-06-01), with a very
+active commit cadence (latest stable release **`v2026.5.27`** on 2026-05-28 11:41 UTC — graduating the
+`v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries forward unchanged from beta.1**
+(captured in the twenty-sixth pass preface above): hardened security boundaries, Codex reliability work, provider
+expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements), durable channel delivery,
+restart-surviving native hook relays, plugin display metadata, and Gateway/reply hot-path performance. The prior stable
+**`v2026.5.26`** (2026-05-27 11:27 UTC) graduated the `2026.5.26-beta.1` (2026-05-26 21:10 UTC) → `2026.5.26-beta.2`
+(2026-05-27 05:46 UTC) beta rollup to GA; its substantive surface headlines a **Transcripts plugin**, **named-model
+login profiles**, **Signal / iMessage / WhatsApp tapback approval reactions**, the **Sharp → Rastermill image-backend
+swap**, an ephemeral **Activity tab** in the Control UI, **OpenTelemetry LLM content spans**, default
+`cron.maxConcurrentRuns=8`, and broad reply/startup performance work. The prior `v2026.5.22` stable (2026-05-24) shipped
+a **Meeting Notes plugin** with Discord voice capture and auto-start transcript imports, a **~4,100× model-listing
+performance improvement** (provider auth-state pre-warmed at startup drops the call from ~20s to ~5ms), Gateway startup
+optimisations via process-stable channel-catalog caching and lazy startup-idle plugin work, chat-session picker
+pagination, and on the provider side routes Claude 4.x 1M context through GA (no `beta` flag required) and DeepSeek
+through the Microsoft Foundry Responses API; the prior `v2026.5.24-beta.2` (2026-05-24) beta surface added **iMessage
+tapback approval reactions** (👍 = allow-once, 👎 = deny), realtime Discord voice for OpenClaw status / cancel / steer /
+queue commands during active consults, adaptive image compression with model-aware quality, and symlink rejection on
+remote container operations; the prior `v2026.5.25-beta.1` (2026-05-26 09:41 UTC) head layered "Beta 1 late fixes" on
+top for iMessage threading and Codex sandbox path handling; the `v2026.5.26-beta.1` (2026-05-26 21:10 UTC) and
 `v2026.5.26-beta.2` (2026-05-27 05:46 UTC) heads were the larger rollup for the now-shipped `2026.5.26` stable —
 substantive surface enumerated above; both graduated into `v2026.5.26` stable on 2026-05-27. A fresh beta train then
 opened at `v2026.5.28-beta.1` (2026-05-29 04:46 UTC) layering subagent cwd/workspace separation, prompt-local hook
@@ -866,10 +897,17 @@ external docs (sources: <https://github.com/openclaw/openclaw>, <https://github.
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.27>,
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.1>,
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.2>, and
-<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.3>, all accessed 2026-05-29). Runs on user-controlled
-infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to Claude, OpenAI,
-DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev channels; very
-active development cadence.**
+<https://github.com/openclaw/openclaw/releases/tag/v2026.5.28-beta.3>, all accessed 2026-05-29). Subsequent beta train
+(~61h later, captured in the thirtieth-pass preface above): six rolls forward from `v2026.5.28-beta.3` to
+**`v2026.6.1-beta.1`** (2026-06-01 09:45 UTC) layering a **Skill Workshop** governance system with reviewable proposals
+and a `skill_workshop` agent tool, **plugin externalization** of the GitHub Copilot agent runtime and Tokenjuice as
+standalone npm packages (`@openclaw/copilot`, `@openclaw/tokenjuice`) distributed via ClawHub, **Workboard** multi-agent
+orchestration primitives, **Code mode MCP API files** with scoped agent/global session namespaces, iOS hosted-push-relay
+defaults plus native iPad layouts, and broader channel-stability + bounded-timer + SQLite-storage hardening; stable
+still `v2026.5.27` (sources: <https://github.com/openclaw/openclaw/releases/tag/v2026.6.1-beta.1>, accessed 2026-06-01).
+Runs on user-controlled infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to
+Claude, OpenAI, DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev
+channels; very active development cadence.**
 
 **Implementation + architecture:** TypeScript / Node.js (v22.16+, v24 recommended). The Gateway is a local control plane
 deployed on user machines (macOS, Linux, Windows via WSL2). No cloud requirement; runs entirely on user infrastructure.
