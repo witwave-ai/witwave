@@ -6,6 +6,18 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.35.1] — 2026-06-01
+
+Patch release covering test-coverage and agent-identity fixes; no user-visible runtime behaviour change.
+
+### Fixed
+
+- **cli**: add JSON-contract tests for `ww agent status --json` covering the generation / observedGeneration
+  reconciliation case the team-upgrade poller depends on — the sibling list-renderer got tests in v0.34.0; the
+  status-renderer was missed.
+- **milo**: ship the `self-tidy` job file so milo's daily memory + agent-card grooming actually fires on cron — every
+  other peer already had it.
+
 ## [0.35.0] — 2026-06-01
 
 Adds **poll-based A2A task submission** end-to-end so long-running peer calls survive client-side disconnects: the
