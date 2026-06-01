@@ -1,10 +1,10 @@
 ---
 name: self-tidy
 description: >
-  Daily per-agent self-maintenance. Runs the byte-identical `self-tidy` skill — grooms own memory
-  namespace, refreshes peer-awareness reference memos, checks own agent-card for drift. Staggered
-  across the team to avoid simultaneous fires. Felix's slot: 04:30Z — between iris (02:15Z) and
-  kira (06:30Z), preserves the ~4h spacing pattern across the 7-agent team.
+  Daily per-agent self-maintenance. Runs the byte-identical `self-tidy` skill — grooms own memory namespace, refreshes
+  peer-awareness reference memos, checks own agent-card for drift. Staggered across the team to avoid simultaneous
+  fires. Felix's slot: 04:30Z — between iris (02:15Z) and kira (06:30Z), preserves the ~4h spacing pattern across the
+  7-agent team.
 schedule: "30 4 * * *"
 enabled: true
 ---
