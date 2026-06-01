@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 from a2a.server.agent_execution import AgentExecutor as A2AAgentExecutor
 from a2a.server.agent_execution import RequestContext
 from a2a.server.events import EventQueue
+from a2a.server.tasks.task_updater import TaskUpdater
+from a2a.types import Part, TextPart
 from a2a.utils import new_agent_text_message
 from backends.a2a import A2ABackend
 from backends.config import (
@@ -1202,6 +1204,33 @@ class AgentExecutor(A2AAgentExecutor):
                 self._running_tasks[task_id] = current
                 if harness_running_tasks is not None:
                     harness_running_tasks.inc()
+        # Poll-based (non-blocking) A2A. When the caller sets
+        # configuration.blocking=false (today: `ww send`), drive the A2A task
+        # lifecycle (submit → working → artifact → complete) so the SDK's
+        # DefaultRequestHandler returns a task id immediately and the client
+        # polls tasks/get — no single HTTP connection is held for the whole
+        # turn, which eliminates the long-idle-connection drop on slow hops
+        # (kubectl port-forward, apiserver proxy). The DEFAULT blocking path is
+        # unchanged: callers that don't set blocking=false (zora call-peer, the
+        # dashboard) still get a single terminal Message (#harness-32603).
+        _blocking = True
+        _cfg = getattr(context, "configuration", None)
+        if _cfg is not None and getattr(_cfg, "blocking", None) is False:
+            _blocking = False
+        _updater: TaskUpdater | None = None
+        if not _blocking and task_id:
+            try:
+                _updater = TaskUpdater(event_queue, task_id, context.context_id or session_id)
+                # submit() enqueues TaskState.submitted; the SDK returns the
+                # task to the client on this first event (non-blocking mode),
+                # so the task id is available for polling within sub-second.
+                await _updater.submit()
+            except Exception as _u_exc:  # noqa: BLE001 — fall back to blocking Message
+                logger.warning(
+                    "execute: TaskUpdater submit failed (%r); falling back to blocking Message path",
+                    _u_exc,
+                )
+                _updater = None
         _response = ""
         _success = False
         _error: str | None = None
@@ -1211,6 +1240,7 @@ class AgentExecutor(A2AAgentExecutor):
             "witwave.model": model or "",
             "witwave.trace_id": trace_context.trace_id,
             "witwave.has_inbound_trace": _had_inbound,
+            "witwave.blocking": _blocking,
         }
         try:
             with start_span(
@@ -1220,6 +1250,8 @@ class AgentExecutor(A2AAgentExecutor):
                 attributes=_span_attrs,
             ) as _span:
                 try:
+                    if _updater is not None:
+                        await _updater.start_work()
                     _response = await run(
                         prompt,
                         session_id,
@@ -1233,30 +1265,44 @@ class AgentExecutor(A2AAgentExecutor):
                         caller_id=caller_id,
                     )
                     _success = True
-                    # Always enqueue a final agent message — even when the response
-                    # text is empty (#harness-32603 fix). The A2A SDK's
-                    # DefaultRequestHandler waits for at least one Message event from
-                    # execute() to declare the task complete and serialise a JSON-RPC
-                    # success reply. When execute() returned with no events queued
-                    # (the prior `if _response:` gate skipped the enqueue), the SDK
-                    # had nothing to return and surfaced JSON-RPC -32603 to the
-                    # caller — even though run() had succeeded. Empty-pass evan
-                    # sweeps reproduced this in seconds despite zero per-call latency.
-                    # Enqueue a placeholder text on empty response so the SDK can
-                    # always complete the task cleanly.
-                    _outbound_text = _response if _response else ""
-                    _msg = new_agent_text_message(_outbound_text)
+                    # Stamp trace_id so callers can correlate the reply with the
+                    # end-to-end trace (#636). Additive / optional — absent when
+                    # no trace context exists.
+                    _final_meta: dict | None = None
                     if trace_context is not None and trace_context.trace_id:
-                        # Stamp trace_id on the outbound A2A response message
-                        # metadata so callers can correlate the reply with the
-                        # end-to-end trace (#636). Additive / optional — absent
-                        # when no trace context exists.
-                        _existing = _msg.metadata or {}
-                        _existing["trace_id"] = trace_context.trace_id
+                        _final_meta = {"trace_id": trace_context.trace_id}
                         if trace_context.parent_id:
-                            _existing["span_id"] = trace_context.parent_id
-                        _msg.metadata = _existing
-                    await event_queue.enqueue_event(_msg)
+                            _final_meta["span_id"] = trace_context.parent_id
+                    if _updater is not None:
+                        # Non-blocking: publish the reply as an artifact, then
+                        # complete the task. The client's tasks/get poll reads
+                        # the completed task's artifact (and, redundantly, the
+                        # terminal status message). add_artifact is skipped on
+                        # empty text; complete() always fires so the task always
+                        # reaches a terminal state for the poller.
+                        if _response:
+                            await _updater.add_artifact(
+                                [Part(root=TextPart(text=_response))],
+                                name="response",
+                            )
+                        await _updater.complete(
+                            message=_updater.new_agent_message(
+                                [Part(root=TextPart(text=_response or ""))],
+                                metadata=_final_meta,
+                            )
+                        )
+                    else:
+                        # Blocking (default): a single terminal Message — even
+                        # when the response is empty (#harness-32603 fix). The
+                        # A2A SDK's DefaultRequestHandler waits for a Message
+                        # event to declare the task complete; with no event it
+                        # surfaced JSON-RPC -32603 even though run() succeeded.
+                        _msg = new_agent_text_message(_response if _response else "")
+                        if _final_meta is not None:
+                            _existing = _msg.metadata or {}
+                            _existing.update(_final_meta)
+                            _msg.metadata = _existing
+                        await event_queue.enqueue_event(_msg)
                     if harness_a2a_requests_total is not None:
                         harness_a2a_requests_total.labels(status="success").inc()
                 except Exception as _exc:
@@ -1269,12 +1315,23 @@ class AgentExecutor(A2AAgentExecutor):
                     # so operators can't diagnose without enabling debug + reproducing.
                     logger.exception(
                         "executor.execute raised after run(); session_id=%s backend=%s "
-                        "trace_id=%s response_bytes=%d — caller will see JSON-RPC -32603",
+                        "trace_id=%s response_bytes=%d blocking=%s",
                         session_id,
                         backend_id or self._default_backend_id,
                         trace_context.trace_id if trace_context is not None else "",
                         len(_response or ""),
+                        _blocking,
                     )
+                    if _updater is not None:
+                        # Drive the task to a terminal failed state so the
+                        # client's tasks/get poll sees failure instead of
+                        # polling until its own deadline.
+                        try:
+                            await _updater.failed(
+                                message=_updater.new_agent_message([Part(root=TextPart(text=f"error: {_exc}"))])
+                            )
+                        except Exception:  # noqa: BLE001 — best-effort terminal mark
+                            pass
                     if harness_a2a_requests_total is not None:
                         harness_a2a_requests_total.labels(status="error").inc()
                     set_span_error(_span, _exc)
