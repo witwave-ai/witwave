@@ -6,6 +6,30 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.34.0] — 2026-06-01
+
+Adds **Milo**, the team's Agent-Resources (HR) agent, and the platform plumbing that lets an agent safely keep the team
+on the latest version: a bounded `agentLifecycle` Kubernetes-access preset, an image-patch admission policy,
+machine-readable agent versions in the CLI, and a per-agent reasoning-effort knob on the Claude backend.
+
+### Added
+
+- **cli**: `ww agent list` and `ww agent status` gain `--json` (with harness + per-backend image versions) and a VERSION
+  column; `--kubernetes-api-access` accepts the new `agentLifecycle` mode.
+- **operator**: new `agentLifecycle` kubernetesApiAccess preset — `namespaceWrite` plus `patch` on `witwaveagents`, so
+  an Agent-Resources agent can drive `ww agent upgrade` against its peers.
+- **charts**: gated `agentImagePatchPolicy` ValidatingAdmissionPolicy (witwave-operator) that constrains a chosen
+  ServiceAccount's WitwaveAgent patches to image tags/digests — locking image repositories and backend wiring.
+- **claude**: `CLAUDE_EFFORT` (low/medium/high/max) forwarded to the Claude Agent SDK reasoning-effort setting, so a
+  single agent can run at higher effort without affecting the rest of the team.
+
+### Agent identity
+
+- **milo**: new Agent-Resources agent — keeps a queryable team roster (`roster-audit`) and safely keeps the team on the
+  latest release as a self-first canary (`team-upgrade`). Deploys on Opus 4.8 at max effort; the `team-upgrade` job
+  ships disabled.
+- **zora**: reconcile the dispatch-loop docs (CLAUDE.md + `dispatch-team`) to the current 60-minute cadence.
+
 ## [0.33.6] — 2026-05-30
 
 Quiet documentation patch — three competitive-landscape research refreshes capturing the OpenClaw v2026.5.28 beta train,
