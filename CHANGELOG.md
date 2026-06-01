@@ -6,6 +6,34 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.35.0] — 2026-06-01
+
+Adds **poll-based A2A task submission** end-to-end so long-running peer calls survive client-side disconnects: the
+harness exposes non-blocking `message/send` + `tasks/get`, and `ww send` gains a polling client that submits then polls
+to completion. Harness also no longer re-runs completed turns when a slow A2A read fails, and two agent-frontmatter
+fixes clear lurking parse hazards.
+
+### Added
+
+- **harness**: non-blocking A2A task submission for poll-based clients — `message/send` returns immediately with the
+  task id; clients poll `tasks/get` until terminal. Enables long-running peer calls without a held-open connection.
+- **cli**: `ww send` switches to poll-based delivery — submits the message non-blocking and polls `tasks/get` to
+  completion, so a dropped client connection no longer cancels the in-flight task.
+
+### Fixed
+
+- **harness**: don't re-run completed turns when a slow A2A read fails — the turn is finished and re-running it
+  duplicates side effects.
+
+### Agent identity
+
+- **milo**: agent docs reflect Milo as a deployed team member (rather than provisional), aligning prose with the v0.34.0
+  deployment.
+- **zora**: peer-probe URL extraction is now backtick-safe, so URLs wrapped in markdown backticks parse correctly during
+  discovery.
+- **frontmatter**: multi-line job-description frontmatter switched to YAML block scalars across agents, so descriptions
+  with colons or special characters no longer break the parser.
+
 ## [0.34.0] — 2026-06-01
 
 Adds **Milo**, the team's Agent-Resources (HR) agent, and the platform plumbing that lets an agent safely keep the team
