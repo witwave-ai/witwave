@@ -6,6 +6,22 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.0] — 2026-06-02
+
+Two platform improvements land together: Milo's `team-upgrade` job auto-rolls peer pods on every release so the cluster
+stops drifting minor-versions behind the latest tag, and the Claude backend now reports a graceful structured error when
+the SDK read buffer overflows instead of wedging the tick with an opaque `-32603`.
+
+### Added
+
+- **agents**: enable Milo's `team-upgrade` job auto-rollout — peer pods now restart automatically on every release,
+  closing the staleness root cause that let the cluster fall ~17 days / 3 minor versions behind the latest tag.
+
+### Fixed
+
+- **claude**: return a graceful structured error on SDK JSON read-buffer overflow instead of `-32603`, completing the
+  buffer-raise from v0.36.0 so the failure mode is observable rather than wedging the tick loop.
+
 ## [0.36.1] — 2026-06-02
 
 Patch release recovering from a brief `CI — Docs` red window caused by unformatted docs-research output, plus a README
