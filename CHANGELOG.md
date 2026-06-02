@@ -6,6 +6,21 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.36.1] — 2026-06-02
+
+Patch release recovering from a brief `CI — Docs` red window caused by unformatted docs-research output, plus a README
+install-pin refresh so the quickstart mirrors the latest released tag.
+
+### Fixed
+
+- **docs**: re-run prettier across `docs/architecture.md` and `docs/competitive-landscape.md` to clear `CI — Docs` red
+  on main.
+
+### Documentation
+
+- **readme**: bump quickstart install pins (image tag and two `helm install --version` lines) from `0.33.4` to `0.36.0`
+  so the quickstart matches the latest released tag.
+
 ## [0.36.0] — 2026-06-01
 
 Closes the recurring `-32603` Claude SDK tick-crash class: raises the SDK's JSON read buffer to fit the largest messages
