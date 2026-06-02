@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-04-16
+Last updated: 2026-06-02
 
 ---
 
@@ -424,9 +424,14 @@ units within a theme). No new theme begins until all slices of the current theme
 The following patterns represent potential architectural directions. Each should be evaluated as an architectural change
 proposal before becoming a feature issue:
 
-**Plan-before-code execution mode.** OpenHands v1.5.0 and Devin both enforce a two-phase pattern: read-only planning →
-execution. The Claude Agent SDK supports `permission_mode="plan"` natively. Applicable to jobs or tasks with high blast
-radius.
+**Plan-before-code execution mode.** OpenHands (v1.7.0, May 2026) and Devin (2.0+) both offer explicit planning modes,
+though neither is a hard enforced two-phase split — both surface a planning step the operator approves before
+execution. OpenHands' Plan Mode emits a structured `PLAN.md` the user reviews, then switches to Code Mode for
+implementation (source: <https://openhands.dev/blog/openhands-product-update---march-2026>, accessed 2026-06-02).
+Devin's Interactive Planning presents an execution plan for confirm/modify before work begins, with v3.0 (2026) adding
+dynamic re-planning when the agent hits a roadblock mid-task (source: <https://cognition.ai/blog/introducing-devin-2-2>,
+accessed 2026-06-02). The Claude Agent SDK supports `permission_mode="plan"` natively. Applicable to jobs or tasks with
+high blast radius.
 
 **In-process custom tools.** The Claude Agent SDK's `@tool()` decorator and `create_sdk_mcp_server()` factory allow
 defining tools as plain Python functions inside the harness process — no external MCP server.
