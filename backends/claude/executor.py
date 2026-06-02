@@ -3310,6 +3310,34 @@ class AgentExecutor(A2AAgentExecutor):
                                 "session_stream: final chunk publish on error path failed: %r",
                                 _ef_exc,
                             )
+                    # Graceful SDK-buffer-overflow handling. When a single SDK
+                    # message (a verbose reply or a large tool result) exceeds
+                    # CLAUDE_MAX_BUFFER_SIZE, re-raising surfaces JSON-RPC -32603,
+                    # which crashes the dispatch and wedges the agent — the
+                    # harness then treats it as a stuck peer and team recovery
+                    # stalls (the 2026-06-02 evan incident). Return a clear,
+                    # bounded error reply instead so the caller sees a
+                    # recoverable failure; the agent stays up and the next
+                    # dispatch is unaffected. (CLAUDE_MAX_BUFFER_SIZE — 16 MiB
+                    # default — is the first line of defense; this is the
+                    # belt-and-suspenders so even a >buffer message can't wedge.)
+                    if "maximum buffer size" in str(_exc):
+                        _buf_mib = CLAUDE_MAX_BUFFER_SIZE // (1024 * 1024)
+                        logger.warning(
+                            "execute: SDK read buffer (%d MiB) exceeded — returning a graceful "
+                            "error reply instead of crashing with -32603 (session=%s).",
+                            _buf_mib,
+                            session_id,
+                        )
+                        await event_queue.enqueue_event(
+                            new_agent_text_message(
+                                f"Error: a reply or tool result exceeded the {_buf_mib} MiB SDK read "
+                                f"buffer, so the turn was aborted before completing. Narrow the request "
+                                f"(e.g. avoid reading a very large file in one step) or raise "
+                                f"CLAUDE_MAX_BUFFER_SIZE."
+                            )
+                        )
+                        return
                     raise
         finally:
             if backend_a2a_request_duration_seconds is not None:
