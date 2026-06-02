@@ -782,7 +782,12 @@ and async-reconnect support, async/sync thread stream helpers and scoped subgrap
 subscriptions plus messages-and-tool-call projections; companion `langgraph-cli==0.4.27` shipped the same day pinning
 internal Docker deploy images by digest and bumping the API bound to 0.10.0 (sources:
 <https://github.com/langchain-ai/langgraph/releases/tag/sdk%3D%3D0.4.0> and
-<https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). v1.1.10 (2026-04-27) —
+<https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). Subsequent day-of bumps
+(2026-06-01) advanced core to **`v1.2.3`** (2026-06-01 18:56 UTC) — wires `RemoteGraph.interleave` through to the
+`sdk-py` `interleave_projections` plumbing plus point-fixes for event-ID field naming and cancellation-distinction
+handling; SDK companion rolled twice the same day to **`langgraph-sdk==0.4.1`** (2026-06-01 15:23 UTC, percent-encoding
+improvements) and **`langgraph-sdk==0.4.2`** (2026-06-01 17:51 UTC, stream-decoder extraction) (source:
+<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-06-02). v1.1.10 (2026-04-27) —
 the previous stable — was a maintenance release (prebuilt 1.0.12, checkpoint 4.0.3, dep bumps, a reverted
 node-level-timeouts experiment, and a `ToolNode` change to allow tools returning `list[Command | ToolMessage]`) (source:
 <https://github.com/langchain-ai/langgraph/releases>, accessed 2026-05-15). An earlier pass of this doc mislabeled
@@ -905,6 +910,10 @@ standalone npm packages (`@openclaw/copilot`, `@openclaw/tokenjuice`) distribute
 orchestration primitives, **Code mode MCP API files** with scoped agent/global session namespaces, iOS hosted-push-relay
 defaults plus native iPad layouts, and broader channel-stability + bounded-timer + SQLite-storage hardening; stable
 still `v2026.5.27` (sources: <https://github.com/openclaw/openclaw/releases/tag/v2026.6.1-beta.1>, accessed 2026-06-01).
+Beta head subsequently rolled to **`v2026.6.1-beta.2`** (2026-06-01 21:56 UTC) — layering hardened agent recovery from
+tool-call interruptions, additional channel-stability work, and **proposal-review capabilities** on the Skill Workshop
+governance surface; stable still `v2026.5.27` (source:
+<https://github.com/openclaw/openclaw/releases/tag/v2026.6.1-beta.2>, accessed 2026-06-02).
 Runs on user-controlled infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to
 Claude, OpenAI, DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev
 channels; very active development cadence.**
@@ -1010,10 +1019,13 @@ migrate on upgrade). The prior **Python `1.6.0` (2026-05-22)** jumped past 1.5.0
 with local + Docker execution, a Monty-backed CodeAct provider (`agent-framework-monty`), experimental hosted tool
 factories in `FoundryChatClient`, and `return_immediately` for non-streaming A2A background ops; its headline breaking
 change was **instrumentation enabled by default** in both `agent-framework-core` and `agent-framework-foundry`. **.NET
-`dotnet-1.6.1` (2026-05-14)** unchanged from the nineteenth pass — adds hyperlight integration and improves the
-`FoundryAgent` for hosted agents. Both lines ship minor releases on near-weekly cadence — exiting the "public preview"
-framing the doc previously used (sources: <https://github.com/microsoft/agent-framework/releases/tag/python-1.7.0>
-accessed 2026-05-28 and <https://github.com/microsoft/agent-framework/releases/tag/python-1.6.0> accessed 2026-05-25).
+line jumped past `dotnet-1.7.x` to `dotnet-1.8.0` (2026-06-02)** — adds **MCP-based skills support** and improved
+**`ForeachExecutor` iteration-state persistence across checkpoints**, advancing the .NET line's checkpoint-durability
+story past the hyperlight-integration baseline `dotnet-1.6.1` (2026-05-14) shipped (source:
+<https://github.com/microsoft/agent-framework/releases>, accessed 2026-06-02). Both lines ship minor releases on
+near-weekly cadence — exiting the "public preview" framing the doc previously used (sources:
+<https://github.com/microsoft/agent-framework/releases/tag/python-1.7.0> accessed 2026-05-28 and
+<https://github.com/microsoft/agent-framework/releases/tag/python-1.6.0> accessed 2026-05-25).
 First-class A2A, MCP, and OpenTelemetry — exactly the same tripod we ship.
 
 **Foundry Agent Service:** GA announced March 2026. OpenAI Responses-compatible API; hosts DeepSeek, xAI, Meta,
