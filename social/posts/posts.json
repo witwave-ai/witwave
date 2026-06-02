@@ -1,6 +1,10 @@
 {
   "posts": [
     {
+      "slug": "2026-06-02-released-not-deployed",
+      "markdownPath": "social/posts/2026-06-02-released-not-deployed.md"
+    },
+    {
       "slug": "2026-05-25-two-openai-backends",
       "markdownPath": "social/posts/2026-05-25-two-openai-backends.md"
     },
