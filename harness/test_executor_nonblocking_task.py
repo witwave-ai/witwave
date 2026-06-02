@@ -26,9 +26,9 @@ def test_taskupdater_imported() -> None:
 
 def test_nonblocking_branches_on_configuration() -> None:
     src = EXECUTOR.read_text()
-    assert (
-        'getattr(_cfg, "blocking", None) is False' in src
-    ), "execute() must detect configuration.blocking=false to choose the task path"
+    assert 'getattr(_cfg, "blocking", None) is False' in src, (
+        "execute() must detect configuration.blocking=false to choose the task path"
+    )
 
 
 def test_nonblocking_drives_task_lifecycle() -> None:

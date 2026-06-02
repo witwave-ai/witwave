@@ -55,9 +55,9 @@ def test_resolve_retry_policy_invalid_falls_back_to_fast_only(caplog):
     with caplog.at_level("WARNING", logger="backends.a2a"):
         m = _reload_a2a_module({"A2A_RETRY_POLICY": "reckless"})
     assert m._A2A_RETRY_POLICY == "fast-only"
-    assert any(
-        "A2A_RETRY_POLICY=" in r.getMessage() for r in caplog.records
-    ), "invalid policy must log a WARN identifying the bad value"
+    assert any("A2A_RETRY_POLICY=" in r.getMessage() for r in caplog.records), (
+        "invalid policy must log a WARN identifying the bad value"
+    )
 
 
 def test_resolve_retry_fast_only_ms_env_override():

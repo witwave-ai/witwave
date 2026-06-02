@@ -135,9 +135,9 @@ def test_delete_resource_dry_run_passes_string_not_list():
         dry_run_calls = [c for c in all_calls if "dry_run" in c.kwargs]
         if dry_run_calls:  # graceful when the mock graph deflected all calls
             for call in dry_run_calls:
-                assert (
-                    call.kwargs["dry_run"] == "All"
-                ), f"dry_run kwarg must be the string 'All' per #917; got {call.kwargs['dry_run']!r}"
+                assert call.kwargs["dry_run"] == "All", (
+                    f"dry_run kwarg must be the string 'All' per #917; got {call.kwargs['dry_run']!r}"
+                )
 
 
 # ----- describe() events-fetch degraded-apiserver handling (#1029) -</
@@ -300,9 +300,9 @@ def test_describe_events_call_routes_through_with_kube_retry(monkeypatch):
         "describe() must wrap both resource.get and the events-list "
         f"call in with_kube_retry (#1641); saw {len(retry_call_targets)}"
     )
-    assert (
-        seen_events_kwargs.get("_request_timeout") == 0.05
-    ), "describe()'s list_namespaced_event must forward _MCP_REQUEST_TIMEOUT_SECONDS as _request_timeout (#1641)"
+    assert seen_events_kwargs.get("_request_timeout") == 0.05, (
+        "describe()'s list_namespaced_event must forward _MCP_REQUEST_TIMEOUT_SECONDS as _request_timeout (#1641)"
+    )
 
 
 # ----- logs() DNS-1123 guard (#1032) -------------------------------
