@@ -1,22 +1,51 @@
 # Competitive Landscape
 
-Last updated: 2026-06-01 by kira-agent-witwave (thirtieth pass — verification-and-refinement pass per zora docs-research
-one-shot 09Z dispatch under P2 cadence-floor breach (>61h since last docs-research fire; 2d floor crossed during the
-long pause window) with concurrency=2 pairing with evan risk-work, scope-distinct (docs/research/\* vs source). CI green
-on HEAD `96de6b01`; no critical findings open. One substantive surface delta surfaced in the ~61-hour window since the
-twenty-ninth pass: **OpenClaw beta train rolled forward from `v2026.5.28-beta.3` to `v2026.6.1-beta.1`** through six
-intermediate beta releases — `v2026.5.30-beta.1` (2026-05-31 02:39 UTC), `v2026.5.31-beta.1` / `.beta.2` / `.beta.3`
-(2026-05-31 17:44 / 18:17 / 19:19 UTC), `v2026.5.31-beta.4` (2026-06-01 02:04 UTC), and **`v2026.6.1-beta.1`**
-(2026-06-01 09:45 UTC). The chain layers a **Skill Workshop** system (governed skill creation with reviewable proposals,
-versioning, rollback metadata, CLI + Gateway review actions, and a new `skill_workshop` agent tool), **plugin
-externalization** publishing the GitHub Copilot agent runtime and Tokenjuice as standalone npm packages
-(`@openclaw/copilot`, `@openclaw/tokenjuice`) distributed via ClawHub, **Workboard** multi-agent orchestration
-primitives for coordinated planning and run tracking, **Code mode MCP API files plus scoped agent/global session
-namespaces** (added in `v2026.6.1-beta.1`), iOS hosted-push-relay defaults / realtime Talk playback / native iPad
-layouts / guarded WebSocket ping paths, broader channel-stability work across Telegram / WhatsApp / iMessage / Slack /
-Discord / Teams / Google Chat, bounded timers on provider requests / OAuth lifetimes / media operations, SQLite-backed
-storage for plugin indexes / inbound queues / iMessage monitoring, and stricter parsing rejecting unsafe OAuth/token
-lifetimes; stable still `v2026.5.27` (no new stable release in the window) (sources:
+Last updated: 2026-06-02 by kira-agent-witwave (thirty-first pass — verification-and-refinement pass per zora
+docs-research one-shot 15Z dispatch under P2 cadence-floor breach (docs-cleanup 1.00× AT-FLOOR at 15:00Z) with
+polish-skill ADVANCE alternation from `docs-cleanup` (zero_streak=1 at default, no fresh docs-scope source since
+`last_run_sha=fc9d4305`); HEAD `66cc9e69`. Three substantive upstream movements captured in the ~24-hour window since
+the thirtieth pass yesterday: **LangGraph** bumped from `v1.2.2` to **`v1.2.3`** (2026-06-01 18:56 UTC) — adds v3
+streaming support to `RemoteGraph` plus cancellation-distinction handling, configuration merging for callbacks and
+metadata, and protocol field-naming consistency fixes; companion **`langgraph-sdk==0.4.2`** (2026-06-01 17:51 UTC) and
+**`langgraph-sdk==0.4.1`** (2026-06-01 15:23 UTC) both shipped same-day above the `0.4.0` (2026-05-28) capture from the
+twenty-ninth pass, layering thread-ID percent-encoding fixes for v3 stream transport plus stream-decoder extraction and
+interleave projections (sources: <https://github.com/langchain-ai/langgraph/releases/tag/1.2.3> and
+<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-06-02). **Microsoft Agent Framework** `.NET` line
+jumped from `dotnet-1.6.1` to **`dotnet-1.8.0`** (2026-06-02) via three same-day rollups (`dotnet-1.6.2`,
+`dotnet-1.7.0`, `dotnet-1.8.0`) — headline additions are **MCP-based skills support** plus handoff orchestration
+improvements, MCP long-running task support for client tools, async resource/script lookup refactoring, Foundry Toolbox
+tool invocation, harness console refactoring, and shell support; headline breaking change is **removal of code-gen
+support in declarative workflows** plus an `AgentFileSkillsSource` refactor for depth-based discovery and enhanced
+session scoping via `ClaimsIdentity`; Python line unchanged at `python-1.7.0` (source:
+<https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.8.0>, accessed 2026-06-02). **OpenClaw** beta head
+rolled from `v2026.6.1-beta.1` to **`v2026.6.1-beta.2`** (2026-06-01 21:56 UTC) — layers governance refinements on the
+Skill Workshop system (pending proposals plus CLI/Gateway review actions), externalized Tokenjuice and Copilot plugins,
+iOS reliability work (hosted push relay), SQLite-backed state management for plugins and iMessage monitoring, and
+broader bounded timeouts/retries across agents, channels, and providers; stable still `v2026.5.27` (no new stable in the
+window) (source: <https://github.com/openclaw/openclaw/releases/tag/v2026.6.1-beta.2>, accessed 2026-06-02). All other
+high-cadence upstream pins re-verified unchanged from the thirtieth pass: Claude Agent SDK still `v0.2.87` (2026-05-23),
+Microsoft Agent Framework Python still `python-1.7.0` (2026-05-28), OpenAI Agents SDK still `v0.17.4` (2026-05-26),
+CrewAI still `v1.14.6` stable (2026-05-28), A2A still `v1.0.1` (2026-05-28), OpenHands still `v1.7.0` (2026-05-01)
+(sources: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/openai/openai-agents-python/releases>,
+<https://github.com/crewAIInc/crewAI/releases>, <https://github.com/a2aproject/A2A/releases>,
+<https://github.com/OpenHands/OpenHands/releases>, all accessed 2026-06-02). Thirtieth pass (2026-06-01, ~24h ago) was a
+verification-and-refinement pass per zora docs-research one-shot 09Z dispatch under P2 cadence-floor breach (>61h since
+last docs-research fire; 2d floor crossed during the long pause window) with concurrency=2 pairing with evan risk-work,
+scope-distinct (docs/research/\* vs source). CI green on HEAD `96de6b01`; no critical findings open. One substantive
+surface delta surfaced in the ~61-hour window since the twenty-ninth pass: **OpenClaw beta train rolled forward from
+`v2026.5.28-beta.3` to `v2026.6.1-beta.1`** through six intermediate beta releases — `v2026.5.30-beta.1` (2026-05-31
+02:39 UTC), `v2026.5.31-beta.1` / `.beta.2` / `.beta.3` (2026-05-31 17:44 / 18:17 / 19:19 UTC), `v2026.5.31-beta.4`
+(2026-06-01 02:04 UTC), and **`v2026.6.1-beta.1`** (2026-06-01 09:45 UTC). The chain layers a **Skill Workshop** system
+(governed skill creation with reviewable proposals, versioning, rollback metadata, CLI + Gateway review actions, and a
+new `skill_workshop` agent tool), **plugin externalization** publishing the GitHub Copilot agent runtime and Tokenjuice
+as standalone npm packages (`@openclaw/copilot`, `@openclaw/tokenjuice`) distributed via ClawHub, **Workboard**
+multi-agent orchestration primitives for coordinated planning and run tracking, **Code mode MCP API files plus scoped
+agent/global session namespaces** (added in `v2026.6.1-beta.1`), iOS hosted-push-relay defaults / realtime Talk playback
+/ native iPad layouts / guarded WebSocket ping paths, broader channel-stability work across Telegram / WhatsApp /
+iMessage / Slack / Discord / Teams / Google Chat, bounded timers on provider requests / OAuth lifetimes / media
+operations, SQLite-backed storage for plugin indexes / inbound queues / iMessage monitoring, and stricter parsing
+rejecting unsafe OAuth/token lifetimes; stable still `v2026.5.27` (no new stable release in the window) (sources:
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.30-beta.1>,
 <https://github.com/openclaw/openclaw/releases/tag/v2026.5.31-beta.4>, and
 <https://github.com/openclaw/openclaw/releases/tag/v2026.6.1-beta.1>, all accessed 2026-06-01). Pin refinement:
@@ -787,9 +816,9 @@ internal Docker deploy images by digest and bumping the API bound to 0.10.0 (sou
 `sdk-py` `interleave_projections` plumbing plus point-fixes for event-ID field naming and cancellation-distinction
 handling; SDK companion rolled twice the same day to **`langgraph-sdk==0.4.1`** (2026-06-01 15:23 UTC, percent-encoding
 improvements) and **`langgraph-sdk==0.4.2`** (2026-06-01 17:51 UTC, stream-decoder extraction) (source:
-<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-06-02). v1.1.10 (2026-04-27) —
-the previous stable — was a maintenance release (prebuilt 1.0.12, checkpoint 4.0.3, dep bumps, a reverted
-node-level-timeouts experiment, and a `ToolNode` change to allow tools returning `list[Command | ToolMessage]`) (source:
+<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-06-02). v1.1.10 (2026-04-27) — the previous stable —
+was a maintenance release (prebuilt 1.0.12, checkpoint 4.0.3, dep bumps, a reverted node-level-timeouts experiment, and
+a `ToolNode` change to allow tools returning `list[Command | ToolMessage]`) (source:
 <https://github.com/langchain-ai/langgraph/releases>, accessed 2026-05-15). An earlier pass of this doc mislabeled
 deferred nodes and node-level caching as "v2.0" features — they are **v1.x** features shipped during the 2025 LangGraph
 Release Week. There is no v2.0 on PyPI as of May 2026; the stable line is v1.x.
@@ -913,10 +942,10 @@ still `v2026.5.27` (sources: <https://github.com/openclaw/openclaw/releases/tag/
 Beta head subsequently rolled to **`v2026.6.1-beta.2`** (2026-06-01 21:56 UTC) — layering hardened agent recovery from
 tool-call interruptions, additional channel-stability work, and **proposal-review capabilities** on the Skill Workshop
 governance surface; stable still `v2026.5.27` (source:
-<https://github.com/openclaw/openclaw/releases/tag/v2026.6.1-beta.2>, accessed 2026-06-02).
-Runs on user-controlled infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to
-Claude, OpenAI, DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev
-channels; very active development cadence.**
+<https://github.com/openclaw/openclaw/releases/tag/v2026.6.1-beta.2>, accessed 2026-06-02). Runs on user-controlled
+infrastructure (notable community trend: a Mac Mini hardware rush for 24/7 hosting). Connects to Claude, OpenAI,
+DeepSeek, and local models. **MIT licensed; calendar-versioned releases (`vYYYY.M.D`) with beta and dev channels; very
+active development cadence.**
 
 **Implementation + architecture:** TypeScript / Node.js (v22.16+, v24 recommended). The Gateway is a local control plane
 deployed on user machines (macOS, Linux, Windows via WSL2). No cloud requirement; runs entirely on user infrastructure.
@@ -1025,8 +1054,8 @@ story past the hyperlight-integration baseline `dotnet-1.6.1` (2026-05-14) shipp
 <https://github.com/microsoft/agent-framework/releases>, accessed 2026-06-02). Both lines ship minor releases on
 near-weekly cadence — exiting the "public preview" framing the doc previously used (sources:
 <https://github.com/microsoft/agent-framework/releases/tag/python-1.7.0> accessed 2026-05-28 and
-<https://github.com/microsoft/agent-framework/releases/tag/python-1.6.0> accessed 2026-05-25).
-First-class A2A, MCP, and OpenTelemetry — exactly the same tripod we ship.
+<https://github.com/microsoft/agent-framework/releases/tag/python-1.6.0> accessed 2026-05-25). First-class A2A, MCP, and
+OpenTelemetry — exactly the same tripod we ship.
 
 **Foundry Agent Service:** GA announced March 2026. OpenAI Responses-compatible API; hosts DeepSeek, xAI, Meta,
 LangChain, LangGraph models (in addition to Azure OpenAI). Directly overlaps this project's cross-backend orchestration.
