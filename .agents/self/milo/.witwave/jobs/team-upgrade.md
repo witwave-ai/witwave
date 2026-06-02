@@ -4,10 +4,11 @@ description: >
   Advances Milo's self-first staged upgrade campaign by one step per run. Milo is the canary: he upgrades himself first
   and soaks longest, then cascades a proven version to the peers one at a time, lowest blast radius first. Most runs are
   no-ops (the team is already current). The gap between runs is the soak window, so a rollout spans hours to days. The
-  only mutation is a ww-CLI image-tag bump. DISABLED by default — flip `enabled: true` once you've watched a run and are
-  ready for autonomous rollout.
+  only mutation is a ww-CLI image-tag bump. Enabled 2026-06-02 after the team was manually rolled to v0.36.1 and proven
+  healthy — Milo now auto-rolls future releases so the team cannot drift stale again (the 17-day-stale-pods gap that let
+  the SDK-buffer bug keep recurring).
 schedule: "30 */4 * * *"
-enabled: false
+enabled: true
 ---
 
 Run your `team-upgrade` skill. Advance the campaign by exactly ONE safe step, in this order — stop at the first that
