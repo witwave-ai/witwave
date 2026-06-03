@@ -2,12 +2,12 @@
 name: team-upgrade
 description:
   Keep the team on the latest released version, safely, with Milo as the canary. Each run advances a staged campaign by
-  ONE step: upgrade YOURSELF first and soak longest, and only once you are proven on the new version do you cascade it to
-  the peers one at a time (lowest blast radius first). The campaign target is pinned once a campaign starts, so newer
+  ONE step: upgrade YOURSELF first and soak longest, and only once you are proven on the new version do you cascade it
+  to the peers one at a time (lowest blast radius first). The campaign target is pinned once a campaign starts, so newer
   releases are picked up between campaigns, not mid-flight. On any failure, roll that agent back to its last-known-good,
   halt, quarantine the bad version, and wait for a newer release. Spans hours to days by design. Trigger from the
-  team-upgrade job, or when the user says "upgrade the team", "roll out the latest", "check for updates", or "is everyone
-  on the latest version?".
+  team-upgrade job, or when the user says "upgrade the team", "roll out the latest", "check for updates", or "is
+  everyone on the latest version?".
 version: 0.3.0
 ---
 
