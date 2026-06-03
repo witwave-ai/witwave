@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -264,5 +265,38 @@ func TestApplyDesiredTagsInPlace_HarnessOnlyLeavesBackendsAlone(t *testing.T) {
 	beImg := be["image"].(map[string]interface{})
 	if beImg["tag"] != "0.11.14" {
 		t.Errorf("backend tag = %v; want untouched 0.11.14", beImg["tag"])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Upgrade mutation verb — patch, never update
+// ---------------------------------------------------------------------------
+
+// TestUpgradeUsesPatchNotUpdate guards that `ww agent upgrade` mutates the
+// WitwaveAgent with the patch verb (a JSON Patch), not update. The
+// agentLifecycle RBAC preset grants the Agent-Resources canary (milo)
+// `patch` on witwaveagents — not `update` — so a regression to a full
+// dyn...Update() reintroduces "SA milo cannot update witwaveagents" and
+// silently breaks Milo's autonomous team-upgrade (the 2026-06-02 incident).
+//
+// Source-level because Upgrade() builds its own dynamic client from
+// *rest.Config and is not fake-injectable without a wider refactor.
+func TestUpgradeUsesPatchNotUpdate(t *testing.T) {
+	src, err := os.ReadFile("upgrade.go")
+	if err != nil {
+		t.Fatalf("read upgrade.go: %v", err)
+	}
+	s := string(src)
+
+	if !strings.Contains(s, "types.JSONPatchType") {
+		t.Error("ww agent upgrade must mutate the WitwaveAgent with a JSON Patch " +
+			"(types.JSONPatchType) so the agentLifecycle `patch` grant suffices")
+	}
+	if !strings.Contains(s, ").Patch(") {
+		t.Error("ww agent upgrade must call .Patch() on the witwaveagent resource, not .Update()")
+	}
+	if strings.Contains(s, "Namespace(opts.Namespace).Update(") {
+		t.Error("ww agent upgrade must NOT Update() the witwaveagent — milo's " +
+			"agentLifecycle RBAC grants `patch`, not `update`")
 	}
 }

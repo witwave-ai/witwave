@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 
@@ -84,10 +86,11 @@ type UpgradeOptions struct {
 // current tag already matches the desired one and Force is false,
 // returns nil after printing a "no change" message.
 //
-// Patch shape: a single strategic-merge style update to spec.image.tag
-// and each spec.backends[].image.tag. The operator reconciles the
-// change and rolls the Deployment via kubelet's standard rollout
-// path — no operator-side coordination required.
+// Patch shape: a JSON Patch (RFC 6902) replacing /spec with the
+// tag-bumped spec. Uses the `patch` verb (not `update`) so the
+// agentLifecycle preset's `patch` grant suffices. The operator
+// reconciles the change and rolls the Deployment via kubelet's standard
+// rollout path — no operator-side coordination required.
 func Upgrade(
 	ctx context.Context,
 	target *k8s.Target,
@@ -168,25 +171,34 @@ func Upgrade(
 		return nil
 	}
 
-	// Read-modify-write the full CR rather than sending a merge-patch.
-	// RFC 7396 (the JSON merge-patch the dynamic client applies to a CR
-	// without a registered Go type) REPLACES arrays wholesale rather
-	// than merging by element key — so a partial spec.backends[]
-	// entry like `{name: claude, image: {tag: X}}` would clobber the
-	// existing image.repository and admission rejects on
-	// "spec.backends[i].image.repository: Required value".
+	// Use a JSON Patch (RFC 6902), not Update, so the agentLifecycle
+	// `patch` grant is sufficient: the Agent-Resources canary (milo) is
+	// granted `patch` on witwaveagents — not `update` — and `ww agent
+	// upgrade` is the charter's intended driver of that grant.
 	//
-	// Update with the full object preserves every field. The dynamic
-	// client's optimistic concurrency on resourceVersion catches the
-	// rare race where the operator updated status between Get and
-	// Update — caller sees a clear conflict error, can re-run.
+	// `replace` of the whole /spec preserves every spec field. This
+	// deliberately avoids an RFC 7396 merge-patch, which REPLACES arrays
+	// wholesale rather than merging by element key — a partial
+	// spec.backends[] entry would clobber image.repository and admission
+	// would reject on "spec.backends[i].image.repository: Required value".
+	// Tag bumps are idempotent, so a lost race is harmless: re-run.
 	if err := applyDesiredTagsInPlace(cr, desired); err != nil {
 		return err
 	}
-	if _, err := dyn.Resource(GVR()).Namespace(opts.Namespace).Update(
-		ctx, cr, metav1.UpdateOptions{},
+	specVal, found, err := unstructured.NestedFieldNoCopy(cr.Object, "spec")
+	if err != nil || !found {
+		return fmt.Errorf("read spec of WitwaveAgent %s/%s for patch: %w", opts.Namespace, opts.Name, err)
+	}
+	patchBytes, err := json.Marshal([]map[string]any{
+		{"op": "replace", "path": "/spec", "value": specVal},
+	})
+	if err != nil {
+		return fmt.Errorf("marshal upgrade patch for %s/%s: %w", opts.Namespace, opts.Name, err)
+	}
+	if _, err := dyn.Resource(GVR()).Namespace(opts.Namespace).Patch(
+		ctx, opts.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{},
 	); err != nil {
-		return fmt.Errorf("update WitwaveAgent %s/%s: %w", opts.Namespace, opts.Name, err)
+		return fmt.Errorf("patch WitwaveAgent %s/%s: %w", opts.Namespace, opts.Name, err)
 	}
 	fmt.Fprintf(opts.Out, "Updated WitwaveAgent %s/%s.\n", opts.Namespace, opts.Name)
 
