@@ -115,8 +115,12 @@ _RETRYABLE_STATUS_CODES: frozenset[int] = frozenset({429, 502, 503, 504})
 #                           cost-sensitive deployments.
 # Network-level errors split by WHEN they fire, because that is what
 # tells us whether server-side work happened:
-#   * ConnectError / WriteTimeout / PoolTimeout — the request was never
-#     (fully) sent, so the backend did no work; always retried.
+#   * ConnectError / ConnectTimeout / WriteTimeout / PoolTimeout — the
+#     request was never (fully) sent, so the backend did no work; always
+#     retried. ConnectTimeout is a TimeoutException sibling of Write/Pool
+#     Timeout (NOT a subclass of ConnectError), so it must be enumerated
+#     explicitly here — otherwise it falls through to `except Exception`
+#     and surfaces raw without retry.
 #   * ReadError / ReadTimeout — the request WAS sent and the response
 #     read failed. A FAST failure (elapsed <= A2A_RETRY_FAST_ONLY_MS) is
 #     the keepalive-pool reaper race (a pooled connection the server
@@ -766,7 +770,13 @@ class A2ABackend:
                 )
                 last_exc = exc
                 _result_label = "error_timeout"
-            except httpx.ConnectError as exc:
+            except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+                # ConnectTimeout is a TimeoutException sibling of Write/
+                # PoolTimeout, NOT a subclass of ConnectError. It must be
+                # listed alongside ConnectError here or it falls through
+                # to `except Exception` below and surfaces raw without
+                # retry, contradicting the "request never sent → always
+                # retried" contract in the header comment.
                 logger.warning(
                     f"A2A backend '{self.id}' transient error on attempt {attempt + 1}/{_MAX_RETRIES}: {exc!r}"
                 )
