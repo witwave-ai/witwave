@@ -3,7 +3,7 @@
 Helm chart for the witwave operator — deploys the witwave-operator controller manager and the `WitwaveAgent`,
 `WitwavePrompt`, and `WitwaveWorkspace` CRDs.
 
-> **Looking for the fastest install?** The [`ww`](../../../../../../clients/ww/) CLI embeds this chart (v0.5.0+). Install `ww`
+> **Looking for the fastest install?** The [`ww`](../../clients/ww/) CLI embeds this chart (v0.5.0+). Install `ww`
 > (`curl -fsSL https://github.com/witwave-ai/witwave/releases/latest/download/install.sh | sh` or
 > `brew install witwave-ai/homebrew-ww/ww`) then `ww operator install` — no Helm repo configuration required. The chart
 > instructions below are for users who prefer raw Helm (GitOps pipelines, custom values, forks).
@@ -295,7 +295,7 @@ ww operator upgrade -f operator-values.yaml      # values file carrying the bloc
 re-passing `-f`. If the policy already exists from an out-of-band `kubectl apply`, annotate it for Helm adoption first
 (`meta.helm.sh/release-name`, `meta.helm.sh/release-namespace`, `app.kubernetes.io/managed-by=Helm`) so the upgrade
 imports it in place rather than failing on the ownership conflict. See
-[`.agents/self/bootstrap.md`](../../../../../../.agents/self/bootstrap.md) for the worked self-team runbook.
+[`.agents/self/bootstrap.md`](../../.agents/self/bootstrap.md) for the worked self-team runbook.
 
 ## Graceful shutdown (#465, #512)
 
