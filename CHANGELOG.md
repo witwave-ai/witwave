@@ -6,6 +6,20 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.2] — 2026-06-03
+
+Patch release fixing `ww agent upgrade` so the Agent-Resources canary (Milo) can drive autonomous version rollouts: the
+command now mutates the agent CR with the `patch` verb its RBAC actually grants, not `update`.
+
+### Fixed
+
+- **ww**: `ww agent upgrade` now mutates the WitwaveAgent via a JSON Patch (RFC 6902, `patch` verb) instead of a full
+  `update`. The operator's `agentLifecycle` RBAC preset grants Agent-Resources agents only `patch` on `witwaveagents`,
+  so the prior `update` failed with `SA <name> cannot update witwaveagents` and silently stalled Milo's `team-upgrade`
+  self-canary (the team sat a release behind on 2026-06-02). The patch stays surgical — a `/spec` replace, not an RFC
+  7396 merge-patch that would clobber `spec.backends[]` — and is still bounded by the `agent-image-patch`
+  ValidatingAdmissionPolicy. No RBAC is widened.
+
 ## [0.37.1] — 2026-06-03
 
 Patch release covering harness resilience (retry transient `httpx` connection timeouts instead of raising raw), a README
