@@ -46,6 +46,35 @@ func bindMutatingFlags(cmd *cobra.Command, f *operatorFlags) {
 		"Print the plan and exit without applying any changes")
 }
 
+// valuesFlags carries the Helm value-overlay flags shared by the
+// chart-rendering mutating subcommands (install + upgrade). Flag names
+// and semantics mirror `helm` exactly (see DESIGN.md OV-1) so muscle
+// memory transfers and `ww operator install -f x.yaml --set k=v` behaves
+// like the equivalent `helm install`. uninstall/status take no values —
+// they don't render the chart.
+type valuesFlags struct {
+	valueFiles      []string
+	setValues       []string
+	setStringValues []string
+}
+
+func bindValuesFlags(cmd *cobra.Command, v *valuesFlags) {
+	// Backtick spans set cobra's value placeholder, so the first pair in
+	// each usage string is the arg name shown in --help (file / key=val).
+	cmd.Flags().StringArrayVarP(&v.valueFiles, "values", "f", nil,
+		"Path to a values YAML `file` (repeatable; later files win), as with helm -f")
+	cmd.Flags().StringArrayVar(&v.setValues, "set", nil,
+		"Set a chart value `key=val` (repeatable; overrides --values), as with helm --set")
+	cmd.Flags().StringArrayVar(&v.setStringValues, "set-string", nil,
+		"Force a STRING chart value `key=val` (repeatable), as with helm --set-string")
+}
+
+// merged turns the flag inputs into the values map the install/upgrade
+// internals feed to the Helm SDK. nil/empty in → empty (non-nil) map.
+func (v *valuesFlags) merged() (map[string]interface{}, error) {
+	return operator.MergeValues(v.valueFiles, v.setValues, v.setStringValues)
+}
+
 // resolveTarget runs the kubeconfig loader and returns the populated
 // Target + REST config. Surfaces the friendly "no kubeconfig / no context"
 // error when applicable. Cluster-identity flags come from the root
@@ -271,6 +300,7 @@ func newOperatorInstallCmd(f *operatorFlags) *cobra.Command {
 		adopt           bool
 		ifMissing       bool
 		createNamespace bool
+		vals            valuesFlags
 	)
 	cmd := &cobra.Command{
 		Use:   "install",
@@ -290,12 +320,19 @@ func newOperatorInstallCmd(f *operatorFlags) *cobra.Command {
 			"already installed, the command logs a no-op line and returns\n" +
 			"success instead of refusing. Useful for scripts that want to\n" +
 			"\"ensure the operator is present\" without caring whether this run\n" +
-			"is the one that installed it.",
+			"is the one that installed it.\n\n" +
+			"-f/--values, --set, and --set-string overlay chart values exactly\n" +
+			"like `helm`. Pass an env-specific values file to enable optional\n" +
+			"chart features at install time, e.g.:\n" +
+			"  ww operator install -f .agents/self/operator-values.yaml\n" +
+			"`ww operator upgrade` reuses previously-applied values, so a value\n" +
+			"set here survives later upgrades without re-passing -f.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runOperatorInstall(cmd.Context(), f, adopt, ifMissing, createNamespace)
+			return runOperatorInstall(cmd.Context(), f, &vals, adopt, ifMissing, createNamespace)
 		},
 	}
 	bindMutatingFlags(cmd, f)
+	bindValuesFlags(cmd, &vals)
 	cmd.Flags().BoolVar(&adopt, "adopt", false,
 		"Proceed when operator CRDs already exist on the cluster without a Helm release "+
 			"(ww will take over management via Helm)")
@@ -306,7 +343,11 @@ func newOperatorInstallCmd(f *operatorFlags) *cobra.Command {
 	return cmd
 }
 
-func runOperatorInstall(ctx context.Context, f *operatorFlags, adopt, ifMissing, createNamespace bool) error {
+func runOperatorInstall(ctx context.Context, f *operatorFlags, vals *valuesFlags, adopt, ifMissing, createNamespace bool) error {
+	values, err := vals.merged()
+	if err != nil {
+		return err
+	}
 	target, resolver, err := f.resolveTarget(ctx)
 	if err != nil {
 		return err
@@ -323,13 +364,17 @@ func runOperatorInstall(ctx context.Context, f *operatorFlags, adopt, ifMissing,
 		CreateNamespace: createNamespace,
 		AssumeYes:       assumeYes,
 		DryRun:          f.dryRun,
+		Values:          values,
 		Out:             os.Stdout,
 		In:              os.Stdin,
 	})
 }
 
 func newOperatorUpgradeCmd(f *operatorFlags) *cobra.Command {
-	var force bool
+	var (
+		force bool
+		vals  valuesFlags
+	)
 	cmd := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade the witwave-operator Helm release to the embedded chart version",
@@ -337,18 +382,30 @@ func newOperatorUpgradeCmd(f *operatorFlags) *cobra.Command {
 			"first (this works around Helm's 'crds/ is install-only' semantics so\n" +
 			"new CRD fields land on the apiserver before the Deployment rolls),\n" +
 			"then the Helm upgrade runs. Refuses when no release exists — use\n" +
-			"`ww operator install` first.",
+			"`ww operator install` first.\n\n" +
+			"Values previously applied to the release are reused (Helm\n" +
+			"reset-then-reuse): a plain `ww operator upgrade` keeps any optional\n" +
+			"chart feature you enabled earlier while still adopting the embedded\n" +
+			"chart's new defaults (so the operator image tracks the embedded\n" +
+			"version). Pass -f/--values, --set, or --set-string to add or change\n" +
+			"overrides on top — e.g. the first time you enable a feature:\n" +
+			"  ww operator upgrade -f .agents/self/operator-values.yaml",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runOperatorUpgrade(cmd.Context(), f, force)
+			return runOperatorUpgrade(cmd.Context(), f, &vals, force)
 		},
 	}
 	bindMutatingFlags(cmd, f)
+	bindValuesFlags(cmd, &vals)
 	cmd.Flags().BoolVar(&force, "force", false,
 		"Reserved for future skew-policy overrides; accepted today for flag compatibility")
 	return cmd
 }
 
-func runOperatorUpgrade(ctx context.Context, f *operatorFlags, force bool) error {
+func runOperatorUpgrade(ctx context.Context, f *operatorFlags, vals *valuesFlags, force bool) error {
+	values, err := vals.merged()
+	if err != nil {
+		return err
+	}
 	target, resolver, err := f.resolveTarget(ctx)
 	if err != nil {
 		return err
@@ -363,6 +420,7 @@ func runOperatorUpgrade(ctx context.Context, f *operatorFlags, force bool) error
 		AssumeYes: assumeYes,
 		DryRun:    f.dryRun,
 		Force:     force,
+		Values:    values,
 		Out:       os.Stdout,
 		In:        os.Stdin,
 	})

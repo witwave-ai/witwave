@@ -6,6 +6,29 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+Makes the `agentImagePatchPolicy` admission policy a durable, Helm-managed object instead of a one-off `kubectl apply`,
+so it survives `ww operator upgrade`/reinstall cleanly.
+
+### Added
+
+- **cli**: `ww operator install` and `ww operator upgrade` gain `-f/--values`, `--set`, and `--set-string`, with the
+  same merge/precedence/typing semantics as `helm`. Use them to enable optional chart features (e.g.
+  `agentImagePatchPolicy`) at install or upgrade time without dropping to raw Helm. The supplied overrides are
+  summarised on the preflight banner.
+- **operator/self-team**: checked-in operator values overlay at `.agents/self/operator-values.yaml` enabling the
+  `agentImagePatchPolicy` ValidatingAdmissionPolicy scoped to `system:serviceaccount:witwave-self:milo`. The chart
+  default stays `enabled: false` with an empty SA list — the enable + scope is environment-specific and now lives in
+  git, applied via `ww operator upgrade -f`. `.agents/self/bootstrap.md` documents the enable + out-of-band-VAP adoption
+  runbook.
+
+### Changed
+
+- **cli**: `ww operator upgrade` now reuses the values already applied to the release (Helm reset-then-reuse) instead of
+  resetting to chart defaults on every run. A value enabled once (such as the image-patch policy) survives later plain
+  `ww operator upgrade` invocations without re-passing `-f`, while the upgrade still adopts the embedded chart's new
+  defaults — including the operator `image.tag`, which continues to track the embedded chart's `appVersion` rather than
+  being reset. Releases installed with chart defaults are unaffected (reusing empty overrides == defaults).
+
 ## [0.37.2] — 2026-06-03
 
 Patch release fixing `ww agent upgrade` so the Agent-Resources canary (Milo) can drive autonomous version rollouts: the

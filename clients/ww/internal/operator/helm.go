@@ -119,6 +119,19 @@ func (c *HelmClient) Upgrade(ctx context.Context, ch *chart.Chart, values map[st
 	act.Wait = false
 	act.SkipCRDs = true // CRDs are applied separately (see upgrade.go)
 	act.MaxHistory = 10 // keep recent history for rollback; drop ancient
+	// ResetThenReuseValues makes a plain `ww operator upgrade` durable:
+	// start from the embedded chart's NEW defaults (so a value the user
+	// never set — notably image.tag, which defaults to the embedded
+	// chart's appVersion — tracks the version this ww binary ships),
+	// re-apply the previous release's user overrides, then layer the
+	// values passed on THIS invocation on top. The alternative — Helm's
+	// default reset-to-chart-defaults — silently drops any value the
+	// operator enabled earlier (e.g. agentImagePatchPolicy) on every
+	// upgrade that doesn't re-pass it, which is exactly the durability
+	// gap this command must not have. Plain ReuseValues would instead
+	// pin the OLD chart's defaults and miss new ones, so reset-then-reuse
+	// is the correct middle ground for an in-place upgrade.
+	act.ResetThenReuseValues = true
 	rel, err := act.RunWithContext(ctx, c.releaseName, ch, values)
 	if err != nil {
 		return nil, fmt.Errorf("helm upgrade: %w", err)

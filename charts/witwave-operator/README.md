@@ -266,6 +266,37 @@ release namespace when the list is empty) and **does not** create a `ClusterRole
 with `--watch-namespaces` in `extraArgs` so controller-runtime's informer cache matches — otherwise the operator's
 watches will hit RBAC errors the moment it tries to list outside the permitted namespaces.
 
+## Constraining agent image patches (`agentImagePatchPolicy`)
+
+The `agentLifecycle` Kubernetes-API-access preset grants an Agent-Resources agent `patch` on `witwaveagents` so it can
+run `ww agent upgrade` against its peers. That verb is resource-scoped — it covers the whole spec. The
+`agentImagePatchPolicy` block renders a cluster `ValidatingAdmissionPolicy` (+ binding) that narrows what the named
+ServiceAccounts may change: only image tags/digests may move; image **repositories** are locked and backends may not be
+added, removed, or renamed. Other writers (the operator, humans, CI) are unaffected — the policy's `matchConditions`
+scope enforcement to the listed ServiceAccounts only.
+
+Disabled by default, and scoped to nothing even if enabled (the SA list is environment-specific):
+
+```yaml
+agentImagePatchPolicy:
+  enabled: true
+  constrainedServiceAccounts:
+    - system:serviceaccount:witwave-self:milo
+```
+
+The CEL is enforced by the apiserver, not by `helm template` — validate against a live cluster before relying on it.
+With the `ww` CLI, apply it as a release-owned object that survives reinstalls:
+
+```bash
+ww operator upgrade -f operator-values.yaml      # values file carrying the block above
+```
+
+`ww operator upgrade` reuses previously-applied values, so the policy stays enforcing on later plain upgrades without
+re-passing `-f`. If the policy already exists from an out-of-band `kubectl apply`, annotate it for Helm adoption first
+(`meta.helm.sh/release-name`, `meta.helm.sh/release-namespace`, `app.kubernetes.io/managed-by=Helm`) so the upgrade
+imports it in place rather than failing on the ownership conflict. See
+[`.agents/self/bootstrap.md`](../../.agents/self/bootstrap.md) for the worked self-team runbook.
+
 ## Graceful shutdown (#465, #512)
 
 `terminationGracePeriodSeconds` (default `30`) and the optional `preStop.delaySeconds` sleep are parameterised so the

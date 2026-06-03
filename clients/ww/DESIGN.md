@@ -180,6 +180,30 @@ distinct label value and mounts it into every member's pod.
 
 ---
 
+## Operator release values
+
+Rules governing how `ww operator install` / `ww operator upgrade` overlay Helm chart values onto the embedded
+`witwave-operator` chart.
+
+- **OV-1.** The chart-rendering mutating subcommands (`install`, `upgrade`) MUST accept `-f/--values`, `--set`, and
+  `--set-string` with semantics identical to `helm` — delegate the merge to Helm's `values.Options` rather than
+  hand-rolling precedence. Rationale: operators already know helm's rules (later files win, `--set` overrides files,
+  `--set-string` forces string typing); a `ww`-specific dialect is surprise with no upside. `uninstall` / `status` do
+  NOT take value flags — they don't render the chart.
+- **OV-2.** `ww operator upgrade` MUST preserve values previously applied to the release (Helm `ResetThenReuseValues`):
+  start from the embedded chart's new defaults, re-apply the prior release's overrides, then layer this invocation's
+  `-f/--set` on top. Rationale: a plain `ww operator upgrade` is the routine "get the new version" command; silently
+  resetting it to chart defaults would drop any optional feature an operator enabled earlier (e.g.
+  `agentImagePatchPolicy`) and is the exact durability gap the command must not have. Reset-then-reuse (not plain reuse)
+  is required so the upgrade still adopts new chart defaults — notably `image.tag`, which defaults to the embedded
+  chart's `appVersion` and must track the version this `ww` binary ships, never the prior release's value.
+- **OV-3.** Environment-specific enablement (which optional chart features are on, and any ServiceAccount/namespace
+  scoping they carry) belongs in a checked-in values file consumed via `-f`, NOT in the chart defaults. The chart ships
+  every gated feature off. Rationale: the chart is shared; the scope (e.g. `system:serviceaccount:witwave-self:milo`) is
+  not. The self-team's overlay lives at `.agents/self/operator-values.yaml`.
+
+---
+
 ## Flags
 
 _To be populated as flag conventions are established. Reserve:_

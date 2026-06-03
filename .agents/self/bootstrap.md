@@ -550,14 +550,64 @@ The expected answers are `yes`, `yes`, and `no`.
 
 **Bound the CR-patch to image versions.** `agentLifecycle` grants `patch` on the whole `witwaveagents` resource; the
 `agentImagePatchPolicy` admission policy narrows that to image tags/digests so Milo cannot repoint an image repository
-or rewire backends. Enable it by installing/upgrading the operator with these values
-(`charts/witwave-operator/values.yaml`):
+or rewire backends. The enable + service-account scope for the self-team lives in a checked-in operator values overlay,
+[`.agents/self/operator-values.yaml`](operator-values.yaml), so it is Helm-managed and survives operator reinstalls (the
+chart default stays `enabled: false` — the scope is environment-specific):
 
 ```yaml
 agentImagePatchPolicy:
   enabled: true
   constrainedServiceAccounts:
     - system:serviceaccount:witwave-self:milo
+```
+
+Apply it through the `ww` CLI so the policy is owned by the `witwave-operator` Helm release (not a one-off
+`kubectl apply` of `helm template` output, which a later `ww operator upgrade`/reinstall would silently drop or collide
+with):
+
+```bash
+# Fresh install — fold the policy in from the start:
+ww operator install -f .agents/self/operator-values.yaml
+
+# Operator already installed — turn the policy on for the existing release:
+ww operator upgrade -y -f .agents/self/operator-values.yaml
+```
+
+`ww operator upgrade` reuses previously-applied values (Helm reset-then-reuse), so you only pass `-f` on the run that
+first enables the policy. Every subsequent plain `ww operator upgrade` keeps it enforcing while still rolling the
+embedded chart's new defaults (the operator image tag tracks the embedded chart version — it is **not** reset).
+
+**Adopting a VAP that was applied out-of-band.** If the policy is already live from an earlier raw `kubectl apply` (so
+it exists but is not owned by the release), the values-driven upgrade above would fail with _"exists and cannot be
+imported into the current release"_. Hand the two cluster-scoped objects to Helm first — this is an in-place annotate,
+so the policy keeps enforcing throughout (no gap where Milo could over-patch):
+
+```bash
+for kind in validatingadmissionpolicy validatingadmissionpolicybinding; do
+  kubectl annotate "$kind" witwave-operator-agent-image-patch \
+    meta.helm.sh/release-name=witwave-operator \
+    meta.helm.sh/release-namespace=witwave-system --overwrite
+  kubectl label "$kind" witwave-operator-agent-image-patch \
+    app.kubernetes.io/managed-by=Helm --overwrite
+done
+
+# Now the release can adopt them in place:
+ww operator upgrade -y -f .agents/self/operator-values.yaml
+```
+
+**Verify** the policy is enforcing and Helm-owned:
+
+```bash
+# Owned by the release (managed-by=Helm + the two meta.helm.sh annotations present):
+kubectl get validatingadmissionpolicy witwave-operator-agent-image-patch \
+  -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}{"\n"}'
+
+# Enforcing: a repository repoint by Milo's SA is denied, a tag bump is allowed.
+# (Run from a context that can impersonate; --as needs cluster RBAC.)
+kubectl patch witwaveagent iris -n witwave-self --type=json \
+  -p '[{"op":"replace","path":"/spec/image/repository","value":"evil/harness"}]' \
+  --as system:serviceaccount:witwave-self:milo --dry-run=server
+# → expect: denied by validating admission policy "...-agent-image-patch"
 ```
 
 ## Verify the team

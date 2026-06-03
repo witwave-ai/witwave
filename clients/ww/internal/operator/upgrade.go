@@ -73,6 +73,9 @@ func Upgrade(ctx context.Context, target *k8s.Target, cfg *rest.Config, flags *g
 		{Key: "Current", Value: fmt.Sprintf("%s (rev %d, %s)", rel.ChartVersion, rel.Revision, rel.Status)},
 		{Key: "Target", Value: fmt.Sprintf("%s %s (embedded)", ch.Metadata.Name, ch.Metadata.Version)},
 	}
+	if len(opts.Values) > 0 {
+		plan = append(plan, k8s.PlanLine{Key: "Values", Value: describeValues(opts.Values) + "; merged onto reused values"})
+	}
 	proceed, err := k8s.Confirm(opts.Out, opts.In, target, plan, k8s.PromptOptions{
 		AssumeYes: opts.AssumeYes,
 		DryRun:    opts.DryRun,

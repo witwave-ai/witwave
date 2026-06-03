@@ -1,0 +1,30 @@
+# witwave-self — operator Helm values overlay.
+#
+# Source of truth for the self-team's witwave-operator configuration that
+# differs from the chart defaults. Consumed by the ww CLI:
+#
+#   ww operator install -f .agents/self/operator-values.yaml      # fresh install
+#   ww operator upgrade -f .agents/self/operator-values.yaml      # enable on an existing release
+#
+# `ww operator upgrade` reuses previously-applied values (Helm
+# reset-then-reuse), so you only need `-f` on the run that first enables a
+# value (or after a fresh reinstall). A subsequent plain
+# `ww operator upgrade` keeps these settings while still adopting the
+# embedded chart's new defaults — including the operator image tag, which
+# tracks the embedded chart's appVersion. See .agents/self/bootstrap.md
+# ("Bound the CR-patch to image versions") for the full enable + adoption
+# runbook.
+#
+# Keep the chart defaults (agentImagePatchPolicy.enabled=false,
+# constrainedServiceAccounts=[]) untouched in charts/witwave-operator —
+# the enable + service-account scope is environment-specific and lives
+# here, not in the chart.
+
+# Bound Milo's agentLifecycle `patch` grant to image tags/digests via the
+# agent-image-patch ValidatingAdmissionPolicy. Milo (Agent-Resources) can
+# run `ww agent upgrade` against peers, but this policy stops that same
+# ServiceAccount from repointing an image repository or rewiring backends.
+agentImagePatchPolicy:
+  enabled: true
+  constrainedServiceAccounts:
+    - system:serviceaccount:witwave-self:milo

@@ -38,9 +38,24 @@ ww operator logs      # tail operator pod logs
 ww operator events    # Kubernetes events for operator + CRs
 ```
 
+Both `install` and `upgrade` accept `-f/--values`, `--set`, and `--set-string` to overlay chart values, with the same
+semantics as `helm` (later files win; `--set` overrides files; `--set-string` forces string typing). Use them to enable
+optional chart features without leaving the CLI:
+
+```bash
+ww operator install -f my-operator-values.yaml          # fresh install with overrides
+ww operator upgrade -f my-operator-values.yaml          # add/change overrides on an existing release
+```
+
+`upgrade` reuses the values already applied to the release (Helm reset-then-reuse): a plain `ww operator upgrade` keeps
+every override you set earlier while still adopting the embedded chart's new defaults — including the operator image
+tag, which tracks the embedded chart's `appVersion` rather than being reset. So a value enabled once survives later
+upgrades without re-passing `-f`. (Enabling the `agentImagePatchPolicy` for an Agent-Resources agent is the canonical
+use — see [Kubernetes API access](#kubernetes-api-access).)
+
 See [`clients/ww/README.md`](../clients/ww/README.md#operator-management) for the full command surface (`--kubeconfig`,
-`--context`, `--namespace`, `--yes`, `--dry-run`, `--adopt`, `--delete-crds`, `--force`, `--watch`, `--warnings`,
-`--tail`).
+`--context`, `--namespace`, `--yes`, `--dry-run`, `--values`, `--set`, `--set-string`, `--adopt`, `--delete-crds`,
+`--force`, `--watch`, `--warnings`, `--tail`).
 
 ## Getting Started — Helm directly
 
@@ -218,8 +233,12 @@ All owned resources carry `ownerReferences` pointing at the `WitwaveAgent`, so d
   Pod creation, nodes, namespaces, persistent volumes, or cluster-scoped resources.
 - `mode: agentLifecycle` is `namespaceWrite` plus `patch` on `witwaveagents`, so an Agent-Resources agent can run
   `ww agent upgrade` against its peers. The patch verb is resource-scoped; pair it with the `agentImagePatchPolicy`
-  ValidatingAdmissionPolicy (gated in `charts/witwave-operator/values.yaml`) to limit those patches to image
-  tags/digests — image repositories and backend wiring stay locked.
+  ValidatingAdmissionPolicy (gated in `charts/witwave-operator/values.yaml`, disabled by default) to limit those patches
+  to image tags/digests — image repositories and backend wiring stay locked. Enable it durably by overlaying the release
+  values through the CLI — `ww operator upgrade -f <values>.yaml` with `agentImagePatchPolicy.enabled: true` and
+  `constrainedServiceAccounts: [<agent SA>]` — so the policy is owned by the Helm release and survives reinstalls. The
+  self-team's overlay is checked in at [`.agents/self/operator-values.yaml`](../.agents/self/operator-values.yaml); its
+  enable + adoption runbook is in [`.agents/self/bootstrap.md`](../.agents/self/bootstrap.md).
 
 When this field is omitted or disabled, the operator renders the namespace `default` ServiceAccount with
 `automountServiceAccountToken: false`, so the pod keeps the no-token posture while still converging cleanly under
