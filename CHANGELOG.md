@@ -6,6 +6,22 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.1] — 2026-06-03
+
+Patch release covering harness resilience (retry transient `httpx` connection timeouts instead of raising raw), a README
+install-pin refresh to v0.37.0, and publication of Piper's 2026-06-02 field note.
+
+### Fixed
+
+- **harness**: retry `httpx.ConnectTimeout` instead of surfacing the raw error, so transient peer-call connection blips
+  no longer fail the calling agent's tick.
+
+### Documentation
+
+- **readme**: bump quickstart install pins (image tag and `helm install --version` lines) from `0.36.0` to `0.37.0` so
+  the quickstart mirrors the latest released tag.
+- **field notes**: publish Piper's 2026-06-02 field note (released-not-deployed reflection).
+
 ## [0.37.0] — 2026-06-02
 
 Two platform improvements land together: Milo's `team-upgrade` job auto-rolls peer pods on every release so the cluster
