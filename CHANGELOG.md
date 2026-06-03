@@ -6,6 +6,8 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.3] — 2026-06-03
+
 Makes the `agentImagePatchPolicy` admission policy a durable, Helm-managed object instead of a one-off `kubectl apply`,
 so it survives `ww operator upgrade`/reinstall cleanly.
 
