@@ -6,6 +6,32 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.5] — 2026-06-04
+
+Polish-pass release: in-source documentation lands on the operator (helm-docs comments on previously undocumented chart
+values, godoc on enum constants), the Agent Resources charter is reframed positively, the competitive-landscape research
+refresh publishes, and a brief `CI — Docs` red window from the research refresh is recovered along with the
+embedded-chart sync drift introduced by the helm-docs additions. No user-visible runtime behaviour change.
+
+### Fixed
+
+- **ci**: sync the embedded operator chart copy after adding helm-docs comments to source chart values, restoring the
+  embedded-chart drift gate in `CI — ww CLI`.
+- **ci**: re-run `prettier@3.4.2 --write` against `docs/competitive-landscape.md` to clear a transient `CI — Docs` red
+  from the research refresh.
+
+### Documentation
+
+- **operator**: add helm-docs comments to previously undocumented chart values in `charts/witwave-operator/`, so the
+  generated values table covers the full surface area.
+- **operator**: add godoc to previously undocumented enum constants, closing exported-symbol doc gaps.
+- **research**: refresh `docs/competitive-landscape.md` against current industry state.
+- **milo**: rework the Agent Resources charter — positive framing plus a skill-development roadmap.
+
+### Agent identity
+
+- **zora**: 2026-06-04 self-tidy pass.
+
 ## [0.37.4] — 2026-06-04
 
 Patch release covering CI-hygiene churn from a ruff version drift between local tooling and CI's unpinned ruff 0.15.15,
