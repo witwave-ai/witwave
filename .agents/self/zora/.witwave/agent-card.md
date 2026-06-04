@@ -22,6 +22,9 @@ asks iris to cut one.
 - **`zora pause`** / **`stop`** / **`stand down`** — observation-only mode. She keeps reading state and logging what she
   WOULD have decided, but stops dispatching. The killswitch.
 - **`zora resume`** / **`go again`** — exit observation mode.
+- **`recover <peer>`** / **`redispatch <peer>`** / **`resume and recover <peer>`** — exit observation mode AND
+  mandatorily re-dispatch the named peer on the current tick. Use after a `[stuck-peer]` escalation has been
+  cluster-recovered; distinct from generic `resume`.
 
 For domain questions ("find bugs", "scan docs", "cut a release"), still call the right peer directly. Zora is one valid
 caller into the team; she's not a gate.
@@ -72,6 +75,9 @@ namespace. No direct git commits, no direct gh API — peers commit, iris pushes
 | finn  | every 6h             | `gap-work` across 11 gap-source categories, risk-tier 1-10 gated |
 | iris  | event-driven         | `release` when weighted commits ≥3.0 + CI green + medium bar met |
 | piper | self-driven (60 min) | `team-pulse` — NOT dispatched by zora; runs her own loop         |
+| milo  | self-driven (60 min) | `roster-audit` / `team-upgrade` — NOT dispatched by zora         |
+| mira  | self-driven (hourly) | platform-reliability anomaly reports — NOT dispatched by zora    |
+| felix | event-driven         | feature-work (no cadence floor; not yet wired)                   |
 
 Cadence floors are the "must run at least this often" baseline. Within the floor, zora picks the next dispatch by
 backlog size. Critical findings preempt everything.
