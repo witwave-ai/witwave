@@ -5,16 +5,15 @@ docs-research one-shot dispatch under P2 cadence-floor breach (37h since last fi
 release pipeline concluded green on tag `265bfbfc`. Five substantive upstream movements captured in the ~37-hour window
 since the thirty-first pass: **Claude Agent SDK** rolled `v0.2.87` → **`v0.2.89`** via `v0.2.88` (2026-06-02; Trio
 compatibility bug fix in session stores + bundled Claude CLI 2.1.150→2.1.161) and `v0.2.89` (2026-06-03; bundled CLI
-2.1.161→2.1.162); no SDK-surface changes (source:
-<https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-06-04). **LangGraph** core bumped from
-`v1.2.3` to **`v1.2.4`** (2026-06-02 17:07 UTC) — backward-compatible `_on_started` refactor plus factory-graph
-integration testing improvements; no breaking changes (source:
-<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-06-04). **Microsoft Agent Framework** `.NET` line
-rolled from `dotnet-1.8.0` to **`dotnet-1.9.0`** (2026-06-03) — adds Python-side **`McpSkillsSource`** (MCP-based skills
-discovery) plus AGUI hosting and workflow bug fixes; Python line unchanged at `python-1.7.0` (source:
+2.1.161→2.1.162); no SDK-surface changes (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+accessed 2026-06-04). **LangGraph** core bumped from `v1.2.3` to **`v1.2.4`** (2026-06-02 17:07 UTC) —
+backward-compatible `_on_started` refactor plus factory-graph integration testing improvements; no breaking changes
+(source: <https://github.com/langchain-ai/langgraph/releases>, accessed 2026-06-04). **Microsoft Agent Framework**
+`.NET` line rolled from `dotnet-1.8.0` to **`dotnet-1.9.0`** (2026-06-03) — adds Python-side **`McpSkillsSource`**
+(MCP-based skills discovery) plus AGUI hosting and workflow bug fixes; Python line unchanged at `python-1.7.0` (source:
 <https://github.com/microsoft/agent-framework/releases>, accessed 2026-06-04). **OpenClaw** stable rolled from
-`v2026.5.27` to **`v2026.6.1`** (2026-06-03 19:35 UTC), graduating the `v2026.6.1-beta.1`/`-beta.2`/`-beta.3` train to GA
-— the Skill Workshop governance surface, externalized Copilot/Tokenjuice plugins, Workboard primitives, Code mode MCP
+`v2026.5.27` to **`v2026.6.1`** (2026-06-03 19:35 UTC), graduating the `v2026.6.1-beta.1`/`-beta.2`/`-beta.3` train to
+GA — the Skill Workshop governance surface, externalized Copilot/Tokenjuice plugins, Workboard primitives, Code mode MCP
 files, and SQLite-backed plugin storage all carry forward unchanged; beta head simultaneously rolled to
 **`v2026.6.2-beta.1`** (2026-06-03 23:46 UTC) opening the next train (source:
 <https://github.com/openclaw/openclaw/releases>, accessed 2026-06-04). **CrewAI** stable still `v1.14.6` (2026-05-28);
@@ -26,13 +25,13 @@ to **377,000+ stars** (was 376,000+; live 377k crosses the prior pin cleanly upw
 from pass 31: OpenAI Agents SDK still `v0.17.4` (2026-05-26), A2A still `v1.0.1` (2026-05-28), OpenHands still `v1.7.0`
 (2026-05-01) (sources: <https://github.com/openai/openai-agents-python/releases>,
 <https://github.com/a2aproject/A2A/releases>, <https://github.com/OpenHands/OpenHands/releases>, all accessed
-2026-06-04). Thirty-first pass (2026-06-02, ~37h ago) was a verification-and-refinement pass per zora
-docs-research one-shot 15Z dispatch under P2 cadence-floor breach (docs-cleanup 1.00× AT-FLOOR at 15:00Z) with
-polish-skill ADVANCE alternation from `docs-cleanup` (zero_streak=1 at default, no fresh docs-scope source since
-`last_run_sha=fc9d4305`); HEAD `66cc9e69`. Three substantive upstream movements captured in the ~24-hour window since
-the thirtieth pass yesterday: **LangGraph** bumped from `v1.2.2` to **`v1.2.3`** (2026-06-01 18:56 UTC) — adds v3
-streaming support to `RemoteGraph` plus cancellation-distinction handling, configuration merging for callbacks and
-metadata, and protocol field-naming consistency fixes; companion **`langgraph-sdk==0.4.2`** (2026-06-01 17:51 UTC) and
+2026-06-04). Thirty-first pass (2026-06-02, ~37h ago) was a verification-and-refinement pass per zora docs-research
+one-shot 15Z dispatch under P2 cadence-floor breach (docs-cleanup 1.00× AT-FLOOR at 15:00Z) with polish-skill ADVANCE
+alternation from `docs-cleanup` (zero_streak=1 at default, no fresh docs-scope source since `last_run_sha=fc9d4305`);
+HEAD `66cc9e69`. Three substantive upstream movements captured in the ~24-hour window since the thirtieth pass
+yesterday: **LangGraph** bumped from `v1.2.2` to **`v1.2.3`** (2026-06-01 18:56 UTC) — adds v3 streaming support to
+`RemoteGraph` plus cancellation-distinction handling, configuration merging for callbacks and metadata, and protocol
+field-naming consistency fixes; companion **`langgraph-sdk==0.4.2`** (2026-06-01 17:51 UTC) and
 **`langgraph-sdk==0.4.1`** (2026-06-01 15:23 UTC) both shipped same-day above the `0.4.0` (2026-05-28) capture from the
 twenty-ninth pass, layering thread-ID percent-encoding fixes for v3 stream transport plus stream-decoder extraction and
 interleave projections (sources: <https://github.com/langchain-ai/langgraph/releases/tag/1.2.3> and
@@ -607,8 +606,7 @@ rebinding protection). v0.2.83–v0.2.89 (2026-05-21 → 2026-06-03) are pure ma
 advanced to **2.1.162**, the SDK's CI auth migrated to **Workload Identity Federation** (short-lived tokens replacing
 long-lived API-key secrets), and v0.2.88 (2026-06-02) fixed a Trio compatibility bug in session stores; no SDK-surface
 changes across the range (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed
-2026-06-04). Earlier `v0.1.x` capabilities
-still relevant to this project:
+2026-06-04). Earlier `v0.1.x` capabilities still relevant to this project:
 
 - **`session_store_flush="eager"` (0.1.73)** — opt-in eager session-store flushing in `ClaudeAgentOptions` enables
   live-tailing UIs, cross-process resume, and crash-durability past where batched flushing leaves off. Direct primitive
@@ -827,20 +825,19 @@ Platform** adds persistent deployment + event-driven triggers, pushing toward se
 
 **Current: LangGraph v1.2.4 (2026-06-02) + LangGraph Platform GA (late 2025).** v1.2.4 follows v1.2.3 (2026-06-01),
 v1.2.2 (2026-05-26), v1.2.1 (2026-05-21), and v1.2.0 GA (2026-05-12, which promoted the v1.2 alpha series 1.2.0a1–a7 to
-stable). Headline additions from the v1.2
-line: **`durable error-handler resume across host crashes`** (lifts the existing checkpoint primitive into a fully
-crash-recovering error-handler), `set_node_defaults()` on `StateGraph` for shared node configuration, and improved
-delta-channel snapshot handling (force-snapshot after max supersteps since the last snapshot). v1.2.1 added an optional
-**`before_builtins` hook in stream transformers** (customising processing-order injection) and excluded tool results
-from v3 messages; companion `langgraph-sdk==0.3.15` and `langgraph-checkpoint==4.1.1` both shipped 2026-05-22. v1.2.2 is
-a single-fix point release assigning **stable IDs to `id=None` `BaseMessage` instances before DeltaChannel checkpoint
-writes** — prevents downstream identity drift on resumed runs; no breaking changes (source:
-<https://github.com/langchain-ai/langgraph/releases/tag/1.2.2>, accessed 2026-05-27). Companion package
-**`langgraph-sdk==0.4.0`** shipped 2026-05-28 — a substantive SDK minor bump (0.3.x → 0.4.0) adding **v3 streaming
-primitives with SSE transport**, **websocket stream transports plus selection wiring**, hardened streaming reconnects
-and async-reconnect support, async/sync thread stream helpers and scoped subgraph handles, and shared stream
-subscriptions plus messages-and-tool-call projections; companion `langgraph-cli==0.4.27` shipped the same day pinning
-internal Docker deploy images by digest and bumping the API bound to 0.10.0 (sources:
+stable). Headline additions from the v1.2 line: **`durable error-handler resume across host crashes`** (lifts the
+existing checkpoint primitive into a fully crash-recovering error-handler), `set_node_defaults()` on `StateGraph` for
+shared node configuration, and improved delta-channel snapshot handling (force-snapshot after max supersteps since the
+last snapshot). v1.2.1 added an optional **`before_builtins` hook in stream transformers** (customising processing-order
+injection) and excluded tool results from v3 messages; companion `langgraph-sdk==0.3.15` and
+`langgraph-checkpoint==4.1.1` both shipped 2026-05-22. v1.2.2 is a single-fix point release assigning **stable IDs to
+`id=None` `BaseMessage` instances before DeltaChannel checkpoint writes** — prevents downstream identity drift on
+resumed runs; no breaking changes (source: <https://github.com/langchain-ai/langgraph/releases/tag/1.2.2>, accessed
+2026-05-27). Companion package **`langgraph-sdk==0.4.0`** shipped 2026-05-28 — a substantive SDK minor bump (0.3.x →
+0.4.0) adding **v3 streaming primitives with SSE transport**, **websocket stream transports plus selection wiring**,
+hardened streaming reconnects and async-reconnect support, async/sync thread stream helpers and scoped subgraph handles,
+and shared stream subscriptions plus messages-and-tool-call projections; companion `langgraph-cli==0.4.27` shipped the
+same day pinning internal Docker deploy images by digest and bumping the API bound to 0.10.0 (sources:
 <https://github.com/langchain-ai/langgraph/releases/tag/sdk%3D%3D0.4.0> and
 <https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.27>, accessed 2026-05-29). Subsequent day-of bumps
 (2026-06-01) advanced core to **`v1.2.3`** (2026-06-01 18:56 UTC) — wires `RemoteGraph.interleave` through to the
@@ -849,12 +846,12 @@ handling; SDK companion rolled twice the same day to **`langgraph-sdk==0.4.1`** 
 improvements) and **`langgraph-sdk==0.4.2`** (2026-06-01 17:51 UTC, stream-decoder extraction). The next day shipped
 core **`v1.2.4`** (2026-06-02 17:07 UTC) — backward-compatible `_on_started` refactor plus factory-graph integration
 testing improvements; no breaking changes (source: <https://github.com/langchain-ai/langgraph/releases>, accessed
-2026-06-04). v1.1.10 (2026-04-27) — the previous stable —
-was a maintenance release (prebuilt 1.0.12, checkpoint 4.0.3, dep bumps, a reverted node-level-timeouts experiment, and
-a `ToolNode` change to allow tools returning `list[Command | ToolMessage]`) (source:
-<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-05-15). An earlier pass of this doc mislabeled
-deferred nodes and node-level caching as "v2.0" features — they are **v1.x** features shipped during the 2025 LangGraph
-Release Week. There is no v2.0 on PyPI as of May 2026; the stable line is v1.x.
+2026-06-04). v1.1.10 (2026-04-27) — the previous stable — was a maintenance release (prebuilt 1.0.12, checkpoint 4.0.3,
+dep bumps, a reverted node-level-timeouts experiment, and a `ToolNode` change to allow tools returning
+`list[Command | ToolMessage]`) (source: <https://github.com/langchain-ai/langgraph/releases>, accessed 2026-05-15). An
+earlier pass of this doc mislabeled deferred nodes and node-level caching as "v2.0" features — they are **v1.x**
+features shipped during the 2025 LangGraph Release Week. There is no v2.0 on PyPI as of May 2026; the stable line is
+v1.x.
 
 **Key v1.x capabilities (accumulated through v1.1.0):**
 
@@ -930,24 +927,24 @@ active commit cadence (latest stable release **`v2026.6.1`** on 2026-06-03 19:35
 on ClawHub, Workboard primitives, Code mode MCP files, and SQLite-backed plugin storage all carry forward unchanged from
 the betas; beta head simultaneously rolled to **`v2026.6.2-beta.1`** (2026-06-03 23:46 UTC) opening the next train
 (source: <https://github.com/openclaw/openclaw/releases>, accessed 2026-06-04). Prior stable **`v2026.5.27`** shipped
-2026-05-28 11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries forward unchanged from beta.1**
-(captured in the twenty-sixth pass preface above): hardened security boundaries, Codex reliability work, provider
-expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements), durable channel delivery,
-restart-surviving native hook relays, plugin display metadata, and Gateway/reply hot-path performance. The prior stable
-**`v2026.5.26`** (2026-05-27 11:27 UTC) graduated the `2026.5.26-beta.1` (2026-05-26 21:10 UTC) → `2026.5.26-beta.2`
-(2026-05-27 05:46 UTC) beta rollup to GA; its substantive surface headlines a **Transcripts plugin**, **named-model
-login profiles**, **Signal / iMessage / WhatsApp tapback approval reactions**, the **Sharp → Rastermill image-backend
-swap**, an ephemeral **Activity tab** in the Control UI, **OpenTelemetry LLM content spans**, default
-`cron.maxConcurrentRuns=8`, and broad reply/startup performance work. The prior `v2026.5.22` stable (2026-05-24) shipped
-a **Meeting Notes plugin** with Discord voice capture and auto-start transcript imports, a **~4,100× model-listing
-performance improvement** (provider auth-state pre-warmed at startup drops the call from ~20s to ~5ms), Gateway startup
-optimisations via process-stable channel-catalog caching and lazy startup-idle plugin work, chat-session picker
-pagination, and on the provider side routes Claude 4.x 1M context through GA (no `beta` flag required) and DeepSeek
-through the Microsoft Foundry Responses API; the prior `v2026.5.24-beta.2` (2026-05-24) beta surface added **iMessage
-tapback approval reactions** (👍 = allow-once, 👎 = deny), realtime Discord voice for OpenClaw status / cancel / steer /
-queue commands during active consults, adaptive image compression with model-aware quality, and symlink rejection on
-remote container operations; the prior `v2026.5.25-beta.1` (2026-05-26 09:41 UTC) head layered "Beta 1 late fixes" on
-top for iMessage threading and Codex sandbox path handling; the `v2026.5.26-beta.1` (2026-05-26 21:10 UTC) and
+2026-05-28 11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries
+forward unchanged from beta.1** (captured in the twenty-sixth pass preface above): hardened security boundaries, Codex
+reliability work, provider expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements),
+durable channel delivery, restart-surviving native hook relays, plugin display metadata, and Gateway/reply hot-path
+performance. The prior stable **`v2026.5.26`** (2026-05-27 11:27 UTC) graduated the `2026.5.26-beta.1` (2026-05-26 21:10
+UTC) → `2026.5.26-beta.2` (2026-05-27 05:46 UTC) beta rollup to GA; its substantive surface headlines a **Transcripts
+plugin**, **named-model login profiles**, **Signal / iMessage / WhatsApp tapback approval reactions**, the **Sharp →
+Rastermill image-backend swap**, an ephemeral **Activity tab** in the Control UI, **OpenTelemetry LLM content spans**,
+default `cron.maxConcurrentRuns=8`, and broad reply/startup performance work. The prior `v2026.5.22` stable (2026-05-24)
+shipped a **Meeting Notes plugin** with Discord voice capture and auto-start transcript imports, a **~4,100×
+model-listing performance improvement** (provider auth-state pre-warmed at startup drops the call from ~20s to ~5ms),
+Gateway startup optimisations via process-stable channel-catalog caching and lazy startup-idle plugin work, chat-session
+picker pagination, and on the provider side routes Claude 4.x 1M context through GA (no `beta` flag required) and
+DeepSeek through the Microsoft Foundry Responses API; the prior `v2026.5.24-beta.2` (2026-05-24) beta surface added
+**iMessage tapback approval reactions** (👍 = allow-once, 👎 = deny), realtime Discord voice for OpenClaw status /
+cancel / steer / queue commands during active consults, adaptive image compression with model-aware quality, and symlink
+rejection on remote container operations; the prior `v2026.5.25-beta.1` (2026-05-26 09:41 UTC) head layered "Beta 1 late
+fixes" on top for iMessage threading and Codex sandbox path handling; the `v2026.5.26-beta.1` (2026-05-26 21:10 UTC) and
 `v2026.5.26-beta.2` (2026-05-27 05:46 UTC) heads were the larger rollup for the now-shipped `2026.5.26` stable —
 substantive surface enumerated above; both graduated into `v2026.5.26` stable on 2026-05-27. A fresh beta train then
 opened at `v2026.5.28-beta.1` (2026-05-29 04:46 UTC) layering subagent cwd/workspace separation, prompt-local hook
