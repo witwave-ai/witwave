@@ -10,6 +10,10 @@ imagePullSecrets: []
 
 # Override the chart name derived inside _helpers.tpl.
 nameOverride: ""
+# Replace the release-prefixed fullname (`{{ .Release.Name }}-{{ chartName }}`)
+# wholesale. Useful when an existing deployment already owns specific resource
+# names and you can't take a rename. Truncated to 63 chars by _helpers.tpl to
+# stay within the DNS-1123 label limit.
 fullnameOverride: ""
 
 # Number of controller-manager replicas. 1 is typical; >1 requires leader
@@ -309,8 +313,19 @@ serviceMesh:
   enabled: false
   type: none
 
+# Node-selector labels applied to the operator Deployment's pod template
+# (deployment.yaml under `with .Values.nodeSelector`). Empty map = no
+# constraint. Use to pin the operator to a specific node pool.
 nodeSelector: {}
+# Tolerations applied to the operator Deployment's pod template
+# (deployment.yaml under `with .Values.tolerations`). Empty list = no
+# tolerations beyond the cluster defaults. Pair with nodeSelector when
+# pinning to a tainted node pool.
 tolerations: []
+# Affinity rules applied to the operator Deployment's pod template
+# (deployment.yaml under `with .Values.affinity`). Empty map = no affinity
+# rules. Standard corev1.Affinity shape (nodeAffinity / podAffinity /
+# podAntiAffinity).
 affinity: {}
 # Pod scheduling parity with the witwave chart (#1119). The operator is a
 # control-plane singleton that reconciles every WitwaveAgent — pin it to
