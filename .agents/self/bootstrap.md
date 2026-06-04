@@ -484,10 +484,12 @@ to zora when needed. Historical anomaly detection will become useful after sever
 
 ## Step 12 — Deploy Milo
 
-Milo is the team's Agent Resources peer. He owns lifecycle hygiene around the agent roster itself: onboarding readiness,
-GitHub/profile consistency, credential readiness, avatar/roster drift, safe pause/decommission paths, and role-boundary
-clarity. Milo is intentionally separate from Mira: Mira watches whether the platform is healthy enough for agents to
-run; Milo watches whether the team membership and lifecycle surfaces are coherent enough for the roster to make sense.
+Milo is the team's Agent Resources peer. Today he owns two things: a live roster directory (who is deployed, who is up
+vs down, what each member does, who is available) and safe team-wide version stewardship as the release canary. His
+charter grows from there toward developing the team — reviewing each member's skills and drafting improvements through
+the owner's approval — alongside lifecycle hygiene (onboarding readiness, profile/credential consistency, role-boundary
+clarity, safe pause/decommission paths). Milo is distinct from Mira: Mira watches whether the platform is healthy enough
+for agents to run; Milo watches whether the team itself is coherent and capable.
 
 Milo needs Kubernetes write access for two reasons. First, his `team-upgrade` skill drives `ww agent upgrade` to keep
 the team on the latest release, which patches the `witwaveagents` CR. Second, future lifecycle work includes pod-level

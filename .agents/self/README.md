@@ -182,9 +182,10 @@ version quarantine, and an operator-leads gate. A cluster admission policy (`age
 image tags so an upgrade can only change versions — never repoint a repository or rewire a backend. Milo runs on **Opus
 4.8 at max effort** (`CLAUDE_EFFORT=max`) ahead of the rest of the team, as the deliberate model canary. Distinct from
 Mira: Mira asks whether the _platform_ is healthy enough for agents to run; Milo asks whether the _roster_ is coherent —
-who is on the team, who is available, and whether each member is properly provisioned. Broader lifecycle hygiene
-(onboarding readiness, profile/credential consistency, role-boundary reviews, safe pause/decommission paths) is future
-scope. (`.agents/self/milo/`)
+who is on the team, who is available, and whether each member is properly provisioned. His future scope grows toward
+**developing the team** — reviewing each member's skills and drafting improvements (through the owner's approval, never
+unilaterally) — alongside lifecycle hygiene (onboarding readiness, profile/credential consistency, role-boundary
+reviews, safe pause/decommission paths). (`.agents/self/milo/`)
 
 ## Topology
 
