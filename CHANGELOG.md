@@ -6,6 +6,31 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.4] — 2026-06-04
+
+Patch release covering CI-hygiene churn from a ruff version drift between local tooling and CI's unpinned ruff 0.15.15,
+plus a self-cancelling embedded-README link fix. No user-visible behaviour change.
+
+### Changed
+
+- **python**: ruff 0.15.15 format + auto-fix pass over 140 tracked Python files and 8 drifted test files (import
+  grouping, assert-with-message layout). One residual F841 (unused local in `tools/helm/test_server.py`) deferred for
+  human review.
+
+### Fixed
+
+- **ci**: resolve `I001` (import-block-unsorted) violations in `harness/` so `CI — Python Services` passes under
+  unpinned ruff 0.15.15; older local ruff versions did not flag the ordering.
+
+### Reverted
+
+- **operator/embedded**: revert 1cfeb5a6 ("fix broken internal links in witwave-operator README"). The edit hit only the
+  embedded chart copy at `clients/ww/internal/operator/embedded/witwave-operator/README.md`, which is byte-mirrored from
+  `charts/witwave-operator/` by `scripts/sync-embedded-chart.sh`, so the embedded-chart drift check in `CI — ww CLI`
+  failed and cascaded into the `Publish — Social Website` gate. The link-prefix divergence between the source README (2
+  dirs deep) and the embedded copy (6 dirs deep) cannot be carried by a byte-equal sync — resolving it cleanly needs a
+  sync-script enhancement or depth-agnostic link scheme, not a per-call-site patch.
+
 ## [0.37.3] — 2026-06-03
 
 Makes the `agentImagePatchPolicy` admission policy a durable, Helm-managed object instead of a one-off `kubectl apply`,
