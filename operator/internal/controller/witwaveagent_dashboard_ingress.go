@@ -72,10 +72,23 @@ const dashboardIngressLastEventStateAnnotation = "witwave.ai/dashboard-ingress-l
 type DashboardIngressAuthStatus string
 
 const (
-	DashboardIngressAuthStatusDisabled        DashboardIngressAuthStatus = "disabled"
-	DashboardIngressAuthStatusMissingAuth     DashboardIngressAuthStatus = "missing-auth"
+	// DashboardIngressAuthStatusDisabled — spec.dashboard is unset, or
+	// spec.dashboard.ingress is unset/disabled. The reconciler renders
+	// nothing and cleans up any previously-owned Ingress.
+	DashboardIngressAuthStatusDisabled DashboardIngressAuthStatus = "disabled"
+	// DashboardIngressAuthStatusMissingAuth — Ingress is enabled but
+	// spec.dashboard.ingress.auth.mode is empty, or set to an unrecognised
+	// value. Fail-closed: the reconciler refuses to render the Ingress and
+	// logs each reconcile, emitting an Event only on state transition (#1180).
+	DashboardIngressAuthStatusMissingAuth DashboardIngressAuthStatus = "missing-auth"
+	// DashboardIngressAuthStatusUnauthenticated — auth.mode="none".
+	// Operator explicitly opted out of dashboard auth; the Ingress is
+	// rendered without authentication annotations.
 	DashboardIngressAuthStatusUnauthenticated DashboardIngressAuthStatus = "unauthenticated"
-	DashboardIngressAuthStatusBasic           DashboardIngressAuthStatus = "basic"
+	// DashboardIngressAuthStatusBasic — auth.mode="basic". The Ingress is
+	// rendered with HTTP basic-auth annotations referencing the operator-
+	// supplied secret.
+	DashboardIngressAuthStatusBasic DashboardIngressAuthStatus = "basic"
 )
 
 // EvaluateDashboardIngressAuth returns the fail-closed decision for a

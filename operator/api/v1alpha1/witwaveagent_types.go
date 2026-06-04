@@ -1352,10 +1352,27 @@ type MetricsSpec struct {
 type WitwaveAgentPhase string
 
 const (
-	WitwaveAgentPhasePending  WitwaveAgentPhase = "Pending"
-	WitwaveAgentPhaseReady    WitwaveAgentPhase = "Ready"
+	// WitwaveAgentPhasePending — the agent Deployment was not found on the
+	// last reconcile (apierrors.IsNotFound). updateStatus stamps this while
+	// the reconciler is still creating the Deployment for the first time, or
+	// has just observed that someone deleted it out-of-band.
+	WitwaveAgentPhasePending WitwaveAgentPhase = "Pending"
+	// WitwaveAgentPhaseReady — reconcile returned no error AND the agent
+	// Deployment reports observedGeneration ≥ generation with
+	// updatedReplicas and readyReplicas both ≥ the desired replica count.
+	// Only set when desired > 0 to avoid flipping Ready during a rolling
+	// restart that hasn't yet rolled (#554).
+	WitwaveAgentPhaseReady WitwaveAgentPhase = "Ready"
+	// WitwaveAgentPhaseDegraded — reconcile returned no error but the agent
+	// Deployment isn't fully rolled (replicas still coming up, generation
+	// not yet observed, etc). Distinct from Error: the spec is valid and
+	// the reconciler is still making progress.
 	WitwaveAgentPhaseDegraded WitwaveAgentPhase = "Degraded"
-	WitwaveAgentPhaseError    WitwaveAgentPhase = "Error"
+	// WitwaveAgentPhaseError — the most recent reconcile returned a fatal
+	// error, OR fetching the agent Deployment failed with a non-NotFound
+	// error. The corresponding metav1.Condition surfaces the underlying
+	// reason (ReconcileError, DeploymentFetchFailed, etc).
+	WitwaveAgentPhaseError WitwaveAgentPhase = "Error"
 )
 
 // WitwaveAgentStatus defines the observed state of WitwaveAgent.
@@ -1460,10 +1477,26 @@ type ReconcileHistoryEntry struct {
 	Message string `json:"message,omitempty"`
 }
 
-// Standard condition types for WitwaveAgent.
+// Standard condition types for WitwaveAgent. Stamped onto
+// status.conditions[].type by updateStatus; mirrors the kstatus / Kubernetes
+// condition convention so generic dashboards (kstatus, kubectl wait) work
+// against WitwaveAgent without custom predicates.
 const (
-	ConditionAvailable        = "Available"
-	ConditionProgressing      = "Progressing"
+	// ConditionAvailable reflects the agent Deployment's readiness:
+	// True ("AllReplicasReady") when readyReplicas ≥ desired with
+	// observedGeneration current; False on DeploymentMissing / NotAllReady;
+	// Unknown when the apiserver Get on the Deployment itself failed.
+	ConditionAvailable = "Available"
+	// ConditionProgressing reflects whether the reconciler is still moving
+	// the agent toward its desired state. True ("Creating" / "RolloutInProgress")
+	// while replicas are coming up; False ("Deployed") once the rollout
+	// completes; False ("ReconcileError") when reconcile itself errored.
+	ConditionProgressing = "Progressing"
+	// ConditionReconcileSuccess captures the most recent reconcile pass:
+	// True ("Reconciled") when reconcile returned no error;
+	// False ("ReconcileFailed") with the error string as Message otherwise.
+	// Distinct from Available — reconcile can succeed while the Deployment
+	// is still rolling.
 	ConditionReconcileSuccess = "ReconcileSuccess"
 )
 
