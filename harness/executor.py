@@ -19,14 +19,6 @@ from a2a.server.events import EventQueue
 from a2a.server.tasks.task_updater import TaskUpdater
 from a2a.types import Part, TextPart
 from a2a.utils import new_agent_text_message
-from backends.a2a import A2ABackend
-from backends.config import (
-    BACKEND_CONFIG_PATH,
-    BackendConfig,
-    RoutingEntry,
-    load_backends_config,
-    load_routing_config,
-)
 from bus import Message, MessageBus
 from events import get_event_stream
 from log_utils import _append_log
@@ -77,6 +69,15 @@ from tracing import (
     start_span,
 )
 from utils import ConsensusEntry
+
+from backends.a2a import A2ABackend
+from backends.config import (
+    BACKEND_CONFIG_PATH,
+    BackendConfig,
+    RoutingEntry,
+    load_backends_config,
+    load_routing_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1003,8 +1004,9 @@ class AgentExecutor(A2AAgentExecutor):
 
     async def backends_watcher(self) -> None:
         """Watch BACKEND_CONFIG_PATH and reload backends on file change."""
-        from backends.config import BACKEND_CONFIG_PATH
         from watchfiles import awatch
+
+        from backends.config import BACKEND_CONFIG_PATH
 
         watch_dir = os.path.dirname(os.path.abspath(BACKEND_CONFIG_PATH))
         logger.info(f"Backends watcher watching {BACKEND_CONFIG_PATH}")
