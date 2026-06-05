@@ -1,6 +1,6 @@
 module github.com/witwave-ai/witwave-operator
 
-go 1.25.0
+go 1.25.11
 
 require (
 	github.com/go-logr/logr v1.4.3
