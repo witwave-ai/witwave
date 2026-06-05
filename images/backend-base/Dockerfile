@@ -47,7 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-ARG GO_VERSION=1.26.3
+ARG GO_VERSION=1.26.4
 RUN ARCH=$(dpkg --print-architecture) \
     && case "$ARCH" in \
         amd64) GO_ARCH=amd64 ;; \
