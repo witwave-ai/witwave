@@ -6,6 +6,25 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.6] — 2026-06-05
+
+Security patch release: ships Go stdlib CVE fixes (GO-2026-5037 / 5038 / 5039 — `crypto/x509` hostname-parsing, `mime`
+`WordDecoder.DecodeHeader`, and `net/textproto` error-formatting, all reachable from the operator and `ww` CLI binaries
+per govulncheck). The operator goes to `go 1.25.11`; `ww` and the `images/backend-base` build floor go to `go 1.26.4`.
+Patch-level Go bumps with no API surface change.
+
+### Fixed
+
+- **operator**: bump go directive to 1.25.11 for stdlib CVE patches GO-2026-5037 / 5038 / 5039 \[SEC:HIGH\].
+- **clients/ww**: bump go directive to 1.26.4 for stdlib CVE patches GO-2026-5037 / 5038 / 5039 \[SEC:HIGH\].
+- **images/backend-base**: bump `GO_VERSION` ARG to 1.26.4 so the `ww-build` stage satisfies the `clients/ww/go.mod`
+  floor under `GOTOOLCHAIN=local`.
+
+### Changed
+
+- **python**: ruff format pass over Python test modules in `harness/` and over
+  `tools/{kubernetes,prometheus}/test_server.py`. Formatting-only; no behaviour change.
+
 ## [0.37.5] — 2026-06-04
 
 Polish-pass release: in-source documentation lands on the operator (helm-docs comments on previously undocumented chart
