@@ -1,6 +1,13 @@
 package agent
 
 const (
+	// RuntimeTaskStorePath is the SQLite file path inside the agent
+	// runtime PVC that the harness and backends use as their persistent
+	// A2A task store. Exported as TASK_STORE_PATH on the harness (via
+	// ApplyHarnessTaskStoreDefault) and on every backend whose mount
+	// list includes runtimeStatePath (via ApplyBackendTaskStoreDefaults),
+	// and surfaced as the "Task store" row in `ww agent status` so
+	// operators know which file to back up.
 	RuntimeTaskStorePath = "/home/agent/state/a2a-tasks.db"
 	runtimeStatePath     = "/home/agent/state"
 )

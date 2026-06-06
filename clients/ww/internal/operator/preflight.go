@@ -32,9 +32,26 @@ type InstallPreflightResult struct {
 type PreflightAction string
 
 const (
-	ActionCleanInstall  PreflightAction = "clean-install"
-	ActionAdoptCRDs     PreflightAction = "adopt-crds"
-	ActionRefuseExists  PreflightAction = "refuse-already-installed"
+	// ActionCleanInstall means no existing Helm release and no operator
+	// CRDs were found on the cluster, so `ww operator install` may
+	// proceed without further user input.
+	ActionCleanInstall PreflightAction = "clean-install"
+	// ActionAdoptCRDs means the operator CRDs already exist on the
+	// cluster but no Helm release was found — someone installed via
+	// `kubectl apply` or hand-crafted manifests. The caller must require
+	// an explicit `--adopt` flag before proceeding so ww takes over CRD
+	// management via Helm rather than colliding with the prior
+	// installer.
+	ActionAdoptCRDs PreflightAction = "adopt-crds"
+	// ActionRefuseExists means both a Helm release and the operator CRDs
+	// are present: the operator is already installed. Callers MUST
+	// refuse to re-install and direct the user to `ww operator upgrade`
+	// or `ww operator uninstall` instead.
+	ActionRefuseExists PreflightAction = "refuse-already-installed"
+	// ActionRefuseCorrupt means a Helm release exists but the operator
+	// CRDs are missing — an inconsistent state ww refuses to recover
+	// from automatically. The caller surfaces the namespace of the
+	// dangling release and asks the user to investigate manually.
 	ActionRefuseCorrupt PreflightAction = "refuse-corrupt-state"
 )
 
