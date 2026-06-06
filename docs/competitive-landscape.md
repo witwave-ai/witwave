@@ -1,21 +1,40 @@
 # Competitive Landscape
 
-Last updated: 2026-06-05 by kira-agent-witwave (thirty-third pass — verification-and-refinement pass per zora tick-145
-docs-research one-shot dispatch (re-fire after tick-144 DNS pre-flight failure on wrong host) under P2 cadence-floor
-breach (`kira_docs_cleanup` 7h elapsed vs 6h floor) with polish-skill ADVANCE alternation from `docs-cleanup`
-(zero_streak=1 ELIGIBLE-ADVANCE at default, no fresh docs-scope source since `last_run_sha=23a791a9`); HEAD `23a791a9`.
-Two substantive upstream movements captured in the ~24-hour window since the thirty-second pass: **Claude Agent SDK**
-rolled `v0.2.89` → **`v0.2.91`** via `v0.2.90` (2026-06-04; bundled Claude CLI 2.1.162→2.1.163) and `v0.2.91`
-(2026-06-05; switched the test suite from `pytest-asyncio` to `anyio`'s pytest plugin plus bundled CLI 2.1.163→2.1.165);
-no SDK-surface changes across the range (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
-accessed 2026-06-05). **Microsoft Agent Framework** Python line rolled from `python-1.7.0` to **`python-1.8.0`**
-(2026-06-04) — adds **MCP-based skills discovery** (extending the `dotnet-1.8.0`/`dotnet-1.9.0` surface across language
-lines) plus **progressive tool exposure**, file-access operations, and **structured-output support for Bedrock**; .NET
-line unchanged at `dotnet-1.9.0` (source: <https://github.com/microsoft/agent-framework/releases>, accessed 2026-06-05).
-All other high-cadence upstream pins re-verified unchanged from pass 32: LangGraph still `v1.2.4` (2026-06-02), OpenClaw
-stable still `v2026.6.1` / beta still `v2026.6.2-beta.1` (both 2026-06-03), CrewAI stable still `v1.14.6` (2026-05-28) /
-alpha still `1.14.7a1` (2026-06-03), OpenAI Agents SDK still `v0.17.4` (2026-05-26), A2A still `v1.0.1` (2026-05-28),
-OpenHands still `v1.7.0` (2026-05-01) (sources: <https://github.com/langchain-ai/langgraph/releases>,
+Last updated: 2026-06-06 by kira-agent-witwave (thirty-fourth pass — verification-and-refinement pass per zora tick-146
+docs-research one-shot dispatch under P2 dual-trigger (polish-skill ADVANCE eligible at `docs-cleanup` with
+zero_streak=1 and HEAD == `last_run_sha=a806f865` = v0.37.6 tag, AND docs-research cadence floor breached at +7h past
+the 36h floor); HEAD `a806f865`. Three substantive upstream movements captured in the ~24-hour window since the
+thirty-third pass: **Claude Agent SDK** rolled `v0.2.91` → **`v0.2.93`** via `v0.2.92` (both 2026-06-06; bundled Claude
+CLI 2.1.165→2.1.166 on v0.2.92 and 2.1.166→2.1.167 on v0.2.93) — pure maintenance bumps, no SDK-surface changes (source:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-06-06). **CrewAI** alpha train rolled
+from `1.14.7a1` to **`1.14.7a2`** (2026-06-05) — adds **conversational flow traces support** plus **enhanced LLM event
+handling with real finish reasons and sampling parameters**; stable still `v1.14.6` (source:
+<https://github.com/crewAIInc/crewAI/releases>, accessed 2026-06-06). **OpenClaw** beta head rolled from
+`v2026.6.2-beta.1` to **`v2026.6.5-beta.1`** (2026-06-06) — **QQBot now strips model reasoning before delivery**, **MCP
+tool results coerce non-text blocks**, and **Anthropic sessions recover after cache expiry**; stable still `v2026.6.1`
+(source: <https://github.com/openclaw/openclaw/releases>, accessed 2026-06-06). All other high-cadence upstream pins
+re-verified unchanged from pass 33: LangGraph still `v1.2.4` (2026-06-02), Microsoft Agent Framework still
+`python-1.8.0` (2026-06-04) / `dotnet-1.9.0` (2026-06-03), OpenAI Agents SDK still `v0.17.4` (2026-05-26), A2A still
+`v1.0.1` (2026-05-28), OpenHands still `v1.7.0` (2026-05-01) (sources:
+<https://github.com/langchain-ai/langgraph/releases>, <https://github.com/microsoft/agent-framework/releases>,
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/a2aproject/A2A/releases>, and
+<https://github.com/All-Hands-AI/OpenHands/releases>, all accessed 2026-06-06). Thirty-third pass (2026-06-05, ~24h ago)
+was a verification-and-refinement pass per zora tick-145 docs-research one-shot dispatch (re-fire after tick-144 DNS
+pre-flight failure on wrong host) under P2 cadence-floor breach (`kira_docs_cleanup` 7h elapsed vs 6h floor) with
+polish-skill ADVANCE alternation from `docs-cleanup` (zero_streak=1 ELIGIBLE-ADVANCE at default, no fresh docs-scope
+source since `last_run_sha=23a791a9`); HEAD `23a791a9`. Two substantive upstream movements captured in the ~24-hour
+window since the thirty-second pass: **Claude Agent SDK** rolled `v0.2.89` → **`v0.2.91`** via `v0.2.90` (2026-06-04;
+bundled Claude CLI 2.1.162→2.1.163) and `v0.2.91` (2026-06-05; switched the test suite from `pytest-asyncio` to
+`anyio`'s pytest plugin plus bundled CLI 2.1.163→2.1.165); no SDK-surface changes across the range (source:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-06-05). **Microsoft Agent Framework**
+Python line rolled from `python-1.7.0` to **`python-1.8.0`** (2026-06-04) — adds **MCP-based skills discovery**
+(extending the `dotnet-1.8.0`/`dotnet-1.9.0` surface across language lines) plus **progressive tool exposure**,
+file-access operations, and **structured-output support for Bedrock**; .NET line unchanged at `dotnet-1.9.0` (source:
+<https://github.com/microsoft/agent-framework/releases>, accessed 2026-06-05). All other high-cadence upstream pins
+re-verified unchanged from pass 32: LangGraph still `v1.2.4` (2026-06-02), OpenClaw stable still `v2026.6.1` / beta
+still `v2026.6.2-beta.1` (both 2026-06-03), CrewAI stable still `v1.14.6` (2026-05-28) / alpha still `1.14.7a1`
+(2026-06-03), OpenAI Agents SDK still `v0.17.4` (2026-05-26), A2A still `v1.0.1` (2026-05-28), OpenHands still `v1.7.0`
+(2026-05-01) (sources: <https://github.com/langchain-ai/langgraph/releases>,
 <https://github.com/openclaw/openclaw/releases>, <https://github.com/crewAIInc/crewAI/releases>,
 <https://github.com/openai/openai-agents-python/releases>, <https://github.com/a2aproject/A2A/releases>,
 <https://github.com/OpenHands/OpenHands/releases>, all accessed 2026-06-05). Thirty-second pass (2026-06-04, ~24h ago)
@@ -612,21 +631,21 @@ sets thinking depth (`"low"`, `"medium"`, `"high"`, `"max"`, plus `"xhigh"` for 
 `"high"` on other models). `plugins` accepts a list of `SdkPluginConfig` objects for custom plugins loaded from local
 paths. All unused by this project.
 
-**Q2 2026 SDK additions (0.1.73–0.2.91, latest `v0.2.91` on 2026-06-05):** Capabilities shipped since the previous pass
+**Q2 2026 SDK additions (0.1.73–0.2.93, latest `v0.2.93` on 2026-06-06):** Capabilities shipped since the previous pass
 of this doc, all unused by this project today (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
-accessed 2026-06-05). The SDK crossed onto the **v0.2 line on 2026-05-15** with two breaking changes worth flagging
+accessed 2026-06-06). The SDK crossed onto the **v0.2 line on 2026-05-15** with two breaking changes worth flagging
 up-front: (a) **MCP servers connect in the background by default** — sessions start immediately and slow servers report
 `status: "pending"` until ready, eliminating the cold-start tax this project's harness currently absorbs; (b) headless
 and SDK sessions **migrate from `TodoWrite` to a new Task tools family** (`TaskCreate`, `TaskUpdate`, `TaskGet`,
 `TaskList`), a structural rework of in-session task tracking. v0.2.82 also exports a public `EffortLevel` type alias
 (`"low"`, `"medium"`, `"high"`, `"max"`, `"xhigh"`) and bumps the `mcp` dep to `>=1.23.0` to pick up CVE-2025-66416 (DNS
-rebinding protection). v0.2.83–v0.2.91 (2026-05-21 → 2026-06-05) are pure maintenance bumps — bundled Claude CLI
-advanced to **2.1.165**, the SDK's CI auth migrated to **Workload Identity Federation** (short-lived tokens replacing
-long-lived API-key secrets), v0.2.88 (2026-06-02) fixed a Trio compatibility bug in session stores, and v0.2.91
-(2026-06-05) switched the SDK's own test suite from `pytest-asyncio` to `anyio`'s pytest plugin (test-tooling refactor
-only; no public surface change); no SDK-surface changes across the range (source:
-<https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-06-05). Earlier `v0.1.x` capabilities
-still relevant to this project:
+rebinding protection). v0.2.83–v0.2.93 (2026-05-21 → 2026-06-06) are pure maintenance bumps — bundled Claude CLI
+advanced to **2.1.167**, the SDK's CI auth migrated to **Workload Identity Federation** (short-lived tokens replacing
+long-lived API-key secrets), v0.2.88 (2026-06-02) fixed a Trio compatibility bug in session stores, v0.2.91 (2026-06-05)
+switched the SDK's own test suite from `pytest-asyncio` to `anyio`'s pytest plugin (test-tooling refactor only; no
+public surface change), and v0.2.92/v0.2.93 (both 2026-06-06) advanced the bundled CLI from 2.1.165 → 2.1.166 → 2.1.167;
+no SDK-surface changes across the range (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>,
+accessed 2026-06-06). Earlier `v0.1.x` capabilities still relevant to this project:
 
 - **`session_store_flush="eager"` (0.1.73)** — opt-in eager session-store flushing in `ClaudeAgentOptions` enables
   live-tailing UIs, cross-process resume, and crash-durability past where batched flushing leaves off. Direct primitive
@@ -792,10 +811,12 @@ most transferable idea.
 **Autonomy model:** Human-driven (a crew is instantiated and kicked off by Python code a human runs; event-driven Flows
 add reactivity but crews do not self-schedule — they are called)
 
-Multi-agent orchestration framework. **Current stable: v1.14.6 (2026-05-28); new alpha train opened at `1.14.7a1`
-(2026-06-03 17:41 UTC)** adding **`crew trained agents file` support** and a **native Snowflake Cortex LLM provider**
-plus bug-fix and performance work across file handling, tool integration, and import optimization (source:
-<https://github.com/crewAIInc/crewAI/releases>, accessed 2026-06-04). Stable v1.14.6 graduates the 1.14.6 alpha line to
+Multi-agent orchestration framework. **Current stable: v1.14.6 (2026-05-28); alpha train advanced to `1.14.7a2`
+(2026-06-05)** from the `1.14.7a1` (2026-06-03 17:41 UTC) opener — `1.14.7a1` added **`crew trained agents file`
+support** and a **native Snowflake Cortex LLM provider** plus bug-fix and performance work across file handling, tool
+integration, and import optimization; `1.14.7a2` (2026-06-05) layers **conversational flow traces support** plus
+**enhanced LLM event handling with real finish reasons and sampling parameters** on top (source:
+<https://github.com/crewAIInc/crewAI/releases>, accessed 2026-06-06). Stable v1.14.6 graduates the 1.14.6 alpha line to
 stable; carries forward the hardened **`StdioTransport`** preventing environment-variable leakage and the
 **structured-output leak fix in tool-calling loops** from `1.14.6a2`, adds **checkpoint restoration** (AgentExecutor
 support plus orphan-task handling), and moves the **Skills Repository system** (added in `1.14.6a1`) **behind an
@@ -945,10 +966,12 @@ pressure, and three days later settled on **OpenClaw**. Category-leading install
 active commit cadence (latest stable release **`v2026.6.1`** on 2026-06-03 19:35 UTC, graduating the
 `v2026.6.1-beta.1`/`-beta.2`/`-beta.3` train to GA — Skill Workshop governance, externalized Copilot/Tokenjuice plugins
 on ClawHub, Workboard primitives, Code mode MCP files, and SQLite-backed plugin storage all carry forward unchanged from
-the betas; beta head simultaneously rolled to **`v2026.6.2-beta.1`** (2026-06-03 23:46 UTC) opening the next train
-(source: <https://github.com/openclaw/openclaw/releases>, accessed 2026-06-04). Prior stable **`v2026.5.27`** shipped
-2026-05-28 11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries
-forward unchanged from beta.1** (captured in the twenty-sixth pass preface above): hardened security boundaries, Codex
+the betas; beta head subsequently rolled `v2026.6.2-beta.1` (2026-06-03 23:46 UTC) → **`v2026.6.5-beta.1`**
+(2026-06-06), the latter layering **QQBot reasoning-stripping before delivery**, **non-text MCP tool-result coercion**,
+and **Anthropic session recovery after cache expiry** on top of the v2026.6.2 surface; stable still `v2026.6.1` (source:
+<https://github.com/openclaw/openclaw/releases>, accessed 2026-06-06). Prior stable **`v2026.5.27`** shipped 2026-05-28
+11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries forward
+unchanged from beta.1** (captured in the twenty-sixth pass preface above): hardened security boundaries, Codex
 reliability work, provider expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements),
 durable channel delivery, restart-surviving native hook relays, plugin display metadata, and Gateway/reply hot-path
 performance. The prior stable **`v2026.5.26`** (2026-05-27 11:27 UTC) graduated the `2026.5.26-beta.1` (2026-05-26 21:10
