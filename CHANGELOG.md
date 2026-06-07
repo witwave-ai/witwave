@@ -6,6 +6,32 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.7] — 2026-06-07
+
+Documentation-polish release: in-source comments land on previously bare shell-script functions, Dockerfile layer
+ordering, and several undocumented operator + agent exports; one godoc attribution error is corrected; the
+competitive-landscape research doc gets two refresh passes. No user-visible runtime behaviour change.
+
+### Fixed
+
+- **clients/ww**: re-point `RuntimeTaskStorePath` godoc to the actual surface (`ww agent storage enable` plan-print at
+  `storage_enable.go:105`); the prior claim of a "Task store" row in `ww agent status` did not match the renderer.
+
+### Documentation
+
+- **clients/ww**: add godoc to undocumented operator preflight actions (`ActionCleanInstall`, `ActionAdoptCRDs`,
+  `ActionRefuseExists`, `ActionRefuseCorrupt`) and the `agent.RuntimeTaskStorePath` constant, derived from the switch
+  arms in `CheckInstall` and the `ApplyHarnessTaskStoreDefault` / `ApplyBackendTaskStoreDefaults` call sites.
+- **scripts**: document the `find_chrome` discovery order (`$CHROME` → macOS bundle → PATH probes) and exit-code
+  semantics in `scripts/build-whitepaper-pdfs.sh` so callers read the contract without tracing the body.
+- **backends/codex**: explain the `package*.json` + `npm ci` + source-copy layer ordering and the `--omit=dev` rationale
+  in the Dockerfile.
+- **research**: refresh `docs/competitive-landscape.md` against current industry state — two passes capturing the Claude
+  Agent SDK v0.2.93 (CLI 2.1.167) bumps, CrewAI alpha train 1.14.7a2 (conversational flow traces, real finish reasons),
+  and OpenClaw beta head reaching v2026.6.5-beta.2 (QQBot reasoning-stripping, MCP non-text coercion, Anthropic
+  cache-expiry recovery, plus beta.2's parallel web search / Vertex ADC / Matrix voice preflight / SQLite auth-profile
+  durability).
+
 ## [0.37.6] — 2026-06-05
 
 Security patch release: ships Go stdlib CVE fixes (GO-2026-5037 / 5038 / 5039 — `crypto/x509` hostname-parsing, `mime`
