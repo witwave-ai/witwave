@@ -30,6 +30,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Locate a Chrome / Chromium binary for the Pandoc-HTML → PDF print step.
+# Discovery order (first hit wins):
+#   1. $CHROME if it's set and points at an executable.
+#   2. The standard macOS Google Chrome bundle path.
+#   3. The first of google-chrome, google-chrome-stable, chromium,
+#      chromium-browser found on $PATH.
+# Returns 0 with the absolute path on stdout, or 1 if nothing was found —
+# callers print their own "Chrome not found" diagnostic.
 find_chrome() {
   if [ -n "${CHROME:-}" ] && [ -x "$CHROME" ]; then
     printf '%s\n' "$CHROME"
