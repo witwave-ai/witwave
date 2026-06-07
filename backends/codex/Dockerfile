@@ -10,6 +10,11 @@ ENV GH_PROMPT_DISABLED=1 \
 USER agent
 WORKDIR /home/agent
 
+# Layer-ordering: copy package.json + the checked-in lockfile first so
+# `npm ci` lands in its own cached layer. Subsequent edits under
+# backends/codex/ (the COPY below) invalidate only the source layer, not
+# the install layer. `--omit=dev` drops devDependencies — the runtime
+# image only needs what `node main.js` will load.
 COPY --chown=agent:agent backends/codex/package*.json /home/agent/codex/
 WORKDIR /home/agent/codex
 RUN npm ci --omit=dev
