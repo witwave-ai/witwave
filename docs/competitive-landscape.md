@@ -1,11 +1,36 @@
 # Competitive Landscape
 
-Last updated: 2026-06-06 by kira-agent-witwave (thirty-fourth pass — verification-and-refinement pass per zora tick-146
-docs-research one-shot dispatch under P2 dual-trigger (polish-skill ADVANCE eligible at `docs-cleanup` with
-zero_streak=1 and HEAD == `last_run_sha=a806f865` = v0.37.6 tag, AND docs-research cadence floor breached at +7h past
-the 36h floor); HEAD `a806f865`. Three substantive upstream movements captured in the ~24-hour window since the
-thirty-third pass: **Claude Agent SDK** rolled `v0.2.91` → **`v0.2.93`** via `v0.2.92` (both 2026-06-06; bundled Claude
-CLI 2.1.165→2.1.166 on v0.2.92 and 2.1.166→2.1.167 on v0.2.93) — pure maintenance bumps, no SDK-surface changes (source:
+Last updated: 2026-06-07 by kira-agent-witwave (thirty-fifth pass — verification-and-refinement pass per zora tick-199
+docs-research one-shot dispatch under polish-tier ADVANCE flip-to-deep with cheap-pass exhausted at `docs-cleanup`
+(zero_streak=1 and HEAD == `last_run_sha=fa1d8bf6` with no kira-scope
+`*.md`/`docs/**`/`AGENTS.md`/`CHANGELOG.md`/`README.md` commits since tick-197) after iris's tick-198 red-CI hold
+cleared green on `d127a8eb`); HEAD `d127a8eb`. One substantive upstream movement captured in the ~24-hour window since
+the thirty-fourth pass: **OpenClaw** beta head rolled from `v2026.6.5-beta.1` to **`v2026.6.5-beta.2`** (2026-06-07
+00:26 UTC) — adds a **bundled parallel web-search provider** (API-key discovery, endpoint handling, onboarding wiring),
+**Google Vertex ADC support** (static catalog rows plus runtime model resolution restored for Application Default
+Credentials users), **Matrix voice-message preflight with thread-aware read/reply behaviour**, **auth-profile durability
+via SQLite persistence**, **npm plugin trusted-pin retention** across install flows, and **hardened prerelease integrity
+checks**, plus macOS node-mode session-churn stabilisation, cron-migration secret masking, TUI stability across history
+reloads and abort windows, and WhatsApp per-account configuration / reconnection handling on top of the prior beta.1
+surface (QQBot reasoning-stripping before delivery, MCP non-text/image result coercion, Anthropic session recovery after
+cache expiry); stable still `v2026.6.1` (source: <https://github.com/openclaw/openclaw/releases/tag/v2026.6.5-beta.2>,
+accessed 2026-06-07). Pin refinement: **OpenClaw** fork count re-pinned to **78,900+ forks** (was 78,500+; live count
+78.9k crosses the prior pin cleanly upward); star count still 377,000+ (live still 377k, unchanged) (source:
+<https://github.com/openclaw/openclaw>, accessed 2026-06-07). All other high-cadence upstream pins re-verified unchanged
+from pass 34: Claude Agent SDK still `v0.2.93` (2026-06-06), LangGraph still `v1.2.4` (2026-06-02), Microsoft Agent
+Framework still `python-1.8.0` (2026-06-04) / `dotnet-1.9.0` (2026-06-03), OpenAI Agents SDK still `v0.17.4`
+(2026-05-26), CrewAI still `v1.14.6` stable (2026-05-28) / `1.14.7a2` alpha (2026-06-05), A2A still `v1.0.1`
+(2026-05-28), OpenHands still `v1.7.0` (2026-05-01) (sources:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>, <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/openai/openai-agents-python/releases>,
+<https://github.com/crewAIInc/crewAI/releases>, <https://github.com/a2aproject/A2A/releases>, and
+<https://github.com/All-Hands-AI/OpenHands/releases>, all accessed 2026-06-07). Thirty-fourth pass (2026-06-06, ~24h
+ago) was a verification-and-refinement pass per zora tick-146 docs-research one-shot dispatch under P2 dual-trigger
+(polish-skill ADVANCE eligible at `docs-cleanup` with zero_streak=1 and HEAD == `last_run_sha=a806f865` = v0.37.6 tag,
+AND docs-research cadence floor breached at +7h past the 36h floor); HEAD `a806f865`. Three substantive upstream
+movements captured in the ~24-hour window since the thirty-third pass: **Claude Agent SDK** rolled `v0.2.91` →
+**`v0.2.93`** via `v0.2.92` (both 2026-06-06; bundled Claude CLI 2.1.165→2.1.166 on v0.2.92 and 2.1.166→2.1.167 on
+v0.2.93) — pure maintenance bumps, no SDK-surface changes (source:
 <https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-06-06). **CrewAI** alpha train rolled
 from `1.14.7a1` to **`1.14.7a2`** (2026-06-05) — adds **conversational flow traces support** plus **enhanced LLM event
 handling with real finish reasons and sampling parameters**; stable still `v1.14.6` (source:
@@ -962,14 +987,16 @@ this project targets the team running coordinated agents as cluster workloads.
 
 OpenClaw originated as "Clawdbot" in November 2025, was renamed "Moltbot" on 2026-01-27 under Anthropic trademark
 pressure, and three days later settled on **OpenClaw**. Category-leading install base — **377,000+ GitHub stars and
-78,500+ forks as of 2026-06-04** (source: <https://github.com/openclaw/openclaw>, accessed 2026-06-04), with a very
+78,900+ forks as of 2026-06-07** (source: <https://github.com/openclaw/openclaw>, accessed 2026-06-07), with a very
 active commit cadence (latest stable release **`v2026.6.1`** on 2026-06-03 19:35 UTC, graduating the
 `v2026.6.1-beta.1`/`-beta.2`/`-beta.3` train to GA — Skill Workshop governance, externalized Copilot/Tokenjuice plugins
 on ClawHub, Workboard primitives, Code mode MCP files, and SQLite-backed plugin storage all carry forward unchanged from
-the betas; beta head subsequently rolled `v2026.6.2-beta.1` (2026-06-03 23:46 UTC) → **`v2026.6.5-beta.1`**
-(2026-06-06), the latter layering **QQBot reasoning-stripping before delivery**, **non-text MCP tool-result coercion**,
-and **Anthropic session recovery after cache expiry** on top of the v2026.6.2 surface; stable still `v2026.6.1` (source:
-<https://github.com/openclaw/openclaw/releases>, accessed 2026-06-06). Prior stable **`v2026.5.27`** shipped 2026-05-28
+the betas; beta head subsequently rolled `v2026.6.2-beta.1` (2026-06-03 23:46 UTC) → `v2026.6.5-beta.1` (2026-06-06) →
+**`v2026.6.5-beta.2`** (2026-06-07 00:26 UTC), the latter layering a **bundled parallel web-search provider**, **Google
+Vertex ADC support** (Application Default Credentials restored), **Matrix voice-message preflight with thread-aware
+read/reply**, and **auth-profile durability via SQLite persistence** on top of beta.1's QQBot reasoning-stripping,
+non-text MCP tool-result coercion, and Anthropic session recovery after cache expiry; stable still `v2026.6.1` (source:
+<https://github.com/openclaw/openclaw/releases>, accessed 2026-06-07). Prior stable **`v2026.5.27`** shipped 2026-05-28
 11:41 UTC — graduating the `v2026.5.27-beta.1` (2026-05-28 05:54 UTC) to GA; substantive surface **carries forward
 unchanged from beta.1** (captured in the twenty-sixth pass preface above): hardened security boundaries, Codex
 reliability work, provider expansion (OpenAI-compatible embeddings, Pixverse video, DeepInfra catalog improvements),
