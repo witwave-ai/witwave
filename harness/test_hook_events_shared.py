@@ -111,9 +111,9 @@ def test_missing_token_logs_once(monkeypatch, caplog):
             pending = list(he._INFLIGHT)
             await asyncio.gather(*pending, return_exceptions=True)
         warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
-        assert len(warnings) == 1, (
-            "missing-token warning must fire exactly once per process to avoid log flood on sustained misconfig"
-        )
+        assert (
+            len(warnings) == 1
+        ), "missing-token warning must fire exactly once per process to avoid log flood on sustained misconfig"
 
     asyncio.run(run())
 
