@@ -59,6 +59,13 @@ RUN ARCH=$(dpkg --print-architecture) \
     && tar -C /usr/local -xzf /tmp/go.tar.gz \
     && rm /tmp/go.tar.gz
 
+# GOTOOLCHAIN=local forbids Go's auto-toolchain download: without it,
+# `go build` would silently fetch a newer toolchain whenever a go.mod's
+# `go` / `toolchain` directive exceeds the GO_VERSION ARG installed above.
+# Keeping it `local` makes the ARG GO_VERSION pin the single source of
+# truth for the compiler version (the file header's "pinned in exactly
+# one place" guarantee) and surfaces go.mod-floor mismatches as build
+# failures instead of silent toolchain elevation.
 ENV PATH="/usr/local/go/bin:$PATH" \
     GOPATH="/usr/local/gopath" \
     GOFLAGS="-mod=mod" \
@@ -287,6 +294,12 @@ COPY --from=python-build /opt/tools-venv /opt/tools-venv
 
 RUN useradd -m -s /usr/bin/zsh -u 1000 agent
 
+# GOTOOLCHAIN=local: same reproducibility pin as the go-toolchain stage.
+# The Go install copied in via `COPY --from=go-toolchain /usr/local/go`
+# stays the authoritative compiler; `go build` won't fetch a newer
+# toolchain when a downstream go.mod's `go` / `toolchain` directive
+# requests one. Bumping the compiler still requires editing the
+# GO_VERSION ARG up in the go-toolchain stage.
 ENV PATH="/usr/local/go/bin:/opt/tools-venv/bin:/usr/local/bin:$PATH" \
     GOFLAGS="-mod=mod" \
     GOTOOLCHAIN=local
