@@ -1,0 +1,32 @@
+// errcheck exclude list for the `ww` CLI.
+//
+// Purpose: silence the established CLI-output convention so that `errcheck`
+// surfaces the err returns that actually carry recoverable information
+// instead of the high-volume noise floor of `fmt.Fprint*` calls.
+//
+// What's listed below: the `fmt.Fprint*` family. Every flagged call site in
+// this module that uses these helpers writes informational / diagnostic /
+// table-row output to a user-facing writer (`os.Stdout`, `os.Stderr`, a
+// cobra command's `OutOrStdout()` / `ErrOrStderr()`, a `tabwriter.Writer`,
+// or a per-command captured `opts.Out`). In a one-shot CLI:
+//   - a broken-pipe / failed-write to stdout has no actionable recovery —
+//     the process is about to exit and the user has already lost the
+//     downstream consumer that closed the pipe;
+//   - explicitly threading the err through every print site triples the
+//     line count of every formatting helper and obscures the real
+//     business logic;
+//   - the established convention across all of `cmd/*.go` +
+//     `internal/workspace/*.go` is to discard the return — wrapping a
+//     handful of sites would just make the codebase inconsistent.
+//
+// What's NOT listed: `*.Close()` and `*.Body.Close()` patterns. Those
+// remain enforced. Close-side errors on write paths can lose buffered
+// data, and HTTP body closes are sometimes genuine cleanup bugs (e.g. a
+// stream that never drained). Leaving them enforced surfaces real issues
+// while this file silences only the ~95% pattern noise.
+//
+// Picked up via `errcheck -exclude .errcheck ./...` — pass the flag
+// explicitly; errcheck does not auto-discover the file.
+fmt.Fprint
+fmt.Fprintf
+fmt.Fprintln
