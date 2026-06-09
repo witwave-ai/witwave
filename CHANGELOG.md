@@ -6,6 +6,34 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.8] — 2026-06-09
+
+Hygiene-pass release: a project-wide Python ruff format + auto-fix pass (with a follow-up `fix(ci)` clearing the I001
+import-order regression on `harness/` files and a `style(tests)` re-apply of ruff 0.15.16 format to 8 test files
+regressed by the bulk pass), an errcheck exclude covering the CLI-output convention, an in-source comment clarifying the
+backend-base Dockerfile's `GOTOOLCHAIN=local` pin, and an agent-card alignment for zora. No user-visible runtime
+behaviour change.
+
+### Fixed
+
+- **ci**: clear ruff I001 import-order on `harness/` files after the project-wide ruff format pass, restoring
+  `CI — Python Services` green.
+
+### Changed
+
+- **python**: project-wide `ruff format` + auto-fix pass across the tree, plus a companion `style(tests)` re-apply of
+  ruff 0.15.16 format to 8 test files regressed by the bulk pass. Formatting-only; no behaviour change.
+- **clients/ww**: add `errcheck` exclude for the CLI-output convention so the linter stops flagging intentional
+  unchecked writes to stdout.
+
+### Documentation
+
+- **images/backend-base**: in-source comment explaining the `GOTOOLCHAIN=local` pin in the Dockerfile.
+
+### Agent identity
+
+- **zora**: align agent-card Tool posture with CLAUDE.md (team-tidy pass).
+
 ## [0.37.7] — 2026-06-07
 
 Documentation-polish release: in-source comments land on previously bare shell-script functions, Dockerfile layer
