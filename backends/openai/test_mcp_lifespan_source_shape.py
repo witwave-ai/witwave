@@ -32,7 +32,6 @@ anchors that claim with a source-shape regression check.
 
 from __future__ import annotations
 
-import re
 import unittest
 from pathlib import Path
 
@@ -168,8 +167,7 @@ class SnapshotAndStackHelpersTests(unittest.TestCase):
         # ``async with`` block so a reload cannot swap mid-copy.
         self.assertRegex(
             src,
-            r"async with self\._mcp_servers_lock:\s*\n"
-            r"\s*return list\(self\._live_mcp_servers\)",
+            r"async with self\._mcp_servers_lock:\s*\n" r"\s*return list\(self\._live_mcp_servers\)",
         )
 
     def test_acquire_mcp_stack_returns_snapshot_and_stack_under_lock(self):
