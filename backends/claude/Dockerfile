@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir -r /home/agent/claude/requirements.txt
 # backend dependencies as runtime code. The shared backend base venv remains
 # useful for direct base-image use and non-runtime checks.
 RUN pip install --no-cache-dir \
-    'ruff==0.6.9' \
+    'ruff==0.15.17' \
     'yamllint==1.35.1' \
     'pytest==8.3.3' \
     'pytest-asyncio==0.24.0' \

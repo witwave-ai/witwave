@@ -150,7 +150,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Pinned versions match what claude/openai/gemini install in their agent venv.
 RUN python3 -m venv /opt/tools-venv \
     && /opt/tools-venv/bin/pip install --no-cache-dir \
-        'ruff==0.6.9' \
+        'ruff==0.15.17' \
         'yamllint==1.35.1' \
         'pytest==8.3.3' \
         'pytest-asyncio==0.24.0' \
