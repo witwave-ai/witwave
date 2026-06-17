@@ -569,6 +569,21 @@ Harness, operator, and MCP tool metrics use their own prefixes (`harness_*`, `wi
   carry `app.kubernetes.io/component: credentials` and are dual-checked (label + `IsControlledBy`) before any update or
   delete — the operator never touches user-created Secrets.
 
+### CI tooling + version lockstep
+
+Unpinned tooling in CI is the repo's highest-recurrence red-`main` class: a tool ships a new release, CI silently drifts
+ahead of the version that authored a commit, and otherwise-clean code fails the gate (the ruff-version skew that froze
+the team for six days in 2026-06).
+
+- **Pin every CI tool install.** Any tool a workflow installs gets an explicit version — `pip install x==<v>`,
+  `npm i -g x@<v>`, `go install …@<v>` (never `@latest`), action refs at a tag/SHA (never `@main`). Apt-provided,
+  runner-stable tools (pandoc, shellcheck) may stay unpinned with a rationale comment.
+- **Keep agent formatters in lockstep with CI.** The dev tools the backend images ship (ruff, … in
+  `images/backend-base/Dockerfile` + `backends/*/Dockerfile`) must match the versions CI pins, so an agent never formats
+  with one version while CI checks with another. Ownership lives with the running team: Evan's `risk-work` keeps CI
+  pinned-and-matched (it pins to the version the images already use), and Milo's `roster-audit` flags any CI↔image
+  drift to Zora for routing.
+
 ## Reference pointers
 
 AGENTS.md is deliberately high-level. For specifics, go to the source of truth:
