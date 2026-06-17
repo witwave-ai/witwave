@@ -2,11 +2,12 @@
 name: roster-audit
 description:
   Maintain a current, queryable directory of the agent roster — who is deployed, who is up vs down, what job functions
-  each agent has, and who Milo can reach over A2A. Runs every heartbeat to refresh the directory and record a snapshot;
-  also answers on-demand human questions. Trigger when the user says "who's up?", "who's down?", "team roster", "what's
-  going on with the team?", "is <agent> available?", "who can take care of <X>?", or "roster audit". Read-only — records
-  to memory, never mutates the cluster.
-version: 0.1.0
+  each agent has, and who Milo can reach over A2A. Also checks CI↔image toolchain lockstep — do the dev tools CI pins
+  match the versions the agent images ship? drift there reddens main. Runs every heartbeat to refresh the directory and
+  record a snapshot; also answers on-demand human questions. Trigger when the user says "who's up?", "who's down?",
+  "team roster", "what's going on with the team?", "is <agent> available?", "who can take care of <X>?", or "roster
+  audit". Read-only — records to memory, never mutates the cluster.
+version: 0.2.0
 ---
 
 # roster-audit
@@ -27,13 +28,20 @@ The skill has two jobs:
 Milo answers the **roster / availability / capability** question: _who is on the team, what do they do, and who can take
 work right now?_ Keep the lens there.
 
+One **operational-coherence** signal is also in scope, because it is load-bearing for whether the team can ship at all:
+**CI↔image toolchain lockstep** — whether the dev tools CI pins (ruff, …) match the versions the agent images ship.
+When those drift, an agent commits clean code that CI then rejects, and `main` goes red (the ruff-version skew that
+froze the team for six days). This is operational, not cosmetic — distinct from the profile/avatar consistency deferred
+below, and read-only here (you detect + surface; the fix is a source commit by Nova/Evan).
+
 - **NOT platform reliability.** Pod restart deltas, OOM kills, PVC capacity, resource pressure, release-pipeline health
   — that is **Mira's** `platform-health`, not this skill. If an agent is down, record it as unavailable and note it; do
   **not** open a deep pod-triage investigation. If a down agent looks like a real platform fault, that is a finding for
   Mira/Zora, not work for Milo.
-- **NOT deep roster-consistency auditing.** GitHub profile fields, avatars, website cards, pronoun drift — that is the
-  future `roster-consistency-check` skill. This skill notes obvious deployed-vs-documented drift it trips over, but does
-  not go chase profile fields.
+- **NOT deep _cosmetic_ roster-consistency.** GitHub profile fields, avatars, website cards, pronoun drift — that is the
+  future `roster-consistency-check` skill. (The operational toolchain-lockstep check above _is_ in scope — that one
+  reddens `main`; cosmetic profile drift does not.) This skill notes obvious deployed-vs-documented drift it trips over,
+  but does not go chase profile fields.
 - **NOT coordination.** Deciding who works on what, dispatching peers, cutting releases — that is **Zora**. Milo is one
   of the sources Zora (or a human) _asks_ "who can take care of this?"; he does not assign the work himself.
 - **NOT a repair bot.** This skill is read-only. Milo carries namespace-write access for approved pod lifecycle actions,
@@ -106,6 +114,40 @@ sed -n '1,200p' /workspaces/witwave-self/source/witwave/.agents/self/README.md
 Use it to label each agent's job function in plain terms (e.g. iris → "git plumbing + releases", evan → "code defects +
 risks"). If the checkout is missing, fall back to the card `description` from step 1 and note the enrichment gap.
 
+### 3.5. Check CI↔image toolchain lockstep (operational coherence)
+
+A bounded, read-only source comparison — the one operational signal in scope. Source-only (no cluster, no `exec`); if
+the checkout is missing, skip with a noted gap.
+
+The invariant: the version of a dev tool that **CI** uses to check a commit must equal the version the **agent images**
+use to produce it. When they diverge, an agent formats/lints with one version, CI rejects with another, and `main` goes
+red on clean code — the ruff-skew that froze the team for six days.
+
+1. Read what the **agent images** pin — the backends install the shared dev tools with explicit pins:
+
+   ```sh
+   grep -rnE '(ruff|black|isort|prettier|markdownlint|hadolint|shellcheck)[=@]' \
+     /workspaces/witwave-self/source/witwave/images/backend-base/Dockerfile \
+     /workspaces/witwave-self/source/witwave/backends/*/Dockerfile
+   ```
+
+2. Read what **CI** pins for the same tools:
+
+   ```sh
+   grep -rnE '(ruff|black|isort|prettier|markdownlint|hadolint|shellcheck)[=@]' \
+     /workspaces/witwave-self/source/witwave/.github/workflows/
+   ```
+
+3. For each tool present in **both**, compare the pinned versions. Record a **toolchain-drift** finding when they differ
+   (e.g. images ship `ruff==0.6.9`, CI pins `ruff==0.15.17`), or when one side is pinned and the other is unpinned. A
+   tool pinned identically on both sides is healthy; a tool only one side uses is not drift.
+
+This is detection only. On any drift, surface it to **Zora** via `call-peer` as a finding (not an instruction) with the
+specifics — tool, image version, CI version, the files — and record it in your report. She routes the source fix: the
+Dockerfile pin is **Nova's** lane, the CI pin is **Evan's** `risk-work`; once the rebuilt image ships, your
+`team-upgrade` cascade rolls it out. You never edit the Dockerfiles or workflows yourself — that is a source commit,
+outside this read-only skill.
+
 ### 4. Build the roster directory (reconcile the sources)
 
 For each agent, merge deployment status (step 2) + reachability & declared skills (step 1) + role one-liner (step 3),
@@ -123,6 +165,8 @@ Also flag **drift** — the Agent-Resources signal that the roster has gotten in
 - **Undocumented agent** — present in `ww agent list` but absent from the README roster.
 - **Undeployed-but-documented** — described as a deployed member in the README but missing from `ww agent list`.
 - **Reachability gap** — `Ready` at the CR level but A2A-unreachable; it cannot actually take dispatched work.
+- **Toolchain drift** — a dev tool CI pins differs from (or is unpinned vs) the version the agent images ship (Step
+  3.5). The most operationally dangerous drift: it reddens `main`. Surface to Zora.
 
 ### 5. Record the directory + snapshot to memory
 
@@ -169,11 +213,12 @@ Keep snapshots small: counts, names, short status strings. No secrets, no raw co
 Return Milo's house shape:
 
 ```text
-Status: ok | roster-drift | agents-down
+Status: ok | roster-drift | toolchain-drift | agents-down
 Roster: N deployed (M available, K degraded/down) · P planned
 Available: <comma-separated names>
 Unavailable: <name — reason>, … | none
 Drift: <one line, or none>
+Toolchain: <in lockstep | drift: <tool> images=<v> CI=<v>>
 ```
 
 When the caller asked a **specific** question, answer it directly from the directory first, then optionally append the
@@ -199,4 +244,7 @@ summary:
 - **Deep profile/identity consistency** (GitHub fields, avatars, website) → future `roster-consistency-check`.
 - **Onboarding-readiness checklists, pause/decommission planning** → future Agent-Resources skills. This skill tracks
   the live roster; it does not run those workflows yet.
+- **Fixing toolchain drift** (editing Dockerfiles or CI workflows) → a source commit, not this read-only skill. Nova
+  owns the image-side pin; Evan's `risk-work` owns the CI-side pin. You detect + surface to Zora; `team-upgrade` later
+  rolls the rebuilt image.
 - **Deciding or dispatching work** → Zora. Milo reports availability; he does not assign the task.
