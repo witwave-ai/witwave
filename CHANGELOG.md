@@ -6,6 +6,25 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.10] — 2026-06-17
+
+Hygiene + research-refresh release: a follow-up Python `ruff` format pass, a CI red-main clear after a format-drift gap,
+and a refresh of the competitive-landscape research doc (with a prettier-format follow-up to clear `CI — Docs`). No
+user-visible runtime behaviour change.
+
+### Fixed
+
+- **ci**: re-run ruff 0.15.17 check + format across the tree to clear `CI — Python Services` red on `main`.
+- **docs**: prettier-format `competitive-landscape.md` to clear `CI — Docs` after the research refresh.
+
+### Changed
+
+- **python**: project-wide `ruff format` + auto-fix pass. Formatting-only; no behaviour change.
+
+### Documentation
+
+- **research**: refresh `competitive-landscape.md` against current industry state.
+
 ## [0.37.9] — 2026-06-17
 
 Reliability-pass release: closes a CI version-drift class — `ruff` aligned across CI and agent images (0.15.17),
