@@ -373,8 +373,15 @@ Walk these in order. The first match wins; act and exit (after logging).
 
      Mark this dispatch with `[priority-1: red-ci-recovery]` so it doesn't share the cadence-driven dispatch budget.
 
-  4. If two consecutive evan attempts fail to clear the red CI → escalate harder per the time-bounded escalation rules
-     below; do NOT keep retrying evan indefinitely.
+  4. **If evan's attempt hangs (stuck-peer) or returns unable-to-fix, fall back to the commit author BEFORE
+     escalating.** Most formatter/lint reds (ruff, prettier) are introduced by — and trivially fixable by — the peer who
+     ran the formatter, so a single hung evan must not strand the red. Identify the author:
+     `git -C <checkout> log -1 --format=%an <breaking-sha>` → map the git author to the peer (`nova-agent-witwave`→nova,
+     `evan-agent-witwave`→evan, `finn-agent-witwave`→finn, etc.). If the author is a dispatchable peer who is NOT the
+     one that just hung, `call-peer <author>` with the same red-ci-recovery prompt, marked
+     `[priority-1: red-ci-recovery-author-fallback]`. Only after BOTH evan AND the commit author fail (or hang) →
+     escalate hard per the time-bounded ladder below; do NOT keep retrying the same peer indefinitely. A single hung
+     evan with no second-peer fallback stranded the team ~140h on 2026-06-11.
 
 - **Failed release workflow** (iris's release skill returned `[release-workflow-failed]`, OR a `Release*` workflow on
   the latest tag concluded `failure` / `cancelled` / `timed_out`) → **stop cadence-driven dispatching and redirect the
@@ -472,8 +479,26 @@ Walk these in order. The first match wins; act and exit (after logging).
     The explicit commands eliminate the per-incident "how do I do this?" round-trip. The user should see this on their
     next `ww escalations` and be able to execute one of the three paths without further context-gathering.
 
-  - **T+2h** — automatic pause-mode entry. Touch `pause_mode.flag`; emit `[escalation: auto-paused]` log entry. Continue
-    ticking but log-only until the user clears the flag.
+    **Loud escalation (added 2026-06-17 after a 6-day silent stall).** A passive `escalations.md` entry went unseen for
+    6 days on 2026-06-11 — Piper even posted a Discussions announcement, but that channel didn't reach the user. So in
+    ADDITION to the file entry, **dispatch iris to file a GitHub issue** so the stall lands in the user's normal
+    notification flow. `call-peer iris`: "File a GitHub issue — first ensure the label exists
+    (`gh label create team-stalled-needs-human --color B60205 --force`), then
+    `gh issue create --repo witwave-ai/witwave --title 'Team stalled — needs human: <one-line summary>' --label team-stalled-needs-human --body '<the [NEEDS-HUMAN] detail + the verbatim three recovery commands>'`.
+    iris owns gh writes — you stay read-only." Record the returned issue URL in the `escalations.md` entry as
+    `[issue-filed: <url>]` and do NOT re-file while it's present; if the escalation is still open 24h later, ask iris to
+    add a comment bumping the issue so it resurfaces.
+
+  - **T+2h** — **scoped stuck-peer exclusion, NOT a global pause.** Mark the stuck peer `[stuck-excluded]` in
+    `team_state.md` and skip ONLY that peer in the priority walk (exactly like a confirmed-OFFLINE peer) + hold
+    release-warranted; KEEP dispatching every OTHER peer on their normal cadence — their work is unrelated to the stuck
+    peer, and red CI still blocks release via iris's pre-flight so no broken artifacts ship. Emit
+    `[escalation: stuck-peer-excluded]`. Do NOT touch the global `pause_mode.flag`.
+  - **The global `pause_mode.flag` is reserved** for (a) the user's explicit "zora pause" killswitch (Step 1), or (b)
+    the genuine team-wide-stuck case: a red CI on `main` that neither evan NOR the commit author could clear (red CI
+    blocks all productive work — see Red CI step 4), OR ≥2 peers simultaneously `[stuck-excluded]`. A single stuck peer
+    on a green `main` must NEVER freeze the whole team — that auto-pause idled the entire team ~140h on 2026-06-11 while
+    iris/nova/kira/finn had unrelated work they could have shipped.
   - **Post-recovery (user signals via `recover <peer>` directive — see CLAUDE.md → "Recovery directives"):** clear the
     pause flag if set, verify the named peer's pod is healthy via A2A probe (pod-generation increment is the canonical
     "kill step completed" signal if you can read it), and fire a fresh dispatch to that peer ON THE SAME TICK with the

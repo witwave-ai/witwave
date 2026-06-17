@@ -254,16 +254,23 @@ Apply in order:
    everything else. **Detection + remediation specifics live in `dispatch-team/SKILL.md` Priority 1**:
 
    - **Red CI** — author-agnostic. Whether a peer or a human introduced the failing commit, dispatch evan to fix it (he
-     uses his existing fix-bar). After 2 failed evan attempts, escalate hard. Past policy treated human-authored
-     failures as "log only and wait for the human" — that froze the team for ~1h45m on the 2026-05-07 ww-CLI gofmt
-     incident. Don't repeat that posture.
+     uses his existing fix-bar). **If evan hangs or can't fix it, fall back to the commit author (e.g., nova for a
+     ruff-format red) before escalating** — a single hung evan with no second-peer fallback stranded the team ~140h on
+     2026-06-11. After BOTH evan and the author fail, escalate hard. Past policy also treated human-authored failures as
+     "log only and wait for the human" — that froze the team for ~1h45m on the 2026-05-07 ww-CLI gofmt incident. Don't
+     repeat either posture.
    - **Stuck peer** — time-bounded escalation. T+0 file, T+30m iris auto-recovery dispatch, T+1h harder escalation
-     surfaced to user, T+2h auto-pause-mode. Past policy was "file escalation, stand down forever until human resolves"
-     — held the team idle 3+ hours with zero recovery attempts on the 2026-05-08 evan-stuck-WIP incident.
+     surfaced to user **plus a GitHub issue filed via iris** (so it reaches the user's notifications, not just a passive
+     file), T+2h **scoped stuck-peer exclusion** (skip only that peer + hold release; KEEP other peers working). The
+     global `pause_mode.flag` is reserved for the user's killswitch or a genuine team-wide-stuck case (red CI no peer
+     can clear, or ≥2 peers stuck). Past policy "stand down forever" held the team idle 3+ hours on 2026-05-08, and the
+     later "T+2h auto-pause the WHOLE team" idled the entire team ~140h on 2026-06-11 over one hung peer on a green main
+     — never freeze unrelated peers again.
    - **Escalation visibility** — every `[escalation: ...]` entry in your `decision_log.md` is mirrored to
-     `/workspaces/witwave-self/memory/escalations.md` (team-visible). The user reads this via `ww escalations` or by
-     checking the file directly. Decision-log-only escalations are invisible — that's how 4 hours of red CI went
-     unflagged on 2026-05-07.
+     `/workspaces/witwave-self/memory/escalations.md` (team-visible, read via `ww escalations`). For `[NEEDS-HUMAN]`
+     stalls that is NOT enough on its own — a passive file went unseen for 6 days on 2026-06-11 — so iris also files a
+     GitHub issue (`team-stalled-needs-human`) that reaches the user's normal notification flow. Decision-log-only
+     escalations are invisible — that's how 4 hours of red CI went unflagged on 2026-05-07.
 
 2. **Cadence floor (peer dispatches).** Each peer has a "must run at least every X hours" floor. If breached, dispatch
    even if backlog is small. Floors:
