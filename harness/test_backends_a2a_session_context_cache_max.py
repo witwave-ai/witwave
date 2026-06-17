@@ -63,7 +63,7 @@ def test_session_context_cache_max_default():
 def test_session_context_cache_max_logs_info_at_startup(caplog):
     with caplog.at_level("INFO", logger="backends.a2a"):
         _reload_a2a_module({"A2A_SESSION_CONTEXT_CACHE_MAX": "2500"})
-    assert any(
-        "A2A_SESSION_CONTEXT_CACHE_MAX=2500" in r.getMessage() for r in caplog.records
-    ), "valid value should be echoed at INFO so operators can spot the resolved cap"
+    assert any("A2A_SESSION_CONTEXT_CACHE_MAX=2500" in r.getMessage() for r in caplog.records), (
+        "valid value should be echoed at INFO so operators can spot the resolved cap"
+    )
     _reload_a2a_module({})

@@ -43,7 +43,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install ruff
-        run: python -m pip install --upgrade pip && pip install ruff
+        # Pin ruff so CI is deterministic. An unpinned `pip install ruff`
+        # tracks latest, so a new ruff release reformats/relints differently
+        # than the version that authored a commit — spontaneously reddening
+        # main on code that was clean when committed, which the agents (on a
+        # different ruff) can't reproduce to fix. That stranded main red for
+        # 6 days on d563c0c4 (2026-06-11). Keep this in lockstep with the
+        # agents' ruff (images/backend-base + the toolbox image).
+        run: python -m pip install --upgrade pip && pip install ruff==0.15.17
       - name: ruff check
         run: |
           ruff check harness/ shared/ backends/ tools/kubernetes/ tools/prometheus/
