@@ -482,12 +482,18 @@ Walk these in order. The first match wins; act and exit (after logging).
     **Loud escalation (added 2026-06-17 after a 6-day silent stall).** A passive `escalations.md` entry went unseen for
     6 days on 2026-06-11 — Piper even posted a Discussions announcement, but that channel didn't reach the user. So in
     ADDITION to the file entry, **dispatch iris to file a GitHub issue** so the stall lands in the user's normal
-    notification flow. `call-peer iris`: "File a GitHub issue — first ensure the label exists
-    (`gh label create team-stalled-needs-human --color B60205 --force`), then
-    `gh issue create --repo witwave-ai/witwave --title 'Team stalled — needs human: <one-line summary>' --label team-stalled-needs-human --body '<the [NEEDS-HUMAN] detail + the verbatim three recovery commands>'`.
-    iris owns gh writes — you stay read-only." Record the returned issue URL in the `escalations.md` entry as
-    `[issue-filed: <url>]` and do NOT re-file while it's present; if the escalation is still open 24h later, ask iris to
-    add a comment bumping the issue so it resurfaces.
+    notification flow. `call-peer iris` and have her run (she owns gh writes; you stay read-only):
+
+    ```sh
+    gh label create team-stalled-needs-human --color B60205 --force
+    gh issue create --repo witwave-ai/witwave \
+      --title 'Team stalled — needs human: <one-line summary>' \
+      --label team-stalled-needs-human \
+      --body '<the [NEEDS-HUMAN] detail + the verbatim three recovery commands>'
+    ```
+
+    Record the returned issue URL in the `escalations.md` entry as `[issue-filed: <url>]` and do NOT re-file while it is
+    present; if the escalation is still open 24h later, ask iris to add a comment bumping the issue so it resurfaces.
 
   - **T+2h** — **scoped stuck-peer exclusion, NOT a global pause.** Mark the stuck peer `[stuck-excluded]` in
     `team_state.md` and skip ONLY that peer in the priority walk (exactly like a confirmed-OFFLINE peer) + hold

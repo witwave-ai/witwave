@@ -54,7 +54,7 @@ jobs:
       - name: shellcheck (POSIX sh mode)
         run: |
           sudo apt-get update -qq
-          # shellcheck left unpinned: apt-provided, runner-stable. An exact
+          # Left unpinned (shellcheck is apt-provided, runner-stable). An exact
           # pkg=version pin against the GitHub runner's apt index is brittle —
           # the universe-pocket version moves on image refreshes and a stale
           # pin fails install with "Version not found". The Ubuntu 24.04 archive
