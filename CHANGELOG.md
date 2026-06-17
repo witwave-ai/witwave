@@ -6,6 +6,30 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.38.0] — 2026-06-17
+
+Diagnosability + agent-coordination release: dispatched turns now emit slow-turn watchdog WARNINGs at escalating
+intervals so a hung turn leaves a visible "still running after Ns" trail instead of going silent until
+`TASK_TIMEOUT_SECONDS` fires. Companion agent updates: zora's scoped stuck-peer exclusion now scales (multiple
+independently-stuck peers no longer trip a global pause that freezes the healthy peers), and the team-coordinator
+rosters in iris / nova / kira CLAUDE.md catch up with finn.
+
+### Added
+
+- **claude**: `_slow_turn_watchdog` runs alongside every turn in `_run_inner` and logs at escalating intervals
+  (`SLOW_TURN_WARN_SECONDS` default 300s, doubling to an 1800s cap; 0 disables) so a hang leaves a visible trail in
+  backend logs. Re-raises `CancelledError` and swallows all other exceptions so it can never destabilise the turn it
+  observes. Purely additive; no change to turn or timeout logic.
+
+### Agent identity
+
+- **zora**: scoped stuck-peer exclusion scales — multiple independently-stuck peers are each `[stuck-excluded]`
+  individually while every healthy peer keeps shipping. Global `pause_mode.flag` is reserved for the user killswitch, a
+  red CI no peer can clear, or a systemic failure where most peers are unreachable at once — not N independent
+  dispatch-wedges on a green main.
+- **iris / nova / kira**: team-coordinator rosters propagate finn alongside the original five-peer set, so `call-peer`
+  push / CI-watch / hygiene / cleanup requests from finn match each agent's mental model of valid senders.
+
 ## [0.37.10] — 2026-06-17
 
 Hygiene + research-refresh release: a follow-up Python `ruff` format pass, a CI red-main clear after a format-drift gap,
