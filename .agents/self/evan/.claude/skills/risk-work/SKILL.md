@@ -2,15 +2,15 @@
 name: risk-work
 description:
   Find and fix risks across all five categories — security (CVEs / secrets / insecure patterns), reliability (missing
-  timeouts / retries / circuit breakers / silent degradation), performance (unbounded growth / blocking-in-async /
-  poor-scaling ops), observability (silent failures / swallowed error context / undiagnosable conditions), and
-  maintainability (deep coupling / duplicated critical logic / undocumented invariants — mostly flag-only). Sibling
-  skill to `bug-work` — same single-pass shape (scan → persist → validate → reason as set → fix-or-flag → commit per
-  finding → delegate push + CI watch to iris with fix-forward semantics). State lives in commits and
-  `project_evan_findings.md` memory only — no GitHub issues, no labels, no multi-session funnel. Trigger when the user
-  says "work risks", "fix risks", "find risks", "scan for risks", "do risk work", or specifies depth / sections /
-  category (e.g. "fix risks in operator depth 5", "find reliability risks in harness").
-version: 0.3.0
+  timeouts / retries / circuit breakers / silent degradation / unpinned CI tooling), performance (unbounded growth /
+  blocking-in-async / poor-scaling ops), observability (silent failures / swallowed error context / undiagnosable
+  conditions), and maintainability (deep coupling / duplicated critical logic / undocumented invariants — mostly
+  flag-only). Sibling skill to `bug-work` — same single-pass shape (scan → persist → validate → reason as set →
+  fix-or-flag → commit per finding → delegate push + CI watch to iris with fix-forward semantics). State lives in
+  commits and `project_evan_findings.md` memory only — no GitHub issues, no labels, no multi-session funnel. Trigger
+  when the user says "work risks", "fix risks", "find risks", "scan for risks", "do risk work", or specifies depth /
+  sections / category (e.g. "fix risks in operator depth 5", "find reliability risks in harness").
+version: 0.4.0
 ---
 
 # risk-work
@@ -36,7 +36,8 @@ these — the category drives the candidate-detection method and the fix-bar.
    permissive access; CVEs in reachable dependencies.
 2. **Reliability** — missing timeouts or retries on external calls; no circuit breaking; silent degradation under
    failure; assumptions about external service availability; resource opens without `defer Close()`; race-condition
-   smells where the test happens-to-pass but ordering matters.
+   smells where the test happens-to-pass but ordering matters; unpinned tool installs in CI workflows that redden `main`
+   on otherwise-clean code the moment an upstream tool ships a new release.
 3. **Maintainability** — deeply coupled logic that makes changes dangerous; duplicated critical logic with no single
    source of truth; undocumented invariants future contributors are likely to violate. **Mostly flag-only** — the right
    fix is usually a structural refactor that exceeds per-call-site auto-fix scope.
@@ -54,7 +55,8 @@ Examples — to anchor the lens:
 - **Security:** a CVE'd dependency reachable from public input; a secret committed to the repo; a
   `subprocess.call(..., shell=True)` with user-controlled arguments.
 - **Reliability:** an HTTP client without `Timeout` field set; a Kubernetes API call without retry on 429/503; a
-  Goroutine that blocks on a channel that no closing path drains.
+  Goroutine that blocks on a channel that no closing path drains; an unpinned `pip install ruff` in a CI workflow that
+  breaks `main` the day ruff ships a release.
 - **Performance:** a `make(chan T)` (unbuffered) that grows by N from each request; a `dict` that never evicts entries;
   an `await session.execute(...)` inside a loop where bulk queries would do.
 - **Observability:** an `except Exception: pass` that drops error context; a Python `try/except/log.error("oops")` that
@@ -213,6 +215,18 @@ gauntlet #2 (mitigated upstream) before flagging.
   without `sync.Mutex` / atomic / channel ownership.
 - **Silent degradation under failure:** `except Exception: return None` / `if err != nil { return }` patterns where the
   caller can't distinguish "no result" from "error".
+- **Unpinned tool install in CI (repo-global — `.github/workflows/`, not a code section):** scan
+  `.github/workflows/*.yml` for tool installs with no version pin — `pip install <pkg>` / `uv pip install <pkg>` /
+  `pipx run <pkg>` without `==<version>`, `npm install -g <pkg>` without `@<version>`, `go install <path>@latest` (or no
+  `@<version>`), and Action refs on a moving target (`uses: org/action@main` / `@master`). Each is a reliability
+  candidate: the job is green today but reddens `main` on clean code the instant the upstream tool releases — the team's
+  **highest-recurrence red-`main` class** (the ruff-version skew). **Fix = pin, don't bump:** add the version the repo
+  already uses for that tool — grep the backend images (`images/backend-base/Dockerfile`, `backends/*/Dockerfile`) and
+  sibling workflows for an existing `==` / `@` pin and match it, so CI stays in lockstep with what the agents run; only
+  if no pin exists anywhere, pin to the currently-resolved version. Bumping a tool to a _newer_ version than the repo
+  already uses is a deliberate dep-bump — not this fix; leave it. (Fix-bar fit: pin-to-current is
+  function-body-contained and behavior-preserving — near-zero blast radius — and CI running the workflow on the next
+  push is the test that covers it, so it auto-fixes at the reliability-High band.)
 
 ### Performance — pattern-matched
 
@@ -321,7 +335,9 @@ from the "Candidate detection per category" section above:
     catch repo-wide secret commits.
 
 - **Reliability:** pattern-matched. Run each grep from the reliability-detection list above; collect each hit as a
-  candidate.
+  candidate. On any `all-day-one` / `all-deps` sweep, also run the repo-global CI-pinning sweep over
+  `.github/workflows/*.yml` once (it is not tied to a code section — run it alongside the cross-cutting `gitleaks`
+  pass).
 - **Performance:** pattern-matched. Run each grep from the performance-detection list above.
 - **Observability:** pattern-matched. Run each grep from the observability-detection list above.
 - **Maintainability:** pattern-matched. Run each grep from the maintainability-detection list above. (These always flag

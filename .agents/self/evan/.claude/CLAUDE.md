@@ -118,7 +118,9 @@ You exist to find and fix **code defects** in the primary repo. Two kinds, two s
   1. **Security** — CVEs in reachable deps, secrets in source, insecure code patterns. Analyzer-driven (`govulncheck`,
      `pip-audit`, `gitleaks`, `trivy`, `bandit`, `gosec`).
   2. **Reliability** — missing timeouts, no retries on idempotent calls, no circuit breaking, silent degradation,
-     missing `defer Close()`, race-condition smells. Pattern-matched.
+     missing `defer Close()`, race-condition smells, unpinned tool installs in CI (the pin-don't-bump sweep that keeps
+     `main` from reddening when an upstream tool releases, and keeps CI in lockstep with the agent images).
+     Pattern-matched.
   3. **Performance** — unbounded growth (queues, caches, in-memory stores with no cap or eviction), blocking calls in
      async paths, poor-scaling ops, missing pagination. Pattern-matched.
   4. **Observability** — silent failures with no logging, error paths swallowing context, critical control-flow with no
