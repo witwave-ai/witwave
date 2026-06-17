@@ -87,7 +87,7 @@ jobs:
         # (echo, shared) get just pytest + the common shared deps.
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio pyyaml httpx prometheus_client
+          pip install pytest==9.1.0 pytest-asyncio==1.4.0 pyyaml==6.0.3 httpx==0.28.1 prometheus_client==0.25.0
           if [ -f "${{ matrix.section }}/requirements.txt" ]; then
             pip install -r "${{ matrix.section }}/requirements.txt"
           fi
@@ -95,8 +95,8 @@ jobs:
           # backends need the agent SDKs but those install via their own
           # requirements.txt so the conditional above covers them.
           case "${{ matrix.section }}" in
-            tools/kubernetes) pip install mcp kubernetes ;;
-            tools/prometheus) pip install mcp ;;
+            tools/kubernetes) pip install mcp==1.28.0 kubernetes==36.0.2 ;;
+            tools/prometheus) pip install mcp==1.28.0 ;;
           esac
 
       - name: pytest

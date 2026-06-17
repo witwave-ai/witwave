@@ -94,7 +94,7 @@ jobs:
       - name: PrometheusRule metrics referenced but not declared (#1682)
         if: matrix.chart == 'charts/witwave'
         run: |
-          python3 -m pip install --quiet pyyaml
+          python3 -m pip install --quiet pyyaml==6.0.3
           scripts/check-prom-rule-metrics.sh
 
       # #1698: every alert in the rendered PrometheusRule must have a
@@ -113,7 +113,7 @@ jobs:
       - name: Operator RBAC matches canonical manager role
         if: matrix.chart == 'charts/witwave-operator'
         run: |
-          python3 -m pip install --quiet pyyaml
+          python3 -m pip install --quiet pyyaml==6.0.3
           scripts/check-rbac-drift.sh
 
       # Regression coverage for the documented 600s startup grace window
@@ -227,7 +227,7 @@ jobs:
           version: v3.16.0
 
       - name: Install PyYAML
-        run: python3 -m pip install --user pyyaml
+        run: python3 -m pip install --user pyyaml==6.0.3
 
       - name: Render + verify cert-manager branch
         run: |
@@ -330,7 +330,7 @@ jobs:
           version: v3.16.0
 
       - name: Install PyYAML
-        run: python3 -m pip install --user pyyaml
+        run: python3 -m pip install --user pyyaml==6.0.3
 
       - name: Render + verify metrics + webhook Service selectors (#1643)
         run: |
@@ -432,7 +432,7 @@ jobs:
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq \
-            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+            https://github.com/mikefarah/yq/releases/download/v4.53.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
       - name: Set up Go
@@ -463,7 +463,7 @@ jobs:
       - name: Install test deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pyyaml prometheus_client mcp kubernetes httpx
+          python -m pip install pytest==9.1.0 pyyaml==6.0.3 prometheus_client==0.25.0 mcp==1.28.0 kubernetes==36.0.2 httpx==0.28.1
 
       - name: pytest tools/helm
         run: pytest -q tools/helm/test_server.py
@@ -494,7 +494,7 @@ jobs:
           version: v3.16.0
 
       - name: Install PyYAML
-        run: python3 -m pip install --user pyyaml
+        run: python3 -m pip install --user pyyaml==6.0.3
 
       - name: Render charts
         run: |

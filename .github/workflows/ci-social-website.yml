@@ -54,6 +54,11 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
+          # pandoc left unpinned: apt-provided, runner-stable. An exact
+          # pkg=version pin against the GitHub runner's apt index is brittle —
+          # the universe-pocket version moves on image refreshes and a stale
+          # pin fails install with "Version not found". The Ubuntu 24.04 archive
+          # currently ships 3.1.3+ds-2; pin here only if it becomes load-bearing.
           sudo apt-get install -y -qq pandoc
           npm ci
 
