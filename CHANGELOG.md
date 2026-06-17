@@ -6,6 +6,40 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.37.9] — 2026-06-17
+
+Reliability-pass release: closes a CI version-drift class — `ruff` aligned across CI and agent images (0.15.17),
+remaining unpinned tool / dep installs in CI pinned to current versions, and follow-up markdownlint / shellcheck reds
+from the hardening commits cleared. Self-agents updated: zora gains scoped stuck-peer pause + red-CI author-fallback +
+loud escalation, evan's `risk-work` skill drives CI tool-pinning sweeps, milo's `roster-audit` checks CI ↔ image
+toolchain lockstep, and the convention is codified in `AGENTS.md`. A project-wide Python `ruff format` + auto-fix pass
+also lands. No user-visible runtime behaviour change.
+
+### Fixed
+
+- **ci**: clear markdownlint MD013 + shellcheck directive-parse reds inherited from the tool-pinning hardening commits,
+  restoring `CI — Workflows` and `CI — Docs` green.
+- **ci**: clear ruff red on `main` and pin CI ruff to 0.15.17 so format / lint gates stop drifting with upstream
+  releases.
+- **ci**: pin remaining tool / dep installs to current versions to stop the version-drift red class.
+- **images**: align agent images' bundled ruff to 0.15.17 to match the CI pin.
+
+### Changed
+
+- **python**: project-wide `ruff format` + auto-fix pass. Formatting-only; no behaviour change.
+
+### Documentation
+
+- **agents**: codify the CI tool-pinning + CI ↔ image version-lockstep convention in `AGENTS.md` so future tool / dep
+  additions land pinned.
+
+### Agent identity
+
+- **zora**: scoped stuck-peer pause, red-CI author-fallback (when the immediate red commit's author is offline), and
+  loud escalation surfaces in `escalations.md`.
+- **evan**: `risk-work` skill now drives reliability sweeps that pin unpinned CI tool installs.
+- **milo**: `roster-audit` skill verifies CI ↔ image toolchain lockstep across agent images.
+
 ## [0.37.8] — 2026-06-09
 
 Hygiene-pass release: a project-wide Python ruff format + auto-fix pass (with a follow-up `fix(ci)` clearing the I001
