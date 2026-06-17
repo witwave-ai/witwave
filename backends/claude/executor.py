@@ -588,6 +588,14 @@ else:
 CONTEXT_USAGE_WARN_THRESHOLD = float(os.environ.get("CONTEXT_USAGE_WARN_THRESHOLD", "0.8"))
 MAX_SESSIONS = int(os.environ.get("MAX_SESSIONS", "10000"))
 TASK_TIMEOUT_SECONDS = int(os.environ.get("TASK_TIMEOUT_SECONDS", "300"))
+# Warn (log-only) while a single turn runs unusually long, before
+# TASK_TIMEOUT_SECONDS finally cancels it. A hung turn (e.g. a tool call that
+# never returns) otherwise emits no log output for minutes — the turn path is
+# silent between streamed chunks — so a wedge is invisible until the timeout
+# fires (the 2026-06-17 kira docs-cleanup ran the full 45m timeout in silence).
+# 0 disables; the interval doubles (capped at 1800s) to avoid spam on a
+# legitimately long turn.
+SLOW_TURN_WARN_SECONDS = float(os.environ.get("SLOW_TURN_WARN_SECONDS", "300"))
 _MAX_PROMPT_BYTES = int(os.environ.get("MAX_PROMPT_BYTES", str(10 * 1024 * 1024)))
 # Maximum number of bytes of prompt text included in INFO-level log messages.
 # Set to 0 to suppress prompt text from logs entirely; set higher for more context.
@@ -2253,6 +2261,41 @@ async def run(
             backend_concurrent_queries.labels(**_LABELS).dec()
 
 
+async def _slow_turn_watchdog(session_id: str, model: str | None, start: float) -> None:
+    """Log a WARNING at escalating intervals while a turn is still running.
+
+    A hung turn (a tool call that never returns, an upstream retry loop) produces
+    no log output until ``TASK_TIMEOUT_SECONDS`` cancels it — minutes of silence
+    that make a wedge invisible in real time (the 2026-06-17 kira docs-cleanup ran
+    the full 45m timeout with nothing but heartbeats in between). This watchdog
+    runs alongside the turn and leaves a "still running after Ns" trail so a hang
+    is diagnosable while it happens. Cancelled in the ``_run_inner`` ``finally`` on
+    normal completion; never raises into the turn it observes.
+    """
+    if SLOW_TURN_WARN_SECONDS <= 0:
+        return
+    interval = SLOW_TURN_WARN_SECONDS
+    try:
+        while True:
+            await asyncio.sleep(interval)
+            elapsed = time.monotonic() - start
+            logger.warning(
+                "Session %r: turn still in progress after %.0fs with no completion "
+                "(model=%s, TASK_TIMEOUT_SECONDS=%s) — possible hang; pull the session's "
+                "tool-activity log for the last call before it stalled.",
+                session_id,
+                elapsed,
+                model,
+                TASK_TIMEOUT_SECONDS,
+            )
+            interval = min(interval * 2, 1800.0)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        # A diagnostic must never destabilise the turn it observes.
+        logger.debug("slow-turn watchdog error (ignored)", exc_info=True)
+
+
 async def _run_inner(
     prompt: str,
     ctx: RunContext,
@@ -2310,6 +2353,10 @@ async def _run_inner(
 
     _start = time.monotonic()
     _budget_exceeded = False
+    # Diagnostic watchdog: warns while the turn runs long so a hang is visible
+    # in real time instead of silent until TASK_TIMEOUT_SECONDS (#wedge). Held
+    # in a local so it isn't GC'd mid-flight; cancelled in the finally below.
+    _slow_watchdog = asyncio.create_task(_slow_turn_watchdog(ctx.session_id, ctx.model, _start))
     try:
         collected = await asyncio.wait_for(
             run_query(prompt, ctx, is_new, max_tokens=max_tokens, on_chunk=on_chunk, hook_state=hook_state),
@@ -2382,6 +2429,8 @@ async def _run_inner(
             model=ctx.model,
         )
         raise
+    finally:
+        _slow_watchdog.cancel()
 
     if backend_tasks_total is not None:
         backend_tasks_total.labels(**_LABELS, status="budget_exceeded" if _budget_exceeded else "success").inc()
