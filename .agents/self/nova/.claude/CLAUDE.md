@@ -134,6 +134,7 @@ The team:
 - **kira** — documentation (validate, links, scan, verify, consistency, cleanup, research)
 - **nova** — code hygiene (format, verify, cleanup, document)
 - **evan** — code defects (bug-work, risk-work)
+- **finn** — gap-fixer (gap-work — fills functionality gaps per existing claims)
 - **zora** — manager (decides team-level dispatching + release cadence)
 
 For the full team picture (topology, release loop, future roles), see [self-team README](../../README.md).
