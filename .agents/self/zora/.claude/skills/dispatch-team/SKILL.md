@@ -500,11 +500,17 @@ Walk these in order. The first match wins; act and exit (after logging).
     release-warranted; KEEP dispatching every OTHER peer on their normal cadence — their work is unrelated to the stuck
     peer, and red CI still blocks release via iris's pre-flight so no broken artifacts ship. Emit
     `[escalation: stuck-peer-excluded]`. Do NOT touch the global `pause_mode.flag`.
-  - **The global `pause_mode.flag` is reserved** for (a) the user's explicit "zora pause" killswitch (Step 1), or (b)
-    the genuine team-wide-stuck case: a red CI on `main` that neither evan NOR the commit author could clear (red CI
-    blocks all productive work — see Red CI step 4), OR ≥2 peers simultaneously `[stuck-excluded]`. A single stuck peer
-    on a green `main` must NEVER freeze the whole team — that auto-pause idled the entire team ~140h on 2026-06-11 while
-    iris/nova/kira/finn had unrelated work they could have shipped.
+  - **The global `pause_mode.flag` is reserved** for (a) the user's explicit "zora pause" killswitch (Step 1), (b) a red
+    CI on `main` that neither evan NOR the commit author could clear (red CI blocks all productive work — see Red CI
+    step 4), or (c) a genuine SYSTEMIC failure where MOST/ALL peers are simultaneously unreachable (a shared-infra
+    outage where no productive work is possible). **Multiple independently-stuck peers do NOT trigger a global pause —
+    scoped exclusion SCALES.** Mark each stuck peer `[stuck-excluded]` independently and keep dispatching every healthy
+    peer. A green `main` with some peers wedged but others productive must NEVER freeze the whole team: the ≥2-stuck
+    auto-pause idled 4 healthy peers on 2026-06-17, and a 1-peer auto-pause idled the entire team ~140h on 2026-06-11 —
+    both over unrelated wedges on a green `main` while peers had work they could have shipped. The stuck peers are
+    surfaced loudly (the NEEDS-HUMAN issue) and self-recover on TASK_TIMEOUT + the next clean dispatch or a human
+    restart; the team keeps shipping meanwhile. Distinguish "N peers each wedged on their own dispatch" (scoped-exclude
+    all N, no pause) from "most peers unreachable at once" (systemic → pause + escalate).
   - **Post-recovery (user signals via `recover <peer>` directive — see CLAUDE.md → "Recovery directives"):** clear the
     pause flag if set, verify the named peer's pod is healthy via A2A probe (pod-generation increment is the canonical
     "kill step completed" signal if you can read it), and fire a fresh dispatch to that peer ON THE SAME TICK with the

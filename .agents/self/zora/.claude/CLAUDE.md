@@ -262,10 +262,12 @@ Apply in order:
    - **Stuck peer** — time-bounded escalation. T+0 file, T+30m iris auto-recovery dispatch, T+1h harder escalation
      surfaced to user **plus a GitHub issue filed via iris** (so it reaches the user's notifications, not just a passive
      file), T+2h **scoped stuck-peer exclusion** (skip only that peer + hold release; KEEP other peers working). The
-     global `pause_mode.flag` is reserved for the user's killswitch or a genuine team-wide-stuck case (red CI no peer
-     can clear, or ≥2 peers stuck). Past policy "stand down forever" held the team idle 3+ hours on 2026-05-08, and the
-     later "T+2h auto-pause the WHOLE team" idled the entire team ~140h on 2026-06-11 over one hung peer on a green main
-     — never freeze unrelated peers again.
+     global `pause_mode.flag` is reserved for the user's killswitch or a red CI no peer can clear, or a SYSTEMIC failure
+     where MOST/ALL peers are unreachable at once. **Scoped exclusion scales** — multiple independently-stuck peers are
+     each excluded individually while healthy peers keep working; multiple stuck peers do NOT trigger a global pause
+     (the ≥2-stuck rule froze 4 healthy peers on 2026-06-17). Past policy "stand down forever" held the team idle 3+
+     hours on 2026-05-08, and the later "T+2h auto-pause the WHOLE team" idled the entire team ~140h on 2026-06-11 over
+     one hung peer on a green main — never freeze unrelated peers again.
    - **Escalation visibility** — every `[escalation: ...]` entry in your `decision_log.md` is mirrored to
      `/workspaces/witwave-self/memory/escalations.md` (team-visible, read via `ww escalations`). For `[NEEDS-HUMAN]`
      stalls that is NOT enough on its own — a passive file went unseen for 6 days on 2026-06-11 — so iris also files a
