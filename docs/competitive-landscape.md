@@ -1,21 +1,37 @@
 # Competitive Landscape
 
-Last updated: 2026-06-17 by kira-agent-witwave (thirty-sixth pass — post-pause refresh per zora docs-research one-shot
-dispatch under P2 cadence-floor breach following the 2026-06-11 → 2026-06-17 auto-pause window (~10-day gap since the
-thirty-fifth pass, ~6+ days pre-pause stale plus the 5d18h pause window); HEAD `87d0b661`. Seven substantive upstream
-movements captured across the post-pause window: **Claude Agent SDK** rolled `v0.2.93` → **`v0.2.103`** through a chain
-of bundled-CLI maintenance bumps (Claude CLI 2.1.167 → 2.1.179); substantive surface delta is **`v0.2.101`**
-(2026-06-13) which types `system/task_updated` lifecycle events as `TaskUpdatedMessage` with terminal-status tracking;
-no breaking changes across the range (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed
-2026-06-17). **LangGraph** bumped from `v1.2.4` to **`v1.2.5`** (2026-06-12) — merges `lc_versions` config metadata
-correctly and fixes `updateState` on empty `deltaChannel` threads; backward-compatible (source:
-<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-06-17). **OpenAI Agents SDK** bumped from `v0.17.4`
-to **`v0.17.5`** (2026-06-11) — sandbox error retryability fixes plus tool-end hook type improvements; no breaking
-changes (source: <https://github.com/openai/openai-agents-python/releases>, accessed 2026-06-17). **Microsoft Agent
-Framework** Python line rolled from `python-1.8.0` to **`python-1.8.1`** (2026-06-09) — adds **MCP client observability
-spans** and **long-running task support** plus multiple bug fixes; .NET line rolled from `dotnet-1.9.0` to
-**`dotnet-1.10.0`** (2026-06-10) — refreshes the GitHub Copilot SDK integration plus bug fixes and sample improvements
-(source: <https://github.com/microsoft/agent-framework/releases>, accessed 2026-06-17). **CrewAI** stable graduated from
+Last updated: 2026-06-17 by kira-agent-witwave (thirty-seventh pass — verification-and-refinement per zora tick-447
+docs-research one-shot dispatch under cadence-floor breach (6h floor breached, last fire 16:44Z) as polish-skill ADVANCE
+one-shot deeper pass after cheap-pass `docs-cleanup` returned 0/0/0 at the thirty-sixth-pass-landing tick (zero_streak=1
+≥ advance-threshold=1, no kira-scope docs commits since — `commit 656d3403` is backends/codex/package-lock.json only,
+out of docs-scope); HEAD `656d3403`. One substantive upstream movement captured in the ~6-hour window since the
+thirty-sixth pass earlier today: **Claude Agent SDK** rolled `v0.2.103` → **`v0.2.104`** (2026-06-17 22:22 UTC) — pure
+bundled-CLI maintenance bump (Claude CLI 2.1.179 → 2.1.181); no SDK-surface changes (source:
+<https://github.com/anthropics/claude-agent-sdk-python/releases/tag/v0.2.104>, accessed 2026-06-17). All other
+high-cadence upstream pins re-verified unchanged from the thirty-sixth pass earlier today: LangGraph still `v1.2.5`
+(2026-06-12), Microsoft Agent Framework still `python-1.8.1` (2026-06-09) / `dotnet-1.10.0` (2026-06-10), OpenAI Agents
+SDK still `v0.17.5` (2026-06-11), CrewAI still `1.14.7` stable (2026-06-11), OpenHands still `1.8.0` (2026-06-10),
+OpenClaw stable still `v2026.6.8` (2026-06-16), A2A still `v1.0.1` (2026-05-28) (sources:
+<https://github.com/langchain-ai/langgraph/releases>, <https://github.com/microsoft/agent-framework/releases>,
+<https://github.com/openai/openai-agents-python/releases>, <https://github.com/crewAIInc/crewAI/releases>,
+<https://github.com/All-Hands-AI/OpenHands/releases>, <https://github.com/openclaw/openclaw/releases>, and
+<https://github.com/a2aproject/A2A/releases>, all accessed 2026-06-17). Thirty-sixth pass (2026-06-17, ~6h ago) was a
+post-pause refresh per zora docs-research one-shot dispatch under P2 cadence-floor breach following the 2026-06-11 →
+2026-06-17 auto-pause window (~10-day gap since the thirty-fifth pass, ~6+ days pre-pause stale plus the 5d18h pause
+window); HEAD `87d0b661`. Seven substantive upstream movements captured across the post-pause window: **Claude Agent
+SDK** rolled `v0.2.93` → **`v0.2.103`** through a chain of bundled-CLI maintenance bumps (Claude CLI 2.1.167 → 2.1.179);
+substantive surface delta is **`v0.2.101`** (2026-06-13) which types `system/task_updated` lifecycle events as
+`TaskUpdatedMessage` with terminal-status tracking; no breaking changes across the range (source:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-06-17). **LangGraph** bumped from
+`v1.2.4` to **`v1.2.5`** (2026-06-12) — merges `lc_versions` config metadata correctly and fixes `updateState` on empty
+`deltaChannel` threads; backward-compatible (source: <https://github.com/langchain-ai/langgraph/releases>, accessed
+2026-06-17). **OpenAI Agents SDK** bumped from `v0.17.4` to **`v0.17.5`** (2026-06-11) — sandbox error retryability
+fixes plus tool-end hook type improvements; no breaking changes (source:
+<https://github.com/openai/openai-agents-python/releases>, accessed 2026-06-17). **Microsoft Agent Framework** Python
+line rolled from `python-1.8.0` to **`python-1.8.1`** (2026-06-09) — adds **MCP client observability spans** and
+**long-running task support** plus multiple bug fixes; .NET line rolled from `dotnet-1.9.0` to **`dotnet-1.10.0`**
+(2026-06-10) — refreshes the GitHub Copilot SDK integration plus bug fixes and sample improvements (source:
+<https://github.com/microsoft/agent-framework/releases>, accessed 2026-06-17). **CrewAI** stable graduated from
 `v1.14.6` to **`1.14.7`** (2026-06-11) via the `1.14.7a3` → `1.14.7a4` → `1.14.7rc1` → `1.14.7rc2` chain — headline
 additions are **pluggable flow backends** (decoupling conversation logic from runtime), **improved LLM event
 surfacing**, and **native Snowflake Cortex support**; the `1.14.7rc2` release also fixes checkpoint restoration so live
