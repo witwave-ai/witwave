@@ -1,17 +1,50 @@
 # Competitive Landscape
 
-Last updated: 2026-06-17 by kira-agent-witwave (thirty-seventh pass — verification-and-refinement per zora tick-447
-docs-research one-shot dispatch under cadence-floor breach (6h floor breached, last fire 16:44Z) as polish-skill ADVANCE
-one-shot deeper pass after cheap-pass `docs-cleanup` returned 0/0/0 at the thirty-sixth-pass-landing tick (zero_streak=1
-≥ advance-threshold=1, no kira-scope docs commits since — `commit 656d3403` is backends/codex/package-lock.json only,
-out of docs-scope); HEAD `656d3403`. One substantive upstream movement captured in the ~6-hour window since the
-thirty-sixth pass earlier today: **Claude Agent SDK** rolled `v0.2.103` → **`v0.2.104`** (2026-06-17 22:22 UTC) — pure
-bundled-CLI maintenance bump (Claude CLI 2.1.179 → 2.1.181); no SDK-surface changes (source:
-<https://github.com/anthropics/claude-agent-sdk-python/releases/tag/v0.2.104>, accessed 2026-06-17). All other
-high-cadence upstream pins re-verified unchanged from the thirty-sixth pass earlier today: LangGraph still `v1.2.5`
-(2026-06-12), Microsoft Agent Framework still `python-1.8.1` (2026-06-09) / `dotnet-1.10.0` (2026-06-10), OpenAI Agents
-SDK still `v0.17.5` (2026-06-11), CrewAI still `1.14.7` stable (2026-06-11), OpenHands still `1.8.0` (2026-06-10),
-OpenClaw stable still `v2026.6.8` (2026-06-16), A2A still `v1.0.1` (2026-05-28) (sources:
+Last updated: 2026-06-18 by kira-agent-witwave (thirty-eighth pass — verification-and-refinement per zora docs-research
+one-shot dispatch under P2 cadence-floor breach (docs-cleanup at 6.00h vs 6h floor = AT-FLOOR; last fire 03:00Z) as
+polish-tier ADVANCE one-shot deeper pass after cheap-pass `docs-cleanup` zero_streak=1 with no fresh kira-scope source
+since `last_run_sha=2a217fbc` (HEAD also `2a217fbc`); HEAD `2a217fbc`. Two substantive upstream movements captured in
+the ~10-hour window since the thirty-seventh pass yesterday: **Microsoft Agent Framework** Python line rolled from
+`python-1.8.1` to **`python-1.9.0`** (2026-06-18 09:03 UTC) — headline additions are an **`AgentLoopMiddleware`**
+primitive (re-runs an agent in a loop on a configurable termination condition), **tool-approval integration into the
+harness agent** with a new **tool-approval middleware**, **shell-tool integration into the harness agent**, **context
+provider instructions captured in agent telemetry**, and **opt-in AG-UI thread snapshot persistence and hydration**;
+headline breaking change is **sampling guardrails on MCP tools** (server-initiated sampling denied by default plus new
+`sampling_approval_callback`, `sampling_max_tokens`, and `sampling_max_requests` parameters), with companion breakers
+aligning `FileAccess` tools with .NET (directory discovery + recursive search) and tightening declarative-workflow
+execution; the **`agent-framework-orchestrations`** package was promoted to **stable `1.0.0`** in the same release; .NET
+line unchanged at `dotnet-1.10.0` (source: <https://github.com/microsoft/agent-framework/releases/tag/python-1.9.0>,
+accessed 2026-06-18). **CrewAI** opened a fresh alpha train at **`1.14.8a`** (2026-06-18 05:42 UTC) — headline theme is
+**JSON-first crews**: FlowDefinition gains a **script/code-block action**, **crew actions**, an **`each` composite
+action**, **DMN mode support** in crew creation and execution, **expressions in FlowDefinition actions**, **human
+feedback driven from the flow definition**, **config and persistence wiring from FlowDefinition into the runtime**,
+**flow-definition run-tools without Python code**, plus an experimental `crewai run --definition` CLI for flows and
+**ZIP-deployment fallback for JSON crew project env runs**; bug fixes include duplicated-Exa-tool removal and an
+**aggregate-token-usage fix across all LLM calls**; stable still `1.14.7` (source:
+<https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a>, accessed 2026-06-18). Pin refinement: **LangGraph CLI**
+companion advanced from `cli==0.4.27` (2026-05-28, the prior CLI pin cited in the twenty-ninth pass) to
+**`cli==0.4.30`** (2026-06-16 19:46 UTC) through `cli==0.4.28` (2026-06-10) and `cli==0.4.29` (2026-06-11); headline
+addition is **support for compatible API version ranges**; core `langgraph==1.2.5` unchanged from the thirty-seventh
+pass (source: <https://github.com/langchain-ai/langgraph/releases/tag/cli%3D%3D0.4.30>, accessed 2026-06-18). All other
+high-cadence upstream pins re-verified unchanged from the thirty-seventh pass yesterday: Claude Agent SDK still
+`v0.2.104` (2026-06-17), LangGraph core still `v1.2.5` (2026-06-12), Microsoft Agent Framework .NET still
+`dotnet-1.10.0` (2026-06-10), OpenAI Agents SDK still `v0.17.5` (2026-06-11), OpenHands still `1.8.0` (2026-06-10),
+OpenClaw still `v2026.6.8` (2026-06-16), A2A still `v1.0.1` (2026-05-28) (sources:
+<https://github.com/anthropics/claude-agent-sdk-python/releases>, <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/openai/openai-agents-python/releases>,
+<https://github.com/All-Hands-AI/OpenHands/releases>, <https://github.com/openclaw/openclaw/releases>, and
+<https://github.com/a2aproject/A2A/releases>, all accessed 2026-06-18). Thirty-seventh pass (2026-06-17, ~10h ago) was a
+verification-and-refinement pass per zora tick-447 docs-research one-shot dispatch under cadence-floor breach (6h floor
+breached, last fire 16:44Z) as polish-skill ADVANCE one-shot deeper pass after cheap-pass `docs-cleanup` returned 0/0/0
+at the thirty-sixth-pass-landing tick (zero_streak=1 ≥ advance-threshold=1, no kira-scope docs commits since —
+`commit 656d3403` is backends/codex/package-lock.json only, out of docs-scope); HEAD `656d3403`. One substantive
+upstream movement captured in the ~6-hour window since the thirty-sixth pass earlier today: **Claude Agent SDK** rolled
+`v0.2.103` → **`v0.2.104`** (2026-06-17 22:22 UTC) — pure bundled-CLI maintenance bump (Claude CLI 2.1.179 → 2.1.181);
+no SDK-surface changes (source: <https://github.com/anthropics/claude-agent-sdk-python/releases/tag/v0.2.104>, accessed
+2026-06-17). All other high-cadence upstream pins re-verified unchanged from the thirty-sixth pass earlier today:
+LangGraph still `v1.2.5` (2026-06-12), Microsoft Agent Framework still `python-1.8.1` (2026-06-09) / `dotnet-1.10.0`
+(2026-06-10), OpenAI Agents SDK still `v0.17.5` (2026-06-11), CrewAI still `1.14.7` stable (2026-06-11), OpenHands still
+`1.8.0` (2026-06-10), OpenClaw stable still `v2026.6.8` (2026-06-16), A2A still `v1.0.1` (2026-05-28) (sources:
 <https://github.com/langchain-ai/langgraph/releases>, <https://github.com/microsoft/agent-framework/releases>,
 <https://github.com/openai/openai-agents-python/releases>, <https://github.com/crewAIInc/crewAI/releases>,
 <https://github.com/All-Hands-AI/OpenHands/releases>, <https://github.com/openclaw/openclaw/releases>, and
