@@ -1,6 +1,39 @@
 # Competitive Landscape
 
-Last updated: 2026-06-18 by kira-agent-witwave (thirty-eighth pass — verification-and-refinement per zora docs-research
+Last updated: 2026-06-19 by kira-agent-witwave (thirty-ninth pass — verification-and-refinement per zora tick-469
+docs-research one-shot dispatch under P2 dual-cadence-floor breach (docs-cleanup 6h-floor at 6h breached, docs-research
+1.5d/36h-floor at 35h ~1h shy) as polish-skill ADVANCE one-shot deeper pass after cheap-pass `docs-cleanup` returned
+`zero_streak=1` at HEAD `3d63de64` with no fresh kira-scope source since the thirty-eighth-pass landing; HEAD
+`3d63de64`. Five substantive upstream movements captured in the ~24-hour window since the thirty-eighth pass: **Claude
+Agent SDK** rolled `v0.2.104` → **`v0.2.105`** (2026-06-19 04:12 UTC) — pure bundled-CLI maintenance bump (Claude CLI
+2.1.181 → 2.1.183); no SDK-surface changes (source:
+<https://github.com/anthropics/claude-agent-sdk-python/releases/tag/v0.2.105>, accessed 2026-06-19). **LangGraph** core
+bumped from `v1.2.5` to **`1.2.6`** (2026-06-18 20:58 UTC) — fixes a 1.2.3 regression where nested subgraphs inherited
+the parent `checkpoint_ns` incorrectly, cancels running subgraphs on v3 stream abort, and bumps bundled `tornado`
+`6.5.5` → `6.5.6`; backward-compatible (source: <https://github.com/langchain-ai/langgraph/releases/tag/1.2.6>, accessed
+2026-06-19). **OpenAI Agents SDK** bumped from `v0.17.5` to **`v0.17.6`** (2026-06-19 06:03 UTC) — adds **pre-approval
+tool input guardrails** and **SDK-only custom data for tool outputs** (enforcing a documented strict JSON-compatible
+contract), plus suppresses handoff whitespace tool-name warnings (source:
+<https://github.com/openai/openai-agents-python/releases/tag/v0.17.6>, accessed 2026-06-19). **CrewAI** alpha train
+advanced from `1.14.8a` through **`1.14.8a1`** (2026-06-18 17:46 UTC — adds optional `if` expression to `each.do` flow
+steps plus JSON crew bug fixes) to **`1.14.8a2`** (2026-06-18 23:42 UTC — adds **single-agent action to Flow
+definitions** and **flow CEL expression validation at definition load time**, plus a Datadog integration guide with an
+importable operations dashboard); stable still `1.14.7` (sources:
+<https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a1> and
+<https://github.com/crewAIInc/crewAI/releases/tag/1.14.8a2>, accessed 2026-06-19). **OpenClaw** opened a fresh beta head
+at **`v2026.6.9-beta.1`** (2026-06-19 05:52 UTC) — adds **Codex Hosted Search**, **automatic plugin approvals for the
+Codex integration**, **GPT-5.3 Spark OAuth routing**, **remote-node `exec` as a dynamic Codex tool**, **externalized
+official provider plugins as standalone npm packages** discovered by the Gateway at startup, **richer Telegram
+delivery** (rich HTML, preserved markdown and sticker paths, progress drafts), a **session workspace rail** in the
+Control UI with extension health, **iOS Watch controls** and Android chat-context surfacing, plus reliability work on
+agent retries for thinking-only and empty post-tool turns, session-history repair, and SQLite WAL avoidance on network
+filesystems; stable still `v2026.6.8` (source: <https://github.com/openclaw/openclaw/releases/tag/v2026.6.9-beta.1>,
+accessed 2026-06-19). All other high-cadence upstream pins re-verified unchanged from the thirty-eighth pass: Microsoft
+Agent Framework `python-1.9.0` (2026-06-18) / `dotnet-1.10.0` (2026-06-10), OpenHands `1.8.0` (2026-06-10), LangGraph
+CLI `cli==0.4.30` (2026-06-16), A2A `v1.0.1` (2026-05-28) (sources:
+<https://github.com/microsoft/agent-framework/releases>, <https://github.com/All-Hands-AI/OpenHands/releases>,
+<https://github.com/langchain-ai/langgraph/releases>, and <https://github.com/a2aproject/A2A/releases>, all accessed
+2026-06-19). Thirty-eighth pass (2026-06-18, ~24h ago) was a verification-and-refinement pass per zora docs-research
 one-shot dispatch under P2 cadence-floor breach (docs-cleanup at 6.00h vs 6h floor = AT-FLOOR; last fire 03:00Z) as
 polish-tier ADVANCE one-shot deeper pass after cheap-pass `docs-cleanup` zero_streak=1 with no fresh kira-scope source
 since `last_run_sha=2a217fbc` (HEAD also `2a217fbc`); HEAD `2a217fbc`. Two substantive upstream movements captured in
