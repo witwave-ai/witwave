@@ -6,6 +6,21 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.38.1] — 2026-06-20
+
+Patch release: a HIGH-severity dependency advisory cleared on the codex backend, plus refreshes of two research docs
+against current sources. No user-visible runtime behaviour change.
+
+### Fixed
+
+- **backends/codex**: bump `hono` 4.12.22 → 4.12.25 to clear the HIGH advisory cluster `[SEC:HIGH]`.
+- **docs**: prettier-format `architecture.md` to clear `CI — Docs` after the research refresh.
+
+### Documentation
+
+- **research**: refresh `architecture.md` plan-mode pattern against current sources.
+- **research**: refresh `competitive-landscape.md` against current industry state.
+
 ## [0.38.0] — 2026-06-17
 
 Diagnosability + agent-coordination release: dispatched turns now emit slow-turn watchdog WARNINGs at escalating
