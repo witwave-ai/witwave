@@ -35,6 +35,10 @@ RUN pip install --no-cache-dir \
 COPY --chown=agent:agent harness/ /home/agent/harness/
 COPY --chown=agent:agent shared/ /home/agent/shared/
 
+# Make modules under /home/agent/shared/ importable by their bare name
+# (e.g. `from otel import ...`) — harness/ source uses unprefixed imports
+# for shared helpers, matching how the same files are imported inside the
+# backend and tool images.
 ENV PYTHONPATH="/home/agent/shared"
 
 RUN mkdir -p /home/agent/.witwave /home/agent/workspace
