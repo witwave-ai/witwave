@@ -1,5 +1,13 @@
 name: CI — Codex Backend
 
+# Per-PR validation for the Node-based codex backend (backends/codex/**).
+# Runs npm ci + audit + prettier + npm test, then builds the runtime image
+# from backends/codex/Dockerfile and smoke-tests it end-to-end in stub
+# mode (CODEX_STUB_MODE=true) — the smoke step exercises /health, the SSE
+# session stream, an A2A message/send round-trip, and the Prometheus
+# metrics endpoint, so a broken Dockerfile or main.js is caught here
+# instead of at release time.
+
 on:
   pull_request:
     paths:
