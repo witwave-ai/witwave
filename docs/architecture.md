@@ -428,8 +428,8 @@ proposal before becoming a feature issue:
 though neither is a hard enforced two-phase split — both surface a planning step the operator approves before execution.
 OpenHands' Plan Mode emits a structured `PLAN.md` the user reviews, then switches to Code Mode for implementation
 (sources: <https://openhands.dev/blog/openhands-product-update---march-2026> and
-<https://github.com/OpenHands/OpenHands/releases/tag/1.8.0>, accessed 2026-06-20). Devin's Interactive Planning
-analyzes the codebase and proposes a preliminary plan the operator can edit before execution begins (source:
+<https://github.com/OpenHands/OpenHands/releases/tag/1.8.0>, accessed 2026-06-20). Devin's Interactive Planning analyzes
+the codebase and proposes a preliminary plan the operator can edit before execution begins (source:
 <https://cognition.com/blog/devin-2>, accessed 2026-06-20). The Claude Agent SDK supports `permission_mode="plan"`
 natively. Applicable to jobs or tasks with high blast radius.
 
