@@ -114,6 +114,14 @@ warn() {
   printf 'ww-install: warning: %s\n' "$*" >&2
 }
 
+# Print a `ww-install: error: <msg>` line to stderr and exit with the
+# given code. First positional arg is the numeric exit code, remaining
+# args form the message — calling `die "msg"` (forgetting the code) is
+# a footgun because `exit "msg"` triggers a "numeric argument required"
+# shell error rather than the intended failure. Existing call sites
+# categorise codes as: 1 validation/usage, 2 unsupported platform,
+# 3 release-tag lookup, 4 download verification, 5 filesystem,
+# 6 required tool missing.
 die() {
   code="$1"
   shift
