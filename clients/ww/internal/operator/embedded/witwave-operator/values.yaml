@@ -218,7 +218,16 @@ preStop:
 # ServiceAccount used by the manager pod.
 serviceAccount:
   create: true
+  # Controls automountServiceAccountToken — stamped at BOTH the SA
+  # (serviceaccount.yaml) AND the pod spec (deployment.yaml) per #1595 so
+  # the pod-level setting doesn't silently override the SA setting. Set to
+  # false when the operator reaches the apiserver via IRSA / workload
+  # identity and the projected SA token would otherwise be unused.
   automount: true
+  # Extra annotations merged into the ServiceAccount metadata. Useful for
+  # pointing at a cloud IAM role (eks.amazonaws.com/role-arn for IRSA,
+  # iam.gke.io/gcp-service-account for GKE Workload Identity) or any
+  # admission controller annotation that keys off the SA.
   annotations: {}
   # Use a specific existing SA name; leave empty to auto-derive from release.
   name: ""
