@@ -107,7 +107,7 @@ func parseRevisionLabel(v string) int {
 	return n
 }
 
-// FindReleaseCluster-wide returns the namespace in which a release of the
+// FindReleaseClusterWide returns the namespace in which a release of the
 // given name is installed, or "" if none. Used by the singleton-detection
 // preflight — the caller can then refuse install when a release already
 // exists in some other namespace.
