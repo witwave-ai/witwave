@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
 
-
 SKIP_DIR_NAMES = {
     ".git",
     ".mypy_cache",
