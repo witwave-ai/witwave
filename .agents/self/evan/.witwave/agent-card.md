@@ -5,7 +5,7 @@ single pass. Two kinds, two skills:
 
 - **Bugs** (`bug-work`, deployed): correctness defects — unchecked errors, null derefs, format-string mismatches, dead
   writes, idempotency gaps, ineffective assignments. Code doing the wrong thing on some input _right now_.
-- **Risks** (`risk-work`): code that works today but is **fragile under foreseeable conditions**. Five categories from
+- **Risks** (`risk-work`, deployed): code that works today but is **fragile under foreseeable conditions**. Five categories from
   the standard risk taxonomy:
 
   1. **Security** — CVEs in reachable deps, secrets, insecure patterns. Analyzer-driven (govulncheck / pip-audit /
