@@ -58,6 +58,13 @@ jobs:
           GIT_SSH_COMMAND="ssh -i $HOME/.ssh/witwave-ai-github-io -o IdentitiesOnly=yes" \
             git clone git@github.com:witwave-ai/witwave-ai.github.io.git _site-repo
 
+      # The "Clone website repository" step above writes
+      # publish=true only when one of WITWAVE_AI_GITHUB_IO_TOKEN or
+      # WITWAVE_AI_GITHUB_IO_DEPLOY_KEY is present and the clone
+      # succeeded. The remaining steps below all skip when those
+      # secrets are absent (e.g. fork PRs, dispatch runs without the
+      # repo-level secret configured) so the workflow degrades to a
+      # no-op publish instead of failing with an auth error.
       - name: Set up Node.js
         if: steps.website_repo.outputs.publish == 'true'
         uses: actions/setup-node@v4
