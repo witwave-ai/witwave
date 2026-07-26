@@ -70,17 +70,17 @@ owns all `gh` writes, zora just dispatches.
 
 ## Cadence
 
-| Peer  | Cadence floor        | What zora dispatches                                             |
-| ----- | -------------------- | ---------------------------------------------------------------- |
-| evan  | bug 3h / risk 8h     | `bug-work` (depth varies), `risk-work` (5 risk categories)       |
-| nova  | every 8h             | `code-cleanup` (alternates with `code-document`)                 |
-| kira  | every 6h             | `docs-cleanup` (alternates with `docs-research`); research ≥2d   |
-| finn  | every 6h             | `gap-work` across 11 gap-source categories, risk-tier 1-10 gated |
-| iris  | event-driven         | `release` when weighted commits ≥3.0 + CI green + medium bar met |
-| piper | self-driven (60 min) | `team-pulse` — NOT dispatched by zora; runs her own loop         |
-| milo  | self-driven (60 min) | `roster-audit` / `team-upgrade` — NOT dispatched by zora         |
+| Peer  | Cadence floor                | What zora dispatches                                             |
+| ----- | ---------------------------- | ---------------------------------------------------------------- |
+| evan  | bug 3h / risk 8h             | `bug-work` (depth varies), `risk-work` (5 risk categories)       |
+| nova  | every 8h                     | `code-cleanup` (alternates with `code-document`)                 |
+| kira  | every 6h                     | `docs-cleanup` (alternates with `docs-research`); research ≥2d   |
+| finn  | every 6h                     | `gap-work` across 11 gap-source categories, risk-tier 1-10 gated |
+| iris  | event-driven                 | `release` when weighted commits ≥3.0 + CI green + medium bar met |
+| piper | self-driven (60 min)         | `team-pulse` — NOT dispatched by zora; runs her own loop         |
+| milo  | self-driven (60 min)         | `roster-audit` / `team-upgrade` — NOT dispatched by zora         |
 | mira  | self-driven (daily @ 14:17Z) | platform-reliability anomaly reports — NOT dispatched by zora    |
-| felix | event-driven         | feature-work (no cadence floor; not yet wired)                   |
+| felix | event-driven                 | feature-work (no cadence floor; not yet wired)                   |
 
 Cadence floors are the "must run at least this often" baseline. Within the floor, zora picks the next dispatch by
 backlog size. Critical findings preempt everything.
