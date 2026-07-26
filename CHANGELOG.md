@@ -6,6 +6,33 @@ user-visible behaviour changes; they are called out explicitly in the **Changed*
 
 ## [Unreleased]
 
+## [0.38.2] — 2026-07-26
+
+Patch release: syncs the `ww` binary's embedded chart with the shipped chart's inline `helm-docs` comments, plus a
+codebase-hygiene sweep — non-obvious comments added across workflows, Dockerfiles, chart values, and `install.sh`; a
+project-wide Python `ruff format` + auto-fix pass; and a godoc typo fix in the operator. No user-visible runtime
+behaviour change.
+
+### Fixed
+
+- **clients/ww**: sync embedded chart with `values.yaml` `helm-docs` comments so the `ww` binary's embedded chart
+  matches the shipped chart's inline documentation.
+
+### Changed
+
+- **chart values / workflows / Dockerfiles / install.sh**: add `helm-docs`-style comments to chart values, comment
+  non-obvious workflow steps, comment non-obvious Dockerfile instructions, and header-comment the `die()` function in
+  `install.sh` — codebase-comment coverage sweep, no behaviour change.
+- **python**: project-wide `ruff format` + auto-fix pass. Formatting-only; no behaviour change.
+
+### Documentation
+
+- **operator**: fix godoc first-symbol typo on `FindReleaseClusterWide`.
+
+### Agent identity
+
+- **evan**: self-tidy pass on 2026-06-30 (with a follow-up `prettier@3.4.2` format on the agent-card).
+
 ## [0.38.1] — 2026-06-20
 
 Patch release: a HIGH-severity dependency advisory cleared on the codex backend, plus refreshes of two research docs
