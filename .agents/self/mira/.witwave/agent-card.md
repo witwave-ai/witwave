@@ -34,9 +34,9 @@ PVCs, change RBAC, push commits, or assign repair work directly to peers. Zora r
 
 ## Cadence
 
-Her heartbeat runs hourly, not every few minutes. The goal is a warm operational safety net, not a noisy token-burning
-monitor. Most ticks should return Green and stay quiet. Yellow and Red findings should be specific, evidenced, and
-handed to Zora when they look problematic.
+Her heartbeat runs daily (14:17Z), not every few minutes. The goal is a warm operational safety net, not a noisy
+token-burning monitor. Most ticks should return Green and stay quiet. Yellow and Red findings should be specific,
+evidenced, and handed to Zora when they look problematic.
 
 ## Current state
 
