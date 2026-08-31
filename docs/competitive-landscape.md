@@ -1,12 +1,53 @@
 # Competitive Landscape
 
-Last updated: 2026-06-19 by kira-agent-witwave (thirty-ninth pass — verification-and-refinement per zora tick-469
-docs-research one-shot dispatch under P2 dual-cadence-floor breach (docs-cleanup 6h-floor at 6h breached, docs-research
-1.5d/36h-floor at 35h ~1h shy) as polish-skill ADVANCE one-shot deeper pass after cheap-pass `docs-cleanup` returned
-`zero_streak=1` at HEAD `3d63de64` with no fresh kira-scope source since the thirty-eighth-pass landing; HEAD
-`3d63de64`. Five substantive upstream movements captured in the ~24-hour window since the thirty-eighth pass: **Claude
-Agent SDK** rolled `v0.2.104` → **`v0.2.105`** (2026-06-19 04:12 UTC) — pure bundled-CLI maintenance bump (Claude CLI
-2.1.181 → 2.1.183); no SDK-surface changes (source:
+Last updated: 2026-08-31 by kira-agent-witwave (fortieth pass — long-gap recovery refresh per zora tick-1826
+docs-research one-shot dispatch under P2 cadence-floor deeply breached (docs-research 2d floor exceeded by ~73d after a
+sibling-pod network-wedge window and a preceding 35+d HEAD-frozen period at `9663b2b2`) as polish-tier ADVANCE deep-pass
+one-shot after cheap-pass `docs-cleanup` returned `zero_streak≥1` with no fresh kira-scope source since
+`last_run_sha=9663b2b2`; HEAD `9663b2b2`. Because this pass covers a ~73-day window and every high-cadence upstream pin
+has moved multiple times, this preface captures the **current-state pin refresh only** rather than replaying every
+intermediate release; the fine-grained release chain is recoverable from each project's GitHub releases page cited
+inline. Current-state pins (all accessed 2026-08-31): **Claude Agent SDK** advanced from `v0.2.105` (2026-06-19) to
+**`v0.2.147`** (2026-08-28) — a ~42-release chain, predominantly bundled Claude CLI maintenance bumps with no headline
+SDK-surface breaks (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-08-31).
+**LangGraph** core advanced from `v1.2.6` (2026-06-18) to **`v1.2.11`** with companion `langgraph-sdk==0.4.4`
+(2026-08-27) and `langgraph-cli==0.4.31` — the SDK bump layers further streaming/reconnect refinements on top of the v3
+transport landed in the twenty-ninth pass; core release notes are backward-compatible fixes (source:
+<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-08-31). **OpenAI Agents SDK** made a substantial
+jump from `v0.17.6` (2026-06-19) to **`v0.22.0`** (2026-08-19) — the release train includes the pre-approval tool input
+guardrails and SDK-only custom-data tool outputs captured in the thirty-ninth pass plus further guardrail and tool-life
+refinements (source: <https://github.com/openai/openai-agents-python/releases>, accessed 2026-08-31). **Microsoft Agent
+Framework** Python line advanced from `python-1.9.0` (2026-06-18) to **`python-1.16.0`** (2026-08-21) — the 1.16.0 tag
+adds **configurable first-task wait timeouts**, **richer OpenTelemetry and OTLP setup**, and hosting/sample-app updates
+across the surface; the intervening 1.10.x–1.15.x train has been shipping on the near-weekly cadence noted in prior
+passes (source: <https://github.com/microsoft/agent-framework/releases>, accessed 2026-08-31). **A2A** core spec still
+pinned at **`v1.0.1`** (2026-05-28) with no new tag since, but the **Java SDK graduated to `1.2.0.Final`** on 2026-08-18
+(hardened authorization model, stream lifecycle management, several protocol-compliance fixes) and — headline governance
+move — on **2026-08-27 the A2A protocol was accepted as a Growth-Stage project at the newly-formed Agentic AI Foundation
+(AAIF)**, layering a fresh governance surface on top of the earlier Linux Foundation contribution (sources:
+<https://github.com/a2aproject/A2A/releases>, <https://quarkus.io/blog/a2a-java-sdk-1-2-0-final-released/>, and
+<https://nerdleveltech.com/a2a-protocol-joins-agentic-ai-foundation>, all accessed 2026-08-31). **OpenHands** advanced
+from `1.8.0` (2026-06-10) to **`0.34`** on the Docker registry with reported ~85,000 GitHub stars / 9M+ open-source
+downloads / 500 contributors as of mid-2026 (source: <https://github.com/All-Hands-AI/OpenHands/releases>, accessed
+2026-08-31). **CrewAI** and **OpenClaw** pins were not re-fetched at fresh-tag granularity in this pass because the
+~73-day window compounds combinatorically with their high-cadence alpha/beta trains — a per-pin refresh is deferred to
+the next docs-research one-shot when the polish gauntlet next surfaces alternation from docs-cleanup. **Material
+regulatory update captured in this pass:** the EU AI Act omnibus agreement reached on 2026-05-07 (formal Parliament
+adoption 2026-06-16) **postponed most high-risk obligations** — Annex III systems moved to **2 December 2027**, Annex I
+systems to **2 August 2028** — so the previous "high-risk obligations take effect August 2026" framing in this doc's
+Safety/Governance research theme and Gap Analysis was superseded before the enforcement date landed; what **does** apply
+from 2 August 2026 is the narrower transparency layer (Article 50 — chatbot disclosure, AI-content marking, deepfake
+labelling), and even the transparency-for-AI-generated-content deadline moved to 2 December 2026 (sources:
+<https://www.gibsondunn.com/eu-ai-act-omnibus-agreement-postponed-high-risk-deadlines-and-other-key-changes/> and
+<https://www.traverssmith.com/knowledge/knowledge-container/eu-agrees-to-delay-key-ai-act-compliance-deadlines/>, both
+accessed 2026-08-31). Corresponding inline fixes applied to the Research Themes → Safety/Governance section and Gap
+Analysis → Safety section below. Thirty-ninth pass (2026-06-19, ~73d ago) was a verification-and-refinement pass per
+zora tick-469 docs-research one-shot dispatch under P2 dual-cadence-floor breach (docs-cleanup 6h-floor at 6h breached,
+docs-research 1.5d/36h-floor at 35h ~1h shy) as polish-skill ADVANCE one-shot deeper pass after cheap-pass
+`docs-cleanup` returned `zero_streak=1` at HEAD `3d63de64` with no fresh kira-scope source since the thirty-eighth-pass
+landing; HEAD `3d63de64`. Five substantive upstream movements captured in the ~24-hour window since the thirty-eighth
+pass: **Claude Agent SDK** rolled `v0.2.104` → **`v0.2.105`** (2026-06-19 04:12 UTC) — pure bundled-CLI maintenance bump
+(Claude CLI 2.1.181 → 2.1.183); no SDK-surface changes (source:
 <https://github.com/anthropics/claude-agent-sdk-python/releases/tag/v0.2.105>, accessed 2026-06-19). **LangGraph** core
 bumped from `v1.2.5` to **`1.2.6`** (2026-06-18 20:58 UTC) — fixes a 1.2.3 regression where nested subgraphs inherited
 the parent `checkpoint_ns` incorrectly, cancels running subgraphs on v3 stream abort, and bumps bundled `tornado`
@@ -1402,10 +1443,17 @@ fewer cascading failures. This project has neither a planning mode nor a plan-ga
 ### Safety / Governance
 
 Microsoft's Agent Governance Toolkit (MIT license, 2026-04-02) is the first toolkit to address all 10 OWASP Agentic Top
-10 risks with deterministic sub-millisecond policy enforcement. EU AI Act high-risk obligations take effect August 2026;
-Colorado AI Act becomes enforceable June 2026 (verify specifics before quoting — regulation dates shift). This project's
-`hooks.yaml` declarative policy engine provides the enforcement primitive; the gap is OWASP-category labelling on rules
-so it becomes a direct comparable to the MS toolkit. See Gap Analysis → Safety for specifics.
+10 risks with deterministic sub-millisecond policy enforcement. EU AI Act high-risk obligations were **postponed by the
+May 2026 omnibus agreement** — Annex III high-risk systems now apply from **2 December 2027** and Annex I high-risk
+systems from **2 August 2028**; only the narrower Article 50 transparency layer (chatbot disclosure, AI-content marking,
+deepfake labelling) applies from 2 August 2026, with the transparency-for-AI-generated-content deadline itself moved to
+2 December 2026 (sources:
+<https://www.gibsondunn.com/eu-ai-act-omnibus-agreement-postponed-high-risk-deadlines-and-other-key-changes/> and
+<https://www.traverssmith.com/knowledge/knowledge-container/eu-agrees-to-delay-key-ai-act-compliance-deadlines/>, both
+accessed 2026-08-31). Colorado AI Act becomes enforceable June 2026 (verify specifics before quoting — regulation dates
+shift). This project's `hooks.yaml` declarative policy engine provides the enforcement primitive; the gap is
+OWASP-category labelling on rules so it becomes a direct comparable to the MS toolkit. See Gap Analysis → Safety for
+specifics.
 
 ### Self-Improvement / Lifelong Learning
 
@@ -1464,9 +1512,15 @@ Last updated: 2026-04-07 by local-agent.
 
 - **Safety and guardrails:** Microsoft released the Agent Governance Toolkit (April 2, 2026, MIT license) — the first
   toolkit to address all 10 OWASP Agentic Top 10 risks with deterministic, sub-millisecond policy enforcement. OWASP
-  published the Top 10 for Agentic Applications in December 2025. EU AI Act high-risk obligations take effect
-  August 2026. This project has a two-layer declarative policy system: a conservative built-in **baseline** of deny
-  rules (shipped in the claude executor) plus **per-agent extensions** loaded from `hooks.yaml` and hot-reloaded at
+  published the Top 10 for Agentic Applications in December 2025. The EU AI Act's high-risk obligations were postponed
+  by the May 2026 omnibus agreement: Annex III systems now apply from **2 December 2027** and Annex I systems from **2
+  August 2028**; the 2 August 2026 milestone now covers only the narrower Article 50 transparency layer (chatbot
+  disclosure, AI-content marking, deepfake labelling), and the transparency-for-AI-generated-content deadline itself
+  moved to 2 December 2026 (sources:
+  <https://www.gibsondunn.com/eu-ai-act-omnibus-agreement-postponed-high-risk-deadlines-and-other-key-changes/> and
+  <https://www.traverssmith.com/knowledge/knowledge-container/eu-agrees-to-delay-key-ai-act-compliance-deadlines/>, both
+  accessed 2026-08-31). This project has a two-layer declarative policy system: a conservative built-in **baseline** of
+  deny rules (shipped in the claude executor) plus **per-agent extensions** loaded from `hooks.yaml` and hot-reloaded at
   runtime. PostToolUse audit writes one row per tool call to `tool-activity.jsonl` for a forensic trail. MCP transport
   is separately gated by command + cwd allow-lists (`MCP_ALLOWED_COMMANDS` / `MCP_ALLOWED_COMMAND_PREFIXES` /
   `MCP_ALLOWED_CWD_PREFIXES` + positional-script rejection in `mcp_command_args_safe()`). The remaining gap is
