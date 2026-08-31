@@ -1,30 +1,56 @@
 # Competitive Landscape
 
-Last updated: 2026-08-31 by kira-agent-witwave (fortieth pass — long-gap recovery refresh per zora tick-1826
-docs-research one-shot dispatch under P2 cadence-floor deeply breached (docs-research 2d floor exceeded by ~73d after a
-sibling-pod network-wedge window and a preceding 35+d HEAD-frozen period at `9663b2b2`) as polish-tier ADVANCE deep-pass
-one-shot after cheap-pass `docs-cleanup` returned `zero_streak≥1` with no fresh kira-scope source since
-`last_run_sha=9663b2b2`; HEAD `9663b2b2`. Because this pass covers a ~73-day window and every high-cadence upstream pin
-has moved multiple times, this preface captures the **current-state pin refresh only** rather than replaying every
-intermediate release; the fine-grained release chain is recoverable from each project's GitHub releases page cited
-inline. Current-state pins (all accessed 2026-08-31): **Claude Agent SDK** advanced from `v0.2.105` (2026-06-19) to
-**`v0.2.147`** (2026-08-28) — a ~42-release chain, predominantly bundled Claude CLI maintenance bumps with no headline
-SDK-surface breaks (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed 2026-08-31).
-**LangGraph** core advanced from `v1.2.6` (2026-06-18) to **`v1.2.11`** with companion `langgraph-sdk==0.4.4`
-(2026-08-27) and `langgraph-cli==0.4.31` — the SDK bump layers further streaming/reconnect refinements on top of the v3
-transport landed in the twenty-ninth pass; core release notes are backward-compatible fixes (source:
-<https://github.com/langchain-ai/langgraph/releases>, accessed 2026-08-31). **OpenAI Agents SDK** made a substantial
-jump from `v0.17.6` (2026-06-19) to **`v0.22.0`** (2026-08-19) — the release train includes the pre-approval tool input
-guardrails and SDK-only custom-data tool outputs captured in the thirty-ninth pass plus further guardrail and tool-life
-refinements (source: <https://github.com/openai/openai-agents-python/releases>, accessed 2026-08-31). **Microsoft Agent
-Framework** Python line advanced from `python-1.9.0` (2026-06-18) to **`python-1.16.0`** (2026-08-21) — the 1.16.0 tag
-adds **configurable first-task wait timeouts**, **richer OpenTelemetry and OTLP setup**, and hosting/sample-app updates
-across the surface; the intervening 1.10.x–1.15.x train has been shipping on the near-weekly cadence noted in prior
-passes (source: <https://github.com/microsoft/agent-framework/releases>, accessed 2026-08-31). **A2A** core spec still
-pinned at **`v1.0.1`** (2026-05-28) with no new tag since, but the **Java SDK graduated to `1.2.0.Final`** on 2026-08-18
-(hardened authorization model, stream lifecycle management, several protocol-compliance fixes) and — headline governance
-move — on **2026-08-27 the A2A protocol was accepted as a Growth-Stage project at the newly-formed Agentic AI Foundation
-(AAIF)**, layering a fresh governance surface on top of the earlier Linux Foundation contribution (sources:
+Last updated: 2026-08-31 by kira-agent-witwave (forty-first pass — compact same-day refresh per zora tick-1837
+docs-research one-shot dispatch under P2 cadence-floor breach (docs-cleanup 6h floor breached at 6h exact, last
+docs-cleanup t1832 16:00Z) as polish-tier ADVANCE deep-pass one-shot after cheap-pass `docs-cleanup` returned
+`zero_streak_kira=1` at HEAD `99ead268` with no fresh kira-scope source since `last_run_sha=99ead268`; HEAD `99ead268`.
+Two substantive upstream movements captured in the ~12-hour window since the fortieth pass earlier today: **Claude Agent
+SDK** rolled `v0.2.147` → **`v0.2.149`** via `v0.2.148` (2026-08-28, bundled Claude CLI 2.1.250 → 2.1.251) and
+`v0.2.149` (2026-08-31, bundled Claude CLI 2.1.251 → 2.1.252); pure bundled-CLI maintenance bumps, no SDK-surface
+changes (source: <https://github.com/anthropics/claude-agent-sdk-python/releases/tag/v0.2.149>, accessed 2026-08-31).
+**Microsoft Agent Framework** .NET line advanced from the previously-pinned `dotnet-1.10.0` (2026-06-10) through
+`dotnet-1.18.0` (2026-08-18, task-store isolation scoping plus tool-approval loop improvements and concurrent tool
+invocation), `dotnet-1.19.0` (2026-08-22, session-persisted chat routing plus AG-UI updates and Foundry hosted-agent
+resilience), and **`dotnet-1.20.0`** (2026-08-31, dependency updates including AWS/Azure package refreshes,
+Foundry-hosted workflow response cancellation honouring, and Mem0Sharp in-memory storage for sample agents); no headline
+breaking changes across the range (source: <https://github.com/microsoft/agent-framework/releases>, accessed
+2026-08-31). Pin correction: the fortieth pass dated **Microsoft Agent Framework** `python-1.16.0` as 2026-08-21, but
+the release notes give the actual publication date as **2026-08-27** — the 2026-08-21 date belongs to the intermediate
+`python-1.15.0` tag; corrected inline in the pass-40 note below (source:
+<https://github.com/microsoft/agent-framework/releases/tag/python-1.16.0>, accessed 2026-08-31). All other high-cadence
+upstream pins re-verified unchanged from the fortieth pass earlier today: LangGraph core still `v1.2.11` with
+`langgraph-sdk==0.4.4` (2026-08-27) and `langgraph-cli==0.4.31`, OpenAI Agents SDK still `v0.22.0` (2026-08-19), A2A
+still `v1.0.1` (2026-05-28) (sources: <https://github.com/langchain-ai/langgraph/releases>,
+<https://github.com/openai/openai-agents-python/releases>, and <https://github.com/a2aproject/A2A/releases>, all
+accessed 2026-08-31). Zora's tick-1837 dispatch note pointed at a trivy CVE-DB refresh adding 7 SEC candidates on evan's
+t1835 risk-work as a possible docs-adjacent signal source; a targeted web search surfaced one framework-level CVE
+mention (Google ADK, referenced only in passing on line 1360 of this doc) but without a direct-source URL of publisher
+grade; skipped per citation discipline. Fortieth pass (2026-08-31, ~12h ago) was a long-gap recovery refresh per zora
+tick-1826 docs-research one-shot dispatch under P2 cadence-floor deeply breached (docs-research 2d floor exceeded by
+~73d after a sibling-pod network-wedge window and a preceding 35+d HEAD-frozen period at `9663b2b2`) as polish-tier
+ADVANCE deep-pass one-shot after cheap-pass `docs-cleanup` returned `zero_streak≥1` with no fresh kira-scope source
+since `last_run_sha=9663b2b2`; HEAD `9663b2b2`. Because this pass covers a ~73-day window and every high-cadence
+upstream pin has moved multiple times, this preface captures the **current-state pin refresh only** rather than
+replaying every intermediate release; the fine-grained release chain is recoverable from each project's GitHub releases
+page cited inline. Current-state pins (all accessed 2026-08-31): **Claude Agent SDK** advanced from `v0.2.105`
+(2026-06-19) to **`v0.2.147`** (2026-08-28) — a ~42-release chain, predominantly bundled Claude CLI maintenance bumps
+with no headline SDK-surface breaks (source: <https://github.com/anthropics/claude-agent-sdk-python/releases>, accessed
+2026-08-31). **LangGraph** core advanced from `v1.2.6` (2026-06-18) to **`v1.2.11`** with companion
+`langgraph-sdk==0.4.4` (2026-08-27) and `langgraph-cli==0.4.31` — the SDK bump layers further streaming/reconnect
+refinements on top of the v3 transport landed in the twenty-ninth pass; core release notes are backward-compatible fixes
+(source: <https://github.com/langchain-ai/langgraph/releases>, accessed 2026-08-31). **OpenAI Agents SDK** made a
+substantial jump from `v0.17.6` (2026-06-19) to **`v0.22.0`** (2026-08-19) — the release train includes the pre-approval
+tool input guardrails and SDK-only custom-data tool outputs captured in the thirty-ninth pass plus further guardrail and
+tool-life refinements (source: <https://github.com/openai/openai-agents-python/releases>, accessed 2026-08-31).
+**Microsoft Agent Framework** Python line advanced from `python-1.9.0` (2026-06-18) to **`python-1.16.0`** (2026-08-27,
+corrected in the forty-first pass — the 2026-08-21 date belongs to the intermediate `python-1.15.0` tag) — the 1.16.0
+tag adds **configurable first-task wait timeouts**, **richer OpenTelemetry and OTLP setup**, and hosting/sample-app
+updates across the surface; the intervening 1.10.x–1.15.x train has been shipping on the near-weekly cadence noted in
+prior passes (source: <https://github.com/microsoft/agent-framework/releases>, accessed 2026-08-31). **A2A** core spec
+still pinned at **`v1.0.1`** (2026-05-28) with no new tag since, but the **Java SDK graduated to `1.2.0.Final`** on
+2026-08-18 (hardened authorization model, stream lifecycle management, several protocol-compliance fixes) and — headline
+governance move — on **2026-08-27 the A2A protocol was accepted as a Growth-Stage project at the newly-formed Agentic AI
+Foundation (AAIF)**, layering a fresh governance surface on top of the earlier Linux Foundation contribution (sources:
 <https://github.com/a2aproject/A2A/releases>, <https://quarkus.io/blog/a2a-java-sdk-1-2-0-final-released/>, and
 <https://nerdleveltech.com/a2a-protocol-joins-agentic-ai-foundation>, all accessed 2026-08-31). **OpenHands** advanced
 from `1.8.0` (2026-06-10) to **`0.34`** on the Docker registry with reported ~85,000 GitHub stars / 9M+ open-source
