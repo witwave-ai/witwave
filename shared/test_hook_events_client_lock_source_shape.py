@@ -178,11 +178,7 @@ def test_exactly_one_get_client_call_site():
     # -> ...``); the docstring/comment references (line 185 in the
     # current source) don't have the trailing parens and so are
     # already excluded by the substring match on ``_get_client()``.
-    call_sites = [
-        ln
-        for ln in lines
-        if "_get_client()" in ln and "async def _get_client()" not in ln
-    ]
+    call_sites = [ln for ln in lines if "_get_client()" in ln and "async def _get_client()" not in ln]
     assert len(call_sites) == 1, (
         f"Expected exactly one `_get_client()` call site (inside "
         f"_post_once); found {len(call_sites)}. If you intentionally "
